@@ -3,6 +3,21 @@ import '../models/offer_model.dart';
 import 'api_config.dart';
 import 'mobile_api_client.dart';
 
+class OfferSubmitException implements Exception {
+  final String? code;
+  final String message;
+  final int? retryAfterSeconds;
+
+  const OfferSubmitException(
+    this.message, {
+    this.code,
+    this.retryAfterSeconds,
+  });
+
+  @override
+  String toString() => message;
+}
+
 class OfferService {
   late final Dio _dio;
   OfferService() {
@@ -17,7 +32,22 @@ class OfferService {
     try {
       await _dio.post('/offers', data: {'orderId': orderId, 'price': price, 'estimatedTime': estimatedTime},
         options: Options(headers: {'Authorization': 'Bearer $token'}));
-    } on DioException catch (e) { throw Exception(e.response?.data?['error'] ?? 'Failed to submit offer'); }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+
+      if (data is Map && data['conflict'] == true) {
+        throw OfferSubmitException(
+          (data['message'] ?? 'Failed to submit offer').toString(),
+          code: data['code']?.toString(),
+          retryAfterSeconds: (data['retryAfterSeconds'] as num?)?.toInt(),
+        );
+      }
+
+      throw OfferSubmitException(
+        (data is Map ? data['error'] ?? data['message'] : null)?.toString()
+            ?? 'Failed to submit offer',
+      );
+    }
   }
 
   Future<List<OfferModel>> getOffers(String token, String orderId) async {
@@ -44,7 +74,15 @@ class OfferService {
   }
 
   Future<void> cancelOrder(String token, String orderId) async {
-    await _dio.post('/offers/$orderId/cancel',
-      options: Options(headers: {'Authorization': 'Bearer $token'}));
+    try {
+      await _dio.post('/offers/$orderId/cancel',
+        options: Options(headers: {'Authorization': 'Bearer $token'}));
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      throw Exception(
+        (data is Map ? data['message'] ?? data['error'] : null)?.toString()
+            ?? 'Failed to cancel order',
+      );
+    }
   }
 }

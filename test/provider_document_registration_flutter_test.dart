@@ -9,12 +9,12 @@ void main() {
     () {
       final document = ProviderRegistrationDocument.fromBytes(
         bytes: const [0xff, 0xd8, 0xff, 0xe0, 0x00],
-        safeBaseName: 'identity-document',
+        safeBaseName: 'driver-license',
       );
 
       expect(document.contentType, 'image/jpeg');
 
-      expect(document.fileName, 'identity-document.jpg');
+      expect(document.fileName, 'driver-license.jpg');
 
       expect(document.fileName, isNot(contains('\\')));
 
@@ -37,7 +37,7 @@ void main() {
     expect(
       () => ProviderRegistrationDocument.fromBytes(
         bytes: const [],
-        safeBaseName: 'identity-document',
+        safeBaseName: 'driver-license',
       ),
       throwsA(
         isA<ProviderDocumentValidationException>().having(
@@ -58,7 +58,7 @@ void main() {
     expect(
       () => ProviderRegistrationDocument.fromBytes(
         bytes: oversized,
-        safeBaseName: 'identity-document',
+        safeBaseName: 'driver-license',
       ),
       throwsA(
         isA<ProviderDocumentValidationException>().having(
@@ -93,7 +93,7 @@ void main() {
 
       expect(source, contains("if (role != 'provider')"));
 
-      expect(source, contains("'identityDocument':"));
+      expect(source, isNot(contains("'identityDocument':")));
 
       expect(source, contains("'driverLicenseDocument':"));
 
@@ -110,7 +110,7 @@ void main() {
     () {
       final source = File('lib/bloc/auth/auth_event.dart').readAsStringSync();
 
-      expect(source, contains('identityDocument'));
+      expect(source, isNot(contains('identityDocument')));
 
       expect(source, contains('driverLicenseDocument'));
 
@@ -128,31 +128,32 @@ void main() {
 
       final propsBlock = propsTail.substring(0, propsEnd);
 
-      expect(propsBlock, isNot(contains('identityDocument,')));
-
       expect(propsBlock, isNot(contains('driverLicenseDocument,')));
     },
   );
 
-  test('AuthBloc forwards both provider documents to AuthGateway', () {
-    final source = File('lib/bloc/auth/auth_bloc.dart').readAsStringSync();
+  test(
+    'AuthBloc forwards the provider driver-license document to AuthGateway',
+    () {
+      final source = File('lib/bloc/auth/auth_bloc.dart').readAsStringSync();
 
-    expect(source, contains('identityDocument: event.identityDocument'));
+      expect(source, isNot(contains('identityDocument')));
 
-    expect(
-      source,
-      contains('driverLicenseDocument: event.driverLicenseDocument'),
-    );
-  });
+      expect(
+        source,
+        contains('driverLicenseDocument: event.driverLicenseDocument'),
+      );
+    },
+  );
 
   test(
-    'provider signup UI uses gallery-only selection and requires both documents',
+    'provider signup UI uses gallery-only selection and requires the driver license',
     () {
       final source = File('lib/screens/login_screen.dart').readAsStringSync();
 
       expect(source, contains("if (_selectedRole == 'provider')"));
 
-      expect(source, contains("const Key('identityDocumentPicker')"));
+      expect(source, isNot(contains("const Key('identityDocumentPicker')")));
 
       expect(source, contains("const Key('driverLicenseDocumentPicker')"));
 
@@ -162,7 +163,7 @@ void main() {
 
       expect(source, isNot(contains('ImageSource.camera')));
 
-      expect(source, contains("_identityDocument == null"));
+      expect(source, isNot(contains('_identityDocument')));
 
       expect(source, contains("_driverLicenseDocument == null"));
     },

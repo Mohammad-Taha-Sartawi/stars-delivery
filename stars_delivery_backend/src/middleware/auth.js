@@ -75,7 +75,7 @@ function createAuthMiddleware({
     try {
       user = await UserModel.findById(
         decoded.id,
-        'fullName email phoneNumbers role area publicId status deleted sessionVersion',
+        'fullName email phoneNumbers role area publicId status deleted sessionVersion blockedUntil offerCooldownUntil',
       );
     } catch (err) {
       return next(err);

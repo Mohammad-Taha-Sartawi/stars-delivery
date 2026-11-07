@@ -40,12 +40,9 @@ class AppLocalization {
       'en': 'Provider Verification Documents',
     },
     'provider_documents_hint': {
-      'ar':
-          'أرفق صورة واضحة للهوية ورخصة القيادة. JPEG أو PNG وبحد أقصى 5 ميجابايت لكل صورة.',
-      'en':
-          'Attach clear identity and driver-license images. JPEG or PNG, maximum 5 MB each.',
+      'ar': 'أرفق صورة واضحة لرخصة القيادة. JPEG أو PNG وبحد أقصى 5 ميجابايت.',
+      'en': 'Attach a clear driver-license image. JPEG or PNG, maximum 5 MB.',
     },
-    'identity_document': {'ar': 'صورة إثبات الهوية', 'en': 'Identity Document'},
     'driver_license_document': {
       'ar': 'صورة رخصة القيادة',
       'en': 'Driver License',
@@ -53,9 +50,8 @@ class AppLocalization {
     'choose_image': {'ar': 'اختيار صورة', 'en': 'Choose Image'},
     'replace_image': {'ar': 'تغيير الصورة', 'en': 'Replace Image'},
     'provider_documents_required': {
-      'ar': 'يجب إرفاق صورة الهوية ورخصة القيادة لإنشاء حساب سائق.',
-      'en':
-          'Identity and driver-license images are required for provider registration.',
+      'ar': 'يجب إرفاق صورة رخصة القيادة لإنشاء حساب سائق.',
+      'en': 'A driver-license image is required for provider registration.',
     },
     'provider_document_empty': {
       'ar': 'الصورة المختارة فارغة.',
@@ -159,6 +155,10 @@ class AppLocalization {
     'new_order': {'ar': 'إنشاء طلب جديد', 'en': 'New Order'},
     'my_orders': {'ar': 'طلباتي', 'en': 'My Orders'},
     'offers_title': {'ar': 'عروض اسعار السائقين', 'en': 'Driver Price Offers'},
+    'in_progress_orders_btn': {
+      'ar': 'طلبات جاري العمل عليها',
+      'en': 'Orders in Progress',
+    },
     'report_30': {
       'ar': 'تقرير الطلبات - آخر 30 يوم',
       'en': 'Orders Report - Last 30 Days',
@@ -198,8 +198,11 @@ class AppLocalization {
     'status_pending': {'ar': 'قيد الانتظار', 'en': 'Pending'},
     'status_offered': {'ar': 'عروض متوفرة', 'en': 'Offers Available'},
     'status_accepted': {'ar': 'تم قبول عرض', 'en': 'Offer Accepted'},
-    'status_fulfilling': {'ar': 'جاري التوصيل', 'en': 'Delivering'},
-    'status_completed': {'ar': 'تم التوصيل', 'en': 'Completed'},
+    'status_fulfilling': {
+      'ar': 'جاري العمل على الطلب',
+      'en': 'Working on Order',
+    },
+    'status_completed': {'ar': 'تم انجاز الطلب', 'en': 'Order Completed'},
 
     // Provider dashboard
     'provider_dashboard': {
@@ -222,9 +225,35 @@ class AppLocalization {
       'ar': 'طلباتي النشطة - التوصيل والتسليم',
       'en': 'My Active Orders - Delivery',
     },
+    'rejected_orders_btn': {
+      'ar': 'تقرير رفض وتسليم الطلبات',
+      'en': 'Rejection and Delivery Orders Report',
+    },
+    'reject_order': {'ar': 'رفض الطلب', 'en': 'Reject Order'},
+    'reject_order_confirm': {
+      'ar': 'هل تريد رفض هذا الطلب؟ سيُخفى عن قائمة طلباتك فقط.',
+      'en': 'Reject this order? It will be hidden from your new orders only.',
+    },
+    'order_rejected': {'ar': 'تم رفض الطلب', 'en': 'Order rejected'},
+    'no_rejected_orders': {
+      'ar': 'لا توجد سجلات في التقرير',
+      'en': 'No records in this report',
+    },
+    'reject_reason_driver': {
+      'ar': 'تم رفض الطلب من جهتك',
+      'en': 'You rejected this order',
+    },
+    'reject_reason_expired': {
+      'ar': 'انتهاء مدة عرض السعر',
+      'en': 'Price offer duration expired',
+    },
     'platform_commission': {
       'ar': 'عمولة المنصة (مستحقة الدفع):',
       'en': 'Platform Commission (Due):',
+    },
+    'pending_items_alert': {
+      'ar': 'لديك %d طلب/عرض قيد الانتظار',
+      'en': 'You have %d pending order(s)/offer(s)',
     },
     'commission_body': {
       'ar': ' شيكل بناء على الطلبات الناجحة',
@@ -252,7 +281,53 @@ class AppLocalization {
     'send_offer': {'ar': 'إرسال العرض', 'en': 'Send Offer'},
     'price_required': {'ar': 'السعر مطلوب', 'en': 'Price required'},
     'invalid_price': {'ar': 'سعر غير صالح', 'en': 'Invalid price'},
+    'time_required': {'ar': 'الوقت مطلوب', 'en': 'Time required'},
+    'invalid_time': {'ar': 'وقت غير صالح', 'en': 'Invalid time'},
     'offer_sent': {'ar': 'تم إرسال عرض السعر', 'en': 'Offer sent successfully'},
+    'delivery_progress': {
+      'ar': 'مضى: %d من %t دقيقة',
+      'en': 'Elapsed: %d of %t minutes',
+    },
+    'delivery_remaining': {
+      'ar': 'المتبقي: %d دقيقة',
+      'en': 'Remaining: %d minutes',
+    },
+    'delivery_overdue': {
+      'ar': 'تجاوز الوقت المحدد',
+      'en': 'Overdue',
+    },
+    'offer_already_submitted': {
+      'ar': 'لقد قدمت عرض سعر لهذا الطلب مسبقاً.',
+      'en': 'You have already submitted an offer for this order.',
+    },
+    'provider_busy_offer': {
+      'ar': 'لا يمكنك تقديم عرض الآن لأن لديك طلباً نشطاً. أكمل طلبك الحالي أولاً.',
+      'en': 'You cannot submit an offer while you have an active order. Complete your current order first.',
+    },
+    'offer_cooldown_active': {
+      'ar': 'لا يمكن تقديم عرض سعر حاليا',
+      'en': 'You cannot submit an offer right now',
+    },
+    'cooldown_remaining': {
+      'ar': 'متبقي: %d ثانية',
+      'en': 'Remaining: %d seconds',
+    },
+    'resend_order': {
+      'ar': 'إعادة إرسال الطلب للسائقين',
+      'en': 'Resend Order to Drivers',
+    },
+    'order_resent': {
+      'ar': 'تم إعادة إرسال الطلب للسائقين',
+      'en': 'Order resent to drivers',
+    },
+    'offer_expires_in': {
+      'ar': 'ينتهي العرض خلال %d ثانية',
+      'en': 'Offer expires in %d seconds',
+    },
+    'offer_expired': {
+      'ar': 'انتهت صلاحية العرض',
+      'en': 'Offer expired',
+    },
     'your_price': {'ar': 'سعر التوصيل', 'en': 'Delivery Price'},
     'price_hint': {
       'ar': 'أدخل سعر التوصيل بالشيكل',
@@ -282,6 +357,12 @@ class AppLocalization {
     'save': {'ar': 'حفظ', 'en': 'Save'},
     'cancel': {'ar': 'إلغاء', 'en': 'Cancel'},
     'confirm': {'ar': 'تأكيد', 'en': 'Confirm'},
+    'cancel_order': {'ar': 'إلغاء الطلب', 'en': 'Cancel Order'},
+    'cancel_order_confirm': {
+      'ar': 'هل أنت متأكد من إلغاء هذا الطلب؟',
+      'en': 'Are you sure you want to cancel this order?',
+    },
+    'order_cancelled': {'ar': 'تم إلغاء الطلب', 'en': 'Order cancelled'},
     'no_orders': {'ar': 'لا توجد طلبات', 'en': 'No orders'},
     'order_details': {'ar': 'تفاصيل الطلب', 'en': 'Order Details'},
     'description': {'ar': 'الوصف', 'en': 'Description'},

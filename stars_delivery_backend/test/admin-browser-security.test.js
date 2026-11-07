@@ -416,7 +416,7 @@ test('admin Helmet boundary emits strict CSP and existing safe headers', async (
     response.headers[
       'referrer-policy'
     ],
-    'no-referrer',
+    'same-origin',
   );
 
   const rawCsp =

@@ -36,7 +36,6 @@ class _WidgetTestAuthGateway implements AuthGateway {
     String role,
     String area, {
     bool privacyPolicy = true,
-    ProviderRegistrationDocument? identityDocument,
     ProviderRegistrationDocument? driverLicenseDocument,
   }) {
     throw UnimplementedError();

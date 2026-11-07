@@ -7,7 +7,10 @@ class ProviderStats {
   final double monthlyCommission;
   final int pendingOrdersCount;
   final int offeredOrdersCount;
+  final int ordersReportCount;
   final int activeOrdersCount;
+  final String? blockedUntil;
+  final String? offerCooldownUntil;
 
   ProviderStats({
     required this.dailyEarnings,
@@ -18,7 +21,10 @@ class ProviderStats {
     required this.monthlyCommission,
     required this.pendingOrdersCount,
     required this.offeredOrdersCount,
+    this.ordersReportCount = 0,
     required this.activeOrdersCount,
+    this.blockedUntil,
+    this.offerCooldownUntil,
   });
 
   factory ProviderStats.fromJson(Map<String, dynamic> json) {
@@ -31,7 +37,10 @@ class ProviderStats {
       monthlyCommission: (json['monthlyCommission'] ?? 0).toDouble(),
       pendingOrdersCount: (json['pendingOrdersCount'] ?? 0).toInt(),
       offeredOrdersCount: (json['offeredOrdersCount'] ?? 0).toInt(),
+      ordersReportCount: (json['ordersReportCount'] ?? 0).toInt(),
       activeOrdersCount: (json['activeOrdersCount'] ?? 0).toInt(),
+      blockedUntil: json['blockedUntil']?.toString(),
+      offerCooldownUntil: json['offerCooldownUntil']?.toString(),
     );
   }
 }

@@ -1,7 +1,7 @@
 const fs = require('fs/promises');
 const mongoose = require('mongoose');
 const {
-  REQUIRED_PROVIDER_DOCUMENT_KINDS,
+  PROVIDER_DOCUMENT_KINDS,
   deleteProviderDocuments,
   requiredProviderDocumentsPresent,
   findProviderDocument,
@@ -463,7 +463,7 @@ async function sendStoredProviderDocument(
   kind,
 ) {
   if (
-    !REQUIRED_PROVIDER_DOCUMENT_KINDS
+    !PROVIDER_DOCUMENT_KINDS
       .includes(kind)
   ) {
     return res.status(404).json({
@@ -810,7 +810,7 @@ router.post('/pending/:id/approve', async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          'لا يمكن قبول المزود قبل اكتمال وثيقة الهوية ورخصة القيادة.',
+          'لا يمكن قبول المزود قبل اكتمال رخصة القيادة.',
         code:
           'PROVIDER_DOCUMENTS_REQUIRED',
       });

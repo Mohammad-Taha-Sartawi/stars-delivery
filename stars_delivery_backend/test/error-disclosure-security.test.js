@@ -18,8 +18,8 @@ const protectedFiles = new Map([
   ['src/routes/chat.js', 8],
   ['src/routes/notifications.js', 4],
   ['src/routes/offers.js', 5],
-  ['src/routes/orders.js', 4],
-  ['src/routes/provider.js', 4],
+  ['src/routes/orders.js', 5],
+  ['src/routes/provider.js', 6],
   ['src/routes/reports.js', 2],
   ['src/routes/users.js', 12],
 ]);
@@ -101,7 +101,7 @@ test('all STARS-009A HTTP 500 sites use the safe helper', () => {
     total += calls.length;
   }
 
-  assert.equal(total, 43);
+  assert.equal(total, 46);
 });
 
 test('controlled non-500 application errors remain intact', () => {

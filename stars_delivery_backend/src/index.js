@@ -1,4 +1,8 @@
-const { sendInternalServerError } = require('./security/errorResponse');
+const {
+  sendInternalServerError,
+  isDatabaseUnavailableError,
+  sendDatabaseUnavailable,
+} = require('./security/errorResponse');
 const { createAdminBrowserHeaders } = require('./security/adminBrowserHeaders');
 const { adminCsrfProtection } = require('./security/adminCsrf');
 require('dotenv').config();
@@ -11,6 +15,7 @@ const os = require('os');
 const path = require('path');
 const { Server } = require('socket.io');
 const { loadAppConfig } = require('./config');
+const { expireStaleOffers } = require('./services/orderLifecycle');
 const { createAdminSessionMiddleware } = require('./middleware/adminSession');
 const requireAdminSession = require('./middleware/requireAdminSession');
 const authenticateSocket = require('./socket/authenticateSocket');
@@ -80,6 +85,18 @@ app.use('/uploads', express.static('uploads'));
 app.use('/data', express.static(path.join(__dirname, 'public', 'data')));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health' || req.path === '/config') {
+    return next();
+  }
+
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+
+  return sendDatabaseUnavailable(res);
+});
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views', 'admin'));
 
@@ -104,24 +121,104 @@ app.use((req, res, next) => {
 
 const Order = require('./models/Order');
 const Offer = require('./models/Offer');
+const RejectedOrder = require('./models/RejectedOrder');
 const Notification = require('./models/Notification');
 const ChatMessage = require('./models/ChatMessage');
 const ContactRequest = require('./models/ContactRequest');
 const User = require('./models/User');
 
-mongoose.connect(appConfig.mongodbUri)
-  .then(async () => {
-    console.log('MongoDB connected');
-    await Promise.all([
-      Order.createIndexes(),
-      Offer.createIndexes(),
-      Notification.createIndexes(),
-      ChatMessage.createIndexes(),
-      ContactRequest.createIndexes(),
-    ]);
-    console.log('Indexes ready');
-  })
-  .catch(err => console.error('MongoDB error:', err));
+const MONGO_RETRY_DELAYS_MS = Object.freeze([
+  5000,
+  10000,
+  20000,
+  30000,
+]);
+
+let mongoRetryIndex = 0;
+let mongoConnecting = false;
+let offerCleanupTimer = null;
+
+async function ensureMongoIndexes() {
+  await Promise.all([
+    Order.createIndexes(),
+    Offer.createIndexes(),
+    RejectedOrder.createIndexes(),
+    Notification.createIndexes(),
+    ChatMessage.createIndexes(),
+    ContactRequest.createIndexes(),
+  ]);
+  console.log('Indexes ready');
+}
+
+function startOfferCleanup() {
+  if (offerCleanupTimer) {
+    return;
+  }
+
+  offerCleanupTimer = setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) {
+      return;
+    }
+
+    try {
+      await expireStaleOffers();
+    } catch (_) {}
+  }, 30000);
+}
+
+async function connectMongo() {
+  if (mongoConnecting) {
+    return;
+  }
+
+  mongoConnecting = true;
+
+  try {
+    await mongoose.connect(appConfig.mongodbUri, {
+      serverSelectionTimeoutMS: 10000,
+    });
+  } catch (err) {
+    const delay = MONGO_RETRY_DELAYS_MS[
+      Math.min(mongoRetryIndex, MONGO_RETRY_DELAYS_MS.length - 1)
+    ];
+    mongoRetryIndex += 1;
+    const reason = String(err?.message || err).split('\n')[0];
+    console.error(`MongoDB connection failed; retrying in ${Math.round(delay / 1000)}s: ${reason}`);
+
+    if (/tlsv1 alert internal error|SSL alert number 80/i.test(reason)) {
+      console.error('Atlas rejected the TLS handshake; add this machine public IP to Atlas Network Access or resume the cluster.');
+    }
+
+    setTimeout(connectMongo, delay);
+    return;
+  } finally {
+    mongoConnecting = false;
+  }
+
+  console.log('MongoDB connected');
+  mongoRetryIndex = 0;
+  startOfferCleanup();
+
+  try {
+    await ensureMongoIndexes();
+  } catch (err) {
+    console.error('MongoDB index initialization failed:', String(err?.message || err).split('\n')[0]);
+  }
+}
+
+connectMongo();
+
+mongoose.connection.on('disconnected', () => {
+  console.error('MongoDB disconnected; waiting for automatic reconnect');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected');
+});
+
+mongoose.connection.on('error', (error) => {
+  console.error('MongoDB connection error:', String(error?.message || error).split('\n')[0]);
+});
 
 let server;
 let io;
@@ -312,7 +409,20 @@ app.get('/admin', requireAdminSession, adminCsrfProtection, (req, res) => {
   res.render('index', { page: 'dashboard' });
 });
 
+let lastDatabaseUnavailableLogAt = 0;
+
 app.use((err, req, res, next) => {
+  if (isDatabaseUnavailableError(err)) {
+    const now = Date.now();
+
+    if (now - lastDatabaseUnavailableLogAt > 30000) {
+      lastDatabaseUnavailableLogAt = now;
+      console.error('Database unavailable:', String(err?.message || err).split('\n')[0]);
+    }
+
+    return sendDatabaseUnavailable(res);
+  }
+
   console.error('Unhandled error:', err);
   sendInternalServerError(res);
 });

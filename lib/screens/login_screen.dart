@@ -35,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _providerDocumentPicker = ImagePicker();
 
-  ProviderRegistrationDocument? _identityDocument;
   ProviderRegistrationDocument? _driverLicenseDocument;
 
   bool _isLogin = true;
@@ -311,19 +310,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 _providerDocumentButton(
-                                  key: const Key('identityDocumentPicker'),
-                                  labelKey: 'identity_document',
-                                  document: _identityDocument,
-                                  onPressed: () =>
-                                      _pickProviderDocument(identity: true),
-                                ),
-                                const SizedBox(height: 12),
-                                _providerDocumentButton(
                                   key: const Key('driverLicenseDocumentPicker'),
                                   labelKey: 'driver_license_document',
                                   document: _driverLicenseDocument,
-                                  onPressed: () =>
-                                      _pickProviderDocument(identity: false),
+                                  onPressed: _pickProviderDocument,
                                 ),
                                 const SizedBox(height: 16),
                               ],
@@ -771,7 +761,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _selectedRole = role;
 
       if (role != 'provider') {
-        _identityDocument = null;
         _driverLicenseDocument = null;
       }
     });
@@ -782,7 +771,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLogin = !_isLogin;
 
       if (_isLogin) {
-        _identityDocument = null;
         _driverLicenseDocument = null;
       }
     });
@@ -790,7 +778,7 @@ class _LoginScreenState extends State<LoginScreen> {
     context.read<AuthBloc>().add(ToggleAuthModeEvent(isLogin: _isLogin));
   }
 
-  Future<void> _pickProviderDocument({required bool identity}) async {
+  Future<void> _pickProviderDocument() async {
     try {
       final picked = await _providerDocumentPicker.pickImage(
         source: ImageSource.gallery,
@@ -803,7 +791,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final document = await ProviderRegistrationDocument.fromXFile(
         picked,
-        safeBaseName: identity ? 'identity-document' : 'driver-license',
+        safeBaseName: 'driver-license',
       );
 
       if (!mounted) {
@@ -811,11 +799,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       setState(() {
-        if (identity) {
-          _identityDocument = document;
-        } else {
-          _driverLicenseDocument = document;
-        }
+        _driverLicenseDocument = document;
       });
     } on ProviderDocumentValidationException catch (error) {
       if (!mounted) {
@@ -875,8 +859,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (_selectedRole == 'provider' &&
-          (_identityDocument == null || _driverLicenseDocument == null)) {
+      if (_selectedRole == 'provider' && _driverLicenseDocument == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -992,8 +975,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final password = _passwordController.text;
 
-    final identityDocument = _identityDocument;
-
     final driverLicenseDocument = _driverLicenseDocument;
 
     context.read<AuthBloc>().add(
@@ -1004,7 +985,6 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
         role: _selectedRole,
         area: _selectedArea ?? '',
-        identityDocument: identityDocument,
         driverLicenseDocument: driverLicenseDocument,
       ),
     );
@@ -1015,7 +995,6 @@ class _LoginScreenState extends State<LoginScreen> {
     // rather than retaining sensitive verification bytes.
     if (_selectedRole == 'provider') {
       setState(() {
-        _identityDocument = null;
         _driverLicenseDocument = null;
       });
     }

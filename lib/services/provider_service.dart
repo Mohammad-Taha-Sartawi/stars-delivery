@@ -68,6 +68,27 @@ class ProviderService {
     }
   }
 
+  Future<void> rejectOrder(String token, String orderId) async {
+    try {
+      await _dio.post('/provider/orders/$orderId/reject',
+        options: Options(headers: { 'Authorization': 'Bearer $token' }),
+      );
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['error'] ?? 'Failed to reject order');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getRejectedOrders(String token) async {
+    try {
+      final response = await _dio.get('/provider/rejected-orders',
+        options: Options(headers: { 'Authorization': 'Bearer $token' }),
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['error'] ?? 'Failed to load rejected orders');
+    }
+  }
+
   Future<void> markFulfilling(String token, String orderId) async {
     try {
       await _dio.put('/orders/$orderId/fulfilling',

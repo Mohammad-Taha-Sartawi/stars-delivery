@@ -7,12 +7,14 @@ const fsPromises = fs.promises;
 const MAX_PROVIDER_DOCUMENT_SIZE =
   5 * 1024 * 1024;
 
+const PROVIDER_DOCUMENT_KINDS =
+  Object.freeze([
+    'identity_document',
+    'driver_license',
+  ]);
+
 const REQUIRED_PROVIDER_DOCUMENT_FIELDS =
   Object.freeze([
-    {
-      fieldName: 'identityDocument',
-      kind: 'identity_document',
-    },
     {
       fieldName: 'driverLicenseDocument',
       kind: 'driver_license',
@@ -257,7 +259,7 @@ function inspectProviderDocumentFiles(files) {
         || entries.length !== 1
       ) {
         throw providerDocumentError(
-          'Both provider documents are required.',
+          'The driver-license document is required.',
           'PROVIDER_DOCUMENTS_REQUIRED',
         );
       }
@@ -445,7 +447,7 @@ function findProviderDocument(
   kind,
 ) {
   if (
-    !REQUIRED_PROVIDER_DOCUMENT_KINDS
+    !PROVIDER_DOCUMENT_KINDS
       .includes(kind)
     || !Array.isArray(documents)
   ) {
@@ -491,6 +493,7 @@ function providerDocumentDownloadName(
 
 module.exports = {
   MAX_PROVIDER_DOCUMENT_SIZE,
+  PROVIDER_DOCUMENT_KINDS,
   REQUIRED_PROVIDER_DOCUMENT_FIELDS,
   REQUIRED_PROVIDER_DOCUMENT_KINDS,
   ALLOWED_CONTENT_TYPES,

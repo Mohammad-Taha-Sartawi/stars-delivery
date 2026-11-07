@@ -70,6 +70,8 @@ router.get('/order/:orderId', auth, requireRole('customer'), async (req, res) =>
     const order = await Order.findOne({ _id: req.params.orderId, customerId: req.userId }).select('_id');
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
+    await lifecycle.expireStaleOffers({ orderId: order._id });
+
     const offers = await Offer.find({ orderId: req.params.orderId })
       .populate('providerId', 'fullName phone area publicId')
       .populate('orderId', 'description area type')

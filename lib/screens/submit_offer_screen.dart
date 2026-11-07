@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import '../bloc/offer/offer_bloc.dart';
 import '../bloc/offer/offer_event.dart';
 import '../bloc/offer/offer_state.dart';
@@ -24,12 +25,36 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
   final _formKey = GlobalKey<FormState>();
   int _estimatedTime = 0;
   int _quickPrice = 0;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _priceController.dispose();
     _timeController.dispose();
     super.dispose();
+  }
+
+  void _startCooldown(int seconds) {
+    _cooldownTimer?.cancel();
+    setState(() => _cooldownSeconds = seconds);
+
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        _cooldownSeconds -= 1;
+
+        if (_cooldownSeconds <= 0) {
+          _cooldownSeconds = 0;
+          timer.cancel();
+        }
+      });
+    });
   }
 
   void _setTime(int minutes) {
@@ -81,6 +106,58 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (_cooldownSeconds > 0) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.timer_off_outlined,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    AppLocalization.get(
+                                      context,
+                                      'offer_cooldown_active',
+                                    ),
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    AppLocalization.get(
+                                      context,
+                                      'cooldown_remaining',
+                                    ).replaceAll('%d', '$_cooldownSeconds'),
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     // Quick price buttons
                     Row(
                       children: [5, 10, 15, 20].map((p) => Expanded(
@@ -151,15 +228,58 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
                         final t = int.tryParse(v);
                         if (t != null) setState(() => _estimatedTime = t);
                       },
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return AppLocalization.get(context, 'time_required');
+                        }
+
+                        final t = int.tryParse(v.trim());
+
+                        if (t == null || t <= 0) {
+                          return AppLocalization.get(context, 'invalid_time');
+                        }
+
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 24),
                     BlocConsumer<OfferBloc, OfferState>(
                       listener: (context, state) {
+                        if (state is OfferCooldown) {
+                          _startCooldown(state.seconds);
+                        }
+                        if (state is OfferProviderBusy) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                AppLocalization.get(
+                                  context,
+                                  'provider_busy_offer',
+                                ),
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                        if (state is OfferAlreadySubmitted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                AppLocalization.get(
+                                  context,
+                                  'offer_already_submitted',
+                                ),
+                              ),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          Navigator.pop(context, true);
+                        }
                         if (state is OfferSuccess) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(AppLocalization.get(context, 'offer_sent')), backgroundColor: Colors.green),
                           );
-                          Navigator.pop(context);
+                          Navigator.pop(context, true);
                         }
                         if (state is OfferError) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -172,7 +292,9 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
                         return SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: loading ? null : _submit,
+                            onPressed: loading || _cooldownSeconds > 0
+                                ? null
+                                : _submit,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               backgroundColor: Colors.orange,
@@ -198,12 +320,13 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    final estimatedTime = int.parse(_timeController.text.trim());
     context.read<OfferBloc>().add(
       SubmitOfferEvent(
         token: widget.token,
         orderId: widget.orderId,
         price: double.parse(_priceController.text.trim()),
-        estimatedTime: _estimatedTime,
+        estimatedTime: estimatedTime,
       ),
     );
   }

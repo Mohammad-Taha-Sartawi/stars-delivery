@@ -15,6 +15,7 @@ import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
 import '../services/location_service.dart';
+import '../services/order_service.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'notifications_screen.dart';
@@ -40,7 +41,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  final OrderService _orderService = OrderService();
   Timer? _notifTimer;
+  int _pendingOrdersCount = 0;
+  int _inProgressOrdersCount = 0;
   StreamSubscription? _newOfferSub;
   StreamSubscription? _orderStatusSub;
   StreamSubscription? _offerAcceptedSub;
@@ -72,6 +76,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       LoadNotifications(token: widget.token),
     );
 
+    _loadOrderCounts();
+
     _notifTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
@@ -83,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
       );
+      _loadOrderCounts();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -99,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
       );
+      _loadOrderCounts();
     });
 
     _offerAcceptedSub = SocketService.instance.onOfferAccepted.listen((data) {
@@ -126,6 +134,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _loadOrderCounts() async {
+    try {
+      final orders = await _orderService.getMyOrders(widget.token);
+
+      if (!mounted) {
+        return;
+      }
+
+      var pending = 0;
+      var inProgress = 0;
+
+      for (final order in orders) {
+        final status = order['status']?.toString();
+
+        if (status == 'pending' || status == 'offered') {
+          pending += 1;
+        } else if (status == 'accepted' || status == 'fulfilling') {
+          inProgress += 1;
+        }
+      }
+
+      setState(() {
+        _pendingOrdersCount = pending;
+        _inProgressOrdersCount = inProgress;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _openMyOrders() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MyOrdersScreen(
+          token: widget.token,
+          statuses: const {'pending', 'offered'},
+          titleKey: 'offers_title',
+        ),
+      ),
+    );
+
+    if (mounted) {
+      _loadOrderCounts();
+    }
+  }
+
+  Future<void> _openInProgressOrders() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MyOrdersScreen(
+          token: widget.token,
+          statuses: const {'accepted', 'fulfilling'},
+          titleKey: 'in_progress_orders_btn',
+        ),
+      ),
+    );
+
+    if (mounted) {
+      _loadOrderCounts();
+    }
+  }
+
   void _endSession() {
     if (!mounted || _sessionExitStarted) {
       return;
@@ -149,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState st) {
     if (st == AppLifecycleState.resumed) {
       LocationService.syncToBackend(widget.token);
+      _loadOrderCounts();
     }
   }
 
@@ -285,6 +356,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 final bloc = context.read<NotificationBloc>();
                 bloc.add(LoadNotifications(token: widget.token));
                 await bloc.stream.firstWhere((s) => s is! NotificationLoading);
+                await _loadOrderCounts();
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -295,6 +367,51 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  if (_pendingOrdersCount > 0) ...[
+                    GestureDetector(
+                      onTap: _openMyOrders,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange[300]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.pending_actions,
+                              color: Colors.orange[800],
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                AppLocalization.get(
+                                  context,
+                                  'pending_items_alert',
+                                ).replaceAll('%d', '$_pendingOrdersCount'),
+                                style: TextStyle(
+                                  color: Colors.orange[900],
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_left,
+                              size: 18,
+                              color: Colors.orange[800],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   _ActionButton(
                     icon: Icons.add_circle_outline,
                     label: AppLocalization.get(context, 'new_order'),
@@ -310,21 +427,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      );
+                      ).then((_) => _loadOrderCounts());
                     },
                   ),
                   const SizedBox(height: 16),
                   _ActionButton(
                     icon: Icons.local_offer_outlined,
                     label: AppLocalization.get(context, 'offers_title'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MyOrdersScreen(token: widget.token),
-                        ),
-                      );
-                    },
+                    badgeCount: _pendingOrdersCount,
+                    onTap: _openMyOrders,
+                  ),
+                  const SizedBox(height: 16),
+                  _ActionButton(
+                    icon: Icons.delivery_dining,
+                    label: AppLocalization.get(context, 'in_progress_orders_btn'),
+                    badgeCount: _inProgressOrdersCount,
+                    iconColor: Colors.teal,
+                    onTap: _openInProgressOrders,
                   ),
                   const SizedBox(height: 16),
                   _ActionButton(
@@ -387,11 +506,13 @@ class _ActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final Color? iconColor;
+  final int badgeCount;
   const _ActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
     this.iconColor,
+    this.badgeCount = 0,
   });
 
   @override
@@ -424,6 +545,27 @@ class _ActionButton extends StatelessWidget {
                 ),
               ),
             ),
+            if (badgeCount > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

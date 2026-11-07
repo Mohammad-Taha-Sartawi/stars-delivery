@@ -6,6 +6,9 @@ import '../bloc/notification/notification_state.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../bloc/app/app_bloc.dart';
+import '../bloc/offer/offer_bloc.dart';
+import 'order_detail_screen.dart';
+import 'order_offers_screen.dart';
 import 'support_chat_screen.dart';
 import '../widgets/image_preview.dart';
 
@@ -153,7 +156,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             if (!n.read) {
                               context.read<NotificationBloc>().add(MarkNotificationRead(token: widget.token, id: n.id));
                             }
-                            _showDetail(context, n);
+                            _openNotification(context, n);
                           },
                         ),
                       );
@@ -194,6 +197,47 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       default:
         return Icons.notifications;
     }
+  }
+
+  void _openNotification(BuildContext context, dynamic n) {
+    if (n.orderId.toString().isEmpty) {
+      _showDetail(context, n);
+      return;
+    }
+
+    const providerTypes = {'new_order', 'offer_accepted'};
+    const customerTypes = {'new_offer', 'order_pending', 'order_completed'};
+
+    if (providerTypes.contains(n.type)) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OrderDetailScreen(
+            token: widget.token,
+            orderId: n.orderId.toString(),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (customerTypes.contains(n.type)) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => OfferBloc(),
+            child: OrderOffersScreen(
+              token: widget.token,
+              orderId: n.orderId.toString(),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    _showDetail(context, n);
   }
 
   void _showDetail(BuildContext context, dynamic n) {

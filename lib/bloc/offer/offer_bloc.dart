@@ -15,6 +15,20 @@ class OfferBloc extends Bloc<OfferEvent, OfferState> {
   Future<void> _onSubmit(SubmitOfferEvent e, Emitter<OfferState> emit) async {
     emit(OfferLoading()); try {
       await _s.submitOffer(e.token, e.orderId, e.price, e.estimatedTime); emit(OfferSuccess());
+    } on OfferSubmitException catch (ex) {
+      if (ex.code == 'OFFER_NOT_AVAILABLE') {
+        emit(OfferAlreadySubmitted());
+        return;
+      }
+      if (ex.code == 'PROVIDER_BUSY') {
+        emit(OfferProviderBusy());
+        return;
+      }
+      if (ex.code == 'OFFER_COOLDOWN') {
+        emit(OfferCooldown(seconds: ex.retryAfterSeconds ?? 60));
+        return;
+      }
+      emit(OfferError(message: ex.message));
     } catch (ex) { emit(OfferError(message: ex.toString().replaceFirst('Exception: ', ''))); }
   }
   Future<void> _onLoad(LoadOffersEvent e, Emitter<OfferState> emit) async {

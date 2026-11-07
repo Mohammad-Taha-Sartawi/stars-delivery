@@ -43,7 +43,10 @@ class ProviderBloc extends Bloc<ProviderEvent, ProviderState> {
             monthlyCommission: c.stats.monthlyCommission,
             pendingOrdersCount: c.stats.pendingOrdersCount,
             offeredOrdersCount: c.stats.offeredOrdersCount,
+            ordersReportCount: c.stats.ordersReportCount,
             activeOrdersCount: c.stats.activeOrdersCount,
+            blockedUntil: c.stats.blockedUntil,
+            offerCooldownUntil: c.stats.offerCooldownUntil,
           ),
           pendingOrders: List.from(c.pendingOrders ?? []),
         ));
@@ -71,7 +74,10 @@ class ProviderBloc extends Bloc<ProviderEvent, ProviderState> {
             monthlyCommission: current.stats.monthlyCommission,
             pendingOrdersCount: current.stats.pendingOrdersCount,
             offeredOrdersCount: current.stats.offeredOrdersCount,
+            ordersReportCount: current.stats.ordersReportCount,
             activeOrdersCount: current.stats.activeOrdersCount,
+            blockedUntil: current.stats.blockedUntil,
+            offerCooldownUntil: current.stats.offerCooldownUntil,
           ),
           pendingOrders: List.from(current.pendingOrders ?? []),
         ));

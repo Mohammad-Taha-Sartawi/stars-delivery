@@ -7,6 +7,13 @@ abstract class OfferState extends Equatable {
 class OfferInitial extends OfferState {}
 class OfferLoading extends OfferState {}
 class OfferSuccess extends OfferState {}
+class OfferAlreadySubmitted extends OfferState {}
+class OfferProviderBusy extends OfferState {}
+class OfferCooldown extends OfferState {
+  final int seconds;
+  OfferCooldown({required this.seconds});
+  @override List<Object?> get props => [seconds];
+}
 class OffersLoaded extends OfferState {
   final List<OfferModel> offers;
   OffersLoaded({required this.offers});

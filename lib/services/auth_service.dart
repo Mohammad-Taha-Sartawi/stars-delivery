@@ -141,7 +141,6 @@ abstract interface class AuthGateway {
     String role,
     String area, {
     bool privacyPolicy = true,
-    ProviderRegistrationDocument? identityDocument,
     ProviderRegistrationDocument? driverLicenseDocument,
   });
 
@@ -192,7 +191,6 @@ class AuthService implements AuthGateway {
     String role,
     String area, {
     bool privacyPolicy = true,
-    ProviderRegistrationDocument? identityDocument,
     ProviderRegistrationDocument? driverLicenseDocument,
   }) async {
     try {
@@ -212,13 +210,12 @@ class AuthService implements AuthGateway {
         return _asMap(response.data);
       }
 
-      if (identityDocument == null || driverLicenseDocument == null) {
-        throw Exception('Provider verification documents are required.');
+      if (driverLicenseDocument == null) {
+        throw Exception('Provider driver-license document is required.');
       }
 
       final formData = FormData.fromMap({
         ...fields.map((key, value) => MapEntry(key, value.toString())),
-        'identityDocument': _multipartProviderDocument(identityDocument),
         'driverLicenseDocument': _multipartProviderDocument(
           driverLicenseDocument,
         ),

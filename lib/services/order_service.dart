@@ -52,4 +52,15 @@ class OrderService {
       throw Exception(e.response?.data?['error'] ?? 'Failed to load orders');
     }
   }
+
+  Future<Map<String, dynamic>> getOrder(String token, String orderId) async {
+    try {
+      final response = await _dio.get('/orders/$orderId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['error'] ?? 'Failed to load order');
+    }
+  }
 }

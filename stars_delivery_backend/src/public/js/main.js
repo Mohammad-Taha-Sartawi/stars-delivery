@@ -1206,8 +1206,8 @@ function renderProviderDocumentReview(
 
   const completionText =
     complete
-      ? 'الوثيقتان المطلوبتان مكتملتان'
-      : 'الوثائق المطلوبة غير مكتملة';
+      ? 'الوثيقة المطلوبة مكتملة'
+      : 'الوثيقة المطلوبة غير مكتملة';
 
   const completionClass =
     complete
@@ -1239,6 +1239,10 @@ function renderProviderDocumentReview(
       providerDocumentLabels[kind];
 
     if (!document) {
+      if (kind === 'identity_document') {
+        continue;
+      }
+
       html +=
         `<div class="doc-item">`
         + `<span class="doc-name">`
@@ -1963,7 +1967,7 @@ async function loadPendingProviders() {
             : (
                 `<button class="action-btn success" `
                 + `type="button" disabled `
-                + `title="يجب اكتمال وثيقة الهوية ورخصة القيادة قبل القبول" `
+                + `title="يجب اكتمال رخصة القيادة قبل القبول" `
                 + `data-presentation="p034">`
                 + `<i class="fas fa-check"></i> قبول`
                 + `</button>`
@@ -2047,7 +2051,7 @@ async function approveProvider(id) {
       || metadata.complete !== true
     ) {
       alert(
-        'لا يمكن قبول المزود قبل اكتمال وثيقة الهوية ورخصة القيادة.',
+        'لا يمكن قبول المزود قبل اكتمال رخصة القيادة.',
       );
       return;
     }

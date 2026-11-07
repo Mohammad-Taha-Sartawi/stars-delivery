@@ -55,7 +55,7 @@ const providerRegistrationUpload =
     limits: {
       fileSize:
         MAX_PROVIDER_DOCUMENT_SIZE,
-      files: 2,
+      files: 1,
       fields: 12,
     },
   }).fields(
@@ -129,7 +129,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
       } catch (error) {
         return res.status(400).json({
           error:
-            'Both identity and driver-license documents must be valid JPEG or PNG images.',
+            'The driver-license document must be a valid JPEG or PNG image.',
           code:
             error?.code
             || 'INVALID_PROVIDER_DOCUMENT',

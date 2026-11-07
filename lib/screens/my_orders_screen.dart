@@ -1,39 +1,127 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import '../bloc/offer/offer_bloc.dart';
 import 'order_offers_screen.dart';
 import '../services/order_service.dart';
+import '../services/offer_service.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../bloc/app/app_bloc.dart';
 
 class MyOrdersScreen extends StatefulWidget {
   final String token;
-  const MyOrdersScreen({super.key, required this.token});
+  final Set<String>? statuses;
+  final String titleKey;
+  const MyOrdersScreen({
+    super.key,
+    required this.token,
+    this.statuses,
+    this.titleKey = 'my_orders',
+  });
   @override
   State<MyOrdersScreen> createState() => _MyOrdersScreenState();
 }
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
   final OrderService _orderService = OrderService();
+  final OfferService _offerService = OfferService();
   List<Map<String, dynamic>>? _orders;
   bool _loading = true;
+  Timer? _clockTimer;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _clockTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {
     try {
       final orders = await _orderService.getMyOrders(widget.token);
+      final statuses = widget.statuses;
+      final filtered = statuses == null
+          ? orders
+          : orders
+              .where((order) => statuses.contains(order['status']?.toString()))
+              .toList();
       setState(() {
-        _orders = orders;
+        _orders = filtered;
         _loading = false;
       });
     } catch (e) {
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _cancelOrder(String orderId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalization.get(context, 'cancel_order')),
+        content: Text(
+          AppLocalization.get(context, 'cancel_order_confirm'),
+          textDirection: TextDirection.rtl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(AppLocalization.get(context, 'cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(
+              AppLocalization.get(context, 'confirm'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      await _offerService.cancelOrder(widget.token, orderId);
+      await _loadOrders();
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalization.get(context, 'order_cancelled')),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -81,7 +169,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           backgroundColor: Colors.white,
           elevation: 0,
           title: Text(
-            AppLocalization.get(context, 'my_orders'),
+            AppLocalization.get(context, widget.titleKey),
             style: const TextStyle(
               color: Colors.black87,
               fontWeight: FontWeight.bold,
@@ -120,12 +208,37 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                           'people': AppLocalization.get(context, 'people'),
                           'goods': AppLocalization.get(context, 'goods'),
                         };
+                        final status = o['status']?.toString() ?? '';
+                        final acceptedAt = DateTime.tryParse(
+                          o['acceptedAt']?.toString() ?? '',
+                        );
+                        final estimatedMinutes =
+                            (o['estimatedTime'] as num?)?.toInt() ?? 0;
+                        final showDeliveryClock =
+                            (status == 'accepted' || status == 'fulfilling') &&
+                                acceptedAt != null &&
+                                estimatedMinutes > 0;
+                        final elapsed = acceptedAt == null
+                            ? Duration.zero
+                            : DateTime.now().difference(acceptedAt);
+                        final elapsedMinutes = elapsed.inMinutes;
+                        final remainingMinutes =
+                            estimatedMinutes - elapsedMinutes;
+                        final overdue =
+                            showDeliveryClock && remainingMinutes <= 0;
+                        final progress = showDeliveryClock
+                            ? (elapsed.inSeconds / (estimatedMinutes * 60))
+                                .clamp(0.0, 1.0)
+                                .toDouble()
+                            : 0.0;
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: ListTile(
+                          child: Column(
+                            children: [
+                              ListTile(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 8,
@@ -175,6 +288,107 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 ),
                               ).then((_) => _loadOrders());
                             },
+                          ),
+                          if (showDeliveryClock)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.timer_outlined,
+                                        size: 16,
+                                        color: Colors.orange,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          AppLocalization.get(
+                                            context,
+                                            'delivery_progress',
+                                          )
+                                              .replaceAll(
+                                                '%t',
+                                                '$estimatedMinutes',
+                                              )
+                                              .replaceAll(
+                                                '%d',
+                                                '$elapsedMinutes',
+                                              ),
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[800],
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        overdue
+                                            ? AppLocalization.get(
+                                                context,
+                                                'delivery_overdue',
+                                              )
+                                            : AppLocalization.get(
+                                                context,
+                                                'delivery_remaining',
+                                              ).replaceAll(
+                                                '%d',
+                                                '${remainingMinutes < 0 ? 0 : remainingMinutes}',
+                                              ),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: overdue
+                                              ? Colors.red
+                                              : Colors.orange,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: progress,
+                                      minHeight: 6,
+                                      backgroundColor: Colors.grey[200],
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                        overdue ? Colors.red : Colors.orange,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (o['status'] == 'pending')
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _cancelOrder(
+                                    o['_id']?.toString() ?? '',
+                                  ),
+                                  icon: const Icon(
+                                    Icons.cancel_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    AppLocalization.get(context, 'cancel_order'),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    side: const BorderSide(color: Colors.red),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            ],
                           ),
                         );
                       },

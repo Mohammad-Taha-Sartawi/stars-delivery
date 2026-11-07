@@ -34,10 +34,6 @@ function pngBuffer() {
 
 function validFiles() {
   return {
-    identityDocument: [{
-      mimetype: 'image/jpeg',
-      buffer: jpegBuffer(),
-    }],
     driverLicenseDocument: [{
       mimetype: 'image/png',
       buffer: pngBuffer(),
@@ -133,14 +129,22 @@ test(
 );
 
 test(
-  'exact identity and driver-license files are required',
+  'exact driver-license file is required',
   () => {
     assert.throws(
       () =>
         inspectProviderDocumentFiles({
-          identityDocument:
-            validFiles().identityDocument,
+          identityDocument: [{
+            mimetype: 'image/jpeg',
+            buffer: jpegBuffer(),
+          }],
         }),
+      /Unexpected provider document field/,
+    );
+
+    assert.throws(
+      () =>
+        inspectProviderDocumentFiles({}),
       (error) =>
         error.code
         === 'PROVIDER_DOCUMENTS_REQUIRED',
@@ -161,29 +165,37 @@ test(
 test(
   'real JPEG and PNG signatures are accepted',
   () => {
-    const files =
+    const pngFiles =
       inspectProviderDocumentFiles(
         validFiles(),
       );
 
     assert.equal(
-      files[0].contentType,
-      'image/jpeg',
-    );
-
-    assert.equal(
-      files[0].extension,
-      '.jpg',
-    );
-
-    assert.equal(
-      files[1].contentType,
+      pngFiles[0].contentType,
       'image/png',
     );
 
     assert.equal(
-      files[1].extension,
+      pngFiles[0].extension,
       '.png',
+    );
+
+    const jpegFiles =
+      inspectProviderDocumentFiles({
+        driverLicenseDocument: [{
+          mimetype: 'image/jpeg',
+          buffer: jpegBuffer(),
+        }],
+      });
+
+    assert.equal(
+      jpegFiles[0].contentType,
+      'image/jpeg',
+    );
+
+    assert.equal(
+      jpegFiles[0].extension,
+      '.jpg',
     );
   },
 );
@@ -194,13 +206,10 @@ test(
     assert.throws(
       () =>
         inspectProviderDocumentFiles({
-          identityDocument: [{
+          driverLicenseDocument: [{
             mimetype: 'image/png',
             buffer: jpegBuffer(),
           }],
-          driverLicenseDocument:
-            validFiles()
-              .driverLicenseDocument,
         }),
       /MIME type does not match/,
     );
@@ -208,14 +217,11 @@ test(
     assert.throws(
       () =>
         inspectProviderDocumentFiles({
-          identityDocument: [{
+          driverLicenseDocument: [{
             mimetype: 'image/jpeg',
             buffer:
               Buffer.from('not-image'),
           }],
-          driverLicenseDocument:
-            validFiles()
-              .driverLicenseDocument,
         }),
       /not an allowed image/,
     );
@@ -244,7 +250,7 @@ test(
 
       assert.equal(
         documents.length,
-        2,
+        1,
       );
 
       for (const document of documents) {
@@ -396,6 +402,26 @@ test(
       requiredProviderDocumentsPresent([
         {
           kind:
+            'driver_license',
+        },
+      ]),
+      true,
+    );
+
+    assert.equal(
+      requiredProviderDocumentsPresent([
+        {
+          kind:
+            'identity_document',
+        },
+      ]),
+      false,
+    );
+
+    assert.equal(
+      requiredProviderDocumentsPresent([
+        {
+          kind:
             'identity_document',
         },
         {
@@ -486,17 +512,17 @@ test(
 
     assert.match(
       auth,
-      /files:\s*2/,
-    );
-
-    assert.match(
-      storage,
-      /fieldName:\s*'identityDocument'/,
+      /files:\s*1/,
     );
 
     assert.match(
       storage,
       /fieldName:\s*'driverLicenseDocument'/,
+    );
+
+    assert.doesNotMatch(
+      storage,
+      /fieldName:\s*'identityDocument'/,
     );
   },
 );

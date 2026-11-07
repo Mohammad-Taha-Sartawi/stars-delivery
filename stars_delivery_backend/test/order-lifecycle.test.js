@@ -219,6 +219,7 @@ test('acceptance passes the transaction session to every database mutation', asy
       status: 'pending',
       providerId: 'provider-1',
       price: 10,
+      estimatedTime: 10,
       orderId: { _id: 'order-1', customerId: 'customer-1', status: 'offered' },
     });
     User.findOneAndUpdate = (filter, update, options) => {
@@ -227,6 +228,8 @@ test('acceptance passes the transaction session to every database mutation', asy
     };
     Order.updateOne = (filter, update, options) => {
       writes.push(options.session);
+      assert.equal(update.$set.estimatedTime, 10);
+      assert.ok(update.$set.acceptedAt instanceof Date);
       return Promise.resolve({ modifiedCount: 1 });
     };
     Offer.updateOne = (filter, update, options) => {
@@ -416,6 +419,7 @@ test('submitOffer rejects an unavailable provider before duplicate or order muta
   const original = {
     startSession: mongoose.startSession,
     userFindOneAndUpdate: User.findOneAndUpdate,
+    userFindById: User.findById,
     offerFindOne: Offer.findOne,
     orderUpdateOne: Order.updateOne,
   };
@@ -433,6 +437,22 @@ test('submitOffer rejects an unavailable provider before duplicate or order muta
 
       return {
         lean: async () => null,
+      };
+    };
+
+    User.findById = (id) => {
+      assert.equal(id, 'provider-busy');
+
+      return {
+        select() { return this; },
+        session(activeSession) {
+          assert.equal(activeSession, session);
+          return this;
+        },
+        lean: async () => ({
+          offerCooldownUntil: null,
+          blockedUntil: null,
+        }),
       };
     };
 
@@ -463,6 +483,7 @@ test('submitOffer rejects an unavailable provider before duplicate or order muta
   } finally {
     mongoose.startSession = original.startSession;
     User.findOneAndUpdate = original.userFindOneAndUpdate;
+    User.findById = original.userFindById;
     Offer.findOne = original.offerFindOne;
     Order.updateOne = original.orderUpdateOne;
   }
@@ -651,6 +672,84 @@ test('transitionOrder requires provider ownership and exact source state', async
   } finally {
     mongoose.startSession = original.startSession;
     Order.findOneAndUpdate = original.orderFindOneAndUpdate;
+    Notification.create = original.notificationCreate;
+  }
+});
+
+test('completing an order releases the provider busy block inside the transaction', async () => {
+  const session = {
+    withTransaction: async (work) => work(session),
+    endSession: async () => {},
+  };
+
+  const original = {
+    startSession: mongoose.startSession,
+    orderFindOneAndUpdate: Order.findOneAndUpdate,
+    userUpdateOne: User.updateOne,
+    notificationCreate: Notification.create,
+  };
+
+  let releaseSession;
+
+  try {
+    mongoose.startSession = async () => session;
+
+    Order.findOneAndUpdate = (filter, update, options) => {
+      assert.deepEqual(filter, {
+        _id: 'order-complete',
+        providerId: 'provider-1',
+        status: 'fulfilling',
+      });
+
+      assert.equal(update.$set.status, 'completed');
+
+      assert.ok(update.$set.completedAt instanceof Date);
+
+      assert.equal(options.session, session);
+
+      return {
+        lean: async () => ({
+          _id: 'order-complete',
+          providerId: 'provider-1',
+          customerId: 'customer-1',
+          status: 'completed',
+        }),
+      };
+    };
+
+    User.updateOne = (filter, update, options) => {
+      assert.deepEqual(filter, {
+        _id: 'provider-1',
+      });
+
+      assert.deepEqual(update, {
+        $set: { blockedUntil: null },
+      });
+
+      releaseSession = options.session;
+      return Promise.resolve({ modifiedCount: 1 });
+    };
+
+    Notification.create = (documents, options) => {
+      assert.equal(documents.length, 1);
+      assert.equal(documents[0].type, 'order_completed');
+      assert.equal(options.session, session);
+      return Promise.resolve(documents);
+    };
+
+    const result = await lifecycle.transitionOrder({
+      orderId: 'order-complete',
+      providerId: 'provider-1',
+      from: 'fulfilling',
+      to: 'completed',
+    });
+
+    assert.equal(result.status, 'completed');
+    assert.equal(releaseSession, session);
+  } finally {
+    mongoose.startSession = original.startSession;
+    Order.findOneAndUpdate = original.orderFindOneAndUpdate;
+    User.updateOne = original.userUpdateOne;
     Notification.create = original.notificationCreate;
   }
 });

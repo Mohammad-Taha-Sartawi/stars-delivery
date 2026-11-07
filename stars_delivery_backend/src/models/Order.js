@@ -17,7 +17,10 @@ const orderSchema = new mongoose.Schema({
   price: { type: Number, default: 0 },
   providerEarning: { type: Number, default: 0 },
   platformCommission: { type: Number, default: 0 },
+  estimatedTime: { type: Number, default: 0 },
+  acceptedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
+  completedAt: { type: Date, default: null },
 });
 
 orderSchema.index({ providerId: 1, status: 1, createdAt: -1 });

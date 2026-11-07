@@ -23,6 +23,7 @@ import 'login_screen.dart';
 import 'pending_orders_screen.dart';
 import 'provider_active_orders_screen.dart';
 import 'offered_orders_screen.dart';
+import 'rejected_orders_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import 'report_screen.dart';
@@ -42,6 +43,7 @@ class ProviderHomeScreen extends StatefulWidget {
 
 class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBindingObserver {
   Timer? _notifTimer;
+  Timer? _unblockTimer;
   StreamSubscription? _newOrderSub;
   StreamSubscription? _notifCountSub;
   StreamSubscription? _offerAcceptedSub;
@@ -102,6 +104,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
     _offerAcceptedSub = SocketService.instance.onOfferAccepted.listen((_) {
       if (!mounted) return;
       context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
+      context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
     });
 
     _broadcastSub = SocketService.instance.onBroadcast.listen((_) {
@@ -119,6 +122,31 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
     _sessionRevokedSub =
         SocketService.instance.onSessionRevoked.listen((_) {
       _endSession();
+    });
+  }
+
+  void _scheduleUnblockRefresh(String? blockedUntil) {
+    _unblockTimer?.cancel();
+
+    final until = DateTime.tryParse(blockedUntil ?? '');
+
+    if (until == null) {
+      return;
+    }
+
+    final delay = until.difference(DateTime.now());
+
+    if (delay.isNegative || delay == Duration.zero) {
+      return;
+    }
+
+    _unblockTimer = Timer(delay + const Duration(seconds: 1), () {
+      if (!mounted) {
+        return;
+      }
+
+      context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
+      context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
     });
   }
 
@@ -145,6 +173,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
   void didChangeAppLifecycleState(AppLifecycleState st) {
     if (st == AppLifecycleState.resumed) {
       LocationService.syncToBackend(widget.token);
+      context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
+      context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
     }
   }
 
@@ -152,6 +182,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _notifTimer?.cancel();
+    _unblockTimer?.cancel();
     _newOrderSub?.cancel();
     _notifCountSub?.cancel();
     _offerAcceptedSub?.cancel();
@@ -277,7 +308,14 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
             ),
           ],
         ),
-        body: BlocConsumer<ProviderBloc, ProviderState>(
+        body: BlocListener<ProviderBloc, ProviderState>(
+          listenWhen: (_, current) => current is ProviderStatsLoaded,
+          listener: (context, state) {
+            if (state is ProviderStatsLoaded) {
+              _scheduleUnblockRefresh(state.stats.blockedUntil);
+            }
+          },
+          child: BlocConsumer<ProviderBloc, ProviderState>(
           listenWhen: (previous, current) {
             if (current is ProviderStatsLoaded &&
                 current.pendingOrders != null &&
@@ -345,6 +383,46 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
                       ),
                       child: Column(
                       children: [
+                        if (s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount > 0) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange[300]!),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.pending_actions,
+                                  color: Colors.orange[800],
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    AppLocalization.get(
+                                      context,
+                                      'pending_items_alert',
+                                    ).replaceAll(
+                                      '%d',
+                                      '${s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount}',
+                                    ),
+                                    style: TextStyle(
+                                      color: Colors.orange[900],
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         Row(
                           children: [
                             Expanded(
@@ -650,6 +728,72 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final providerBloc =
+                                  context.read<ProviderBloc>();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => RejectedOrdersScreen(
+                                    token: widget.token,
+                                  ),
+                                ),
+                              ).then((_) {
+                                providerBloc.add(
+                                  LoadProviderStats(token: widget.token),
+                                );
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              side: const BorderSide(
+                                color: Colors.grey,
+                                width: 2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  AppLocalization.get(context, 'rejected_orders_btn'),
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${s.ordersReportCount}',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(AppLocalization.get(context, 'order_count').trim(),
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 20),
                         Container(
                           width: double.infinity,
@@ -753,6 +897,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
             }
             return const SizedBox();
           },
+          ),
         ),
       ),
     );

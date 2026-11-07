@@ -1,8 +1,11 @@
 const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
 const multer = require('multer');
+const mongoose = require('mongoose');
 const path = require('path');
 const Order = require('../models/Order');
+const Offer = require('../models/Offer');
+const RejectedOrder = require('../models/RejectedOrder');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
@@ -59,8 +62,13 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
     });
     console.log(`[CREATE] saved order=${order._id} status=${order.status}`);
 
-    // Notify providers in same area (all active providers if no area specified)
-    const providerQuery = { role: 'provider', status: 'active' };
+    // Notify available providers in same area (all active providers if no area specified)
+    const providerQuery = {
+      role: 'provider',
+      status: 'active',
+      deleted: { $ne: true },
+      $or: [{ blockedUntil: null }, { blockedUntil: { $exists: false } }, { blockedUntil: { $lte: new Date() } }],
+    };
     if (orderArea) providerQuery.area = orderArea;
     const providers = await User.find(providerQuery);
     const firstImage = images.length > 0 ? images[0] : '';
@@ -102,6 +110,60 @@ router.get('/', auth, requireRole('customer'), async (req, res) => {
   try {
     const orders = await Order.find({ customerId: req.userId, status: { $ne: 'cancelled' } }).sort({ createdAt: -1 }).lean();
     res.json(orders);
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.get('/:id', auth, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = await Order.findById(req.params.id)
+      .populate('customerId', 'fullName publicId')
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const customerId = order.customerId?._id?.toString()
+      || order.customerId?.toString();
+    const isCustomer = req.userRole === 'customer' && customerId === req.userId;
+    const isAssignedProvider = req.userRole === 'provider'
+      && order.providerId?.toString() === req.userId;
+    const isAvailableProvider = req.userRole === 'provider'
+      && ['pending', 'offered'].includes(order.status)
+      && (!order.area || !req.authUser.area || order.area === req.authUser.area);
+
+    if (!isCustomer && !isAssignedProvider && !isAvailableProvider) {
+      return res.status(403).json({ error: 'Order not available' });
+    }
+
+    if (req.userRole === 'provider') {
+      if (!isAssignedProvider) {
+        order.phone = order.phone ? order.phone.slice(0, -3) + '***' : '';
+      }
+
+      const [offer, rejected] = await Promise.all([
+        Offer.findOne({ orderId: order._id, providerId: req.userId })
+          .select('price estimatedTime status')
+          .lean(),
+        RejectedOrder.exists({ orderId: order._id, providerId: req.userId }),
+      ]);
+
+      order.myOffer = offer || null;
+      order.rejected = Boolean(rejected);
+      order.offerCooldownUntil =
+        req.authUser.offerCooldownUntil
+        && req.authUser.offerCooldownUntil > new Date()
+          ? req.authUser.offerCooldownUntil
+          : null;
+    }
+
+    res.json(order);
   } catch (err) {
     sendInternalServerError(res);
   }

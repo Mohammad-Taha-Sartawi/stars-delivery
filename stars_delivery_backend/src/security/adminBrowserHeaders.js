@@ -103,7 +103,7 @@ function createAdminBrowserHeaders() {
       action: 'deny',
     },
     referrerPolicy: {
-      policy: 'no-referrer',
+      policy: 'same-origin',
     },
   });
 }

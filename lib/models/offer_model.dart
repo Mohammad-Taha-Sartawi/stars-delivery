@@ -9,6 +9,7 @@ class OfferModel {
   final int estimatedTime;
   final String status;
   final String createdAt;
+  final DateTime? expiresAt;
   final String orderDescription;
   final String orderArea;
 
@@ -17,6 +18,7 @@ class OfferModel {
     required this.providerName, required this.providerPhone,
     required this.providerPublicId,
     required this.price, required this.estimatedTime, required this.status, required this.createdAt,
+    this.expiresAt,
     required this.orderDescription, required this.orderArea,
   });
 
@@ -34,6 +36,7 @@ class OfferModel {
       estimatedTime: (json['estimatedTime'] ?? 0).toInt(),
       status: json['status'] ?? 'pending',
       createdAt: json['createdAt']?.toString() ?? '',
+      expiresAt: DateTime.tryParse(json['expiresAt']?.toString() ?? ''),
       orderDescription: o is Map ? (o['description'] ?? '') : '',
       orderArea: o is Map ? (o['area'] ?? '') : '',
     );

@@ -1,13 +1,38 @@
 const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Offer = require('../models/Offer');
+const RejectedOrder = require('../models/RejectedOrder');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 
 const router = express.Router();
 router.use(auth, requireRole('provider'));
+
+async function excludedOrderIds(providerId) {
+  const now = new Date();
+  const [offeredIds, rejectedIds] = await Promise.all([
+    Offer.find({
+      providerId,
+      $or: [
+        { status: { $ne: 'pending' } },
+        { status: 'pending', expiresAt: { $gt: now } },
+      ],
+    }).distinct('orderId'),
+    RejectedOrder.find({ providerId }).distinct('orderId'),
+  ]);
+
+  return [...offeredIds, ...rejectedIds];
+}
+
+function maskedOrder(order) {
+  return {
+    ...order,
+    phone: order.phone ? order.phone.slice(0, -3) + '***' : '',
+  };
+}
 
 router.get('/stats', async (req, res) => {
   const t0 = Date.now();
@@ -28,16 +53,33 @@ router.get('/stats', async (req, res) => {
 
     // Registered area is authoritative; GPS-detected area is a fallback only
     const qArea = user.area || req.query.area || '';
+    const blocked = Boolean(user.blockedUntil && user.blockedUntil > now);
     const areaFilter = qArea ? { area: qArea, status: { $in: ['pending', 'offered'] } } : { status: { $in: ['pending', 'offered'] } };
-    // Exclude orders this provider already offered on
-    const offeredIds = await Offer.find({ providerId: req.userId }).distinct('orderId');
-    if (offeredIds.length > 0) areaFilter._id = { $nin: offeredIds };
-    const pendingOrdersCount = await Order.countDocuments(areaFilter);
+    // Exclude orders this provider already offered on or rejected
+    const [offeredIds, rejectedIds] = await Promise.all([
+      Offer.find({
+        providerId: req.userId,
+        $or: [
+          { status: { $ne: 'pending' } },
+          { status: 'pending', expiresAt: { $gt: now } },
+        ],
+      }).distinct('orderId'),
+      RejectedOrder.find({ providerId: req.userId }).distinct('orderId'),
+    ]);
+    const excludedIds = [...offeredIds, ...rejectedIds];
+    if (excludedIds.length > 0) areaFilter._id = { $nin: excludedIds };
+    const pendingOrdersCount = blocked ? 0 : await Order.countDocuments(areaFilter);
     const t3 = Date.now();
 
     const totalSuccessful = monthlyOrders.filter(o => o.status === 'completed').length;
     const dailyOrderCount = dailyOrders.length;
     const activeOrdersCount = await Order.countDocuments({ providerId: req.userId, status: { $in: ['accepted', 'fulfilling'] } });
+    const deliveredOrdersCount = await Order.countDocuments({ providerId: req.userId, status: 'completed' });
+    const ordersReportCount = rejectedIds.length + deliveredOrdersCount;
+    const offerCooldownUntil =
+      user.offerCooldownUntil && user.offerCooldownUntil > now
+        ? user.offerCooldownUntil
+        : null;
     const offeredOrdersCount = offeredIds.length > 0
       ? await Order.countDocuments({ _id: { $in: offeredIds }, status: { $in: ['pending', 'offered'] } })
       : 0;
@@ -59,7 +101,10 @@ router.get('/stats', async (req, res) => {
       monthlyCommission: monthlyOrders.reduce((s, o) => s + (o.platformCommission || 0), 0),
       pendingOrdersCount,
       offeredOrdersCount,
+      ordersReportCount,
       activeOrdersCount,
+      blockedUntil: blocked ? user.blockedUntil : null,
+      offerCooldownUntil,
     });
   } catch (err) {
     console.error('Stats error:', err.message);
@@ -70,22 +115,24 @@ router.get('/stats', async (req, res) => {
 router.get('/pending-orders', async (req, res) => {
   try {
     const user = await User.findById(req.userId);
+
+    if (user.blockedUntil && user.blockedUntil > new Date()) {
+      return res.json([]);
+    }
+
     // Registered area is authoritative; GPS-detected area is a fallback only
     const qArea = user.area || req.query.area || '';
     const areaFilter = qArea ? { area: qArea, status: { $in: ['pending', 'offered'] } } : { status: { $in: ['pending', 'offered'] } };
-    // Exclude orders where this provider already submitted an offer
-    const offeredIds = await Offer.find({ providerId: req.userId }).distinct('orderId');
-    if (offeredIds.length > 0) areaFilter._id = { $nin: offeredIds };
+    // Exclude orders where this provider already submitted an offer or rejected
+    const excludedIds = await excludedOrderIds(req.userId);
+    if (excludedIds.length > 0) areaFilter._id = { $nin: excludedIds };
     const orders = await Order.find(areaFilter).sort({ createdAt: -1 })
       .populate('customerId', 'fullName publicId')
       .lean();
 
     console.log(`[PENDING] userId=${req.userId} area="${qArea}" count=${orders.length}`);
 
-    const masked = orders.map(o => ({
-      ...o, phone: o.phone ? o.phone.slice(0, -3) + '***' : '',
-    }));
-    res.json(masked);
+    res.json(orders.map(maskedOrder));
   } catch (err) {
     sendInternalServerError(res);
   }
@@ -94,7 +141,11 @@ router.get('/pending-orders', async (req, res) => {
 router.get('/offered-orders', async (req, res) => {
   try {
     // Find orders where this provider has submitted an offer but order is not yet accepted
-    const offers = await Offer.find({ providerId: req.userId, status: 'pending' }).lean();
+    const offers = await Offer.find({
+      providerId: req.userId,
+      status: 'pending',
+      expiresAt: { $gt: new Date() },
+    }).lean();
     const offeredIds = offers.map(o => o.orderId);
     const orders = await Order.find({
       _id: { $in: offeredIds },
@@ -111,6 +162,97 @@ router.get('/offered-orders', async (req, res) => {
       offeredTime: offerMap[o._id.toString()]?.estimatedTime || 0,
     }));
     res.json(masked);
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.post('/orders/:orderId/reject', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.orderId)) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = await Order.findOne({
+      _id: req.params.orderId,
+      status: { $in: ['pending', 'offered'] },
+    }).select('_id').lean();
+
+    if (!order) {
+      return res.status(409).json({ error: 'Order is no longer available' });
+    }
+
+    const hasOffer = await Offer.exists({
+      orderId: order._id,
+      providerId: req.userId,
+    });
+
+    if (hasOffer) {
+      return res.status(409).json({ error: 'You have already submitted an offer for this order' });
+    }
+
+    try {
+      await RejectedOrder.updateOne(
+        { providerId: req.userId, orderId: order._id },
+        {
+          $set: { reason: 'driver_rejected' },
+          $setOnInsert: { createdAt: new Date() },
+        },
+        { upsert: true },
+      );
+    } catch (error) {
+      if (error?.code !== 11000) {
+        throw error;
+      }
+    }
+
+    return res.json({ success: true, message: 'تم رفض الطلب' });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.get('/rejected-orders', async (req, res) => {
+  try {
+    const [rejections, deliveredOrders] = await Promise.all([
+      RejectedOrder.find({ providerId: req.userId })
+        .sort({ createdAt: -1 })
+        .lean(),
+      Order.find({ providerId: req.userId, status: 'completed' })
+        .populate('customerId', 'fullName publicId')
+        .lean(),
+    ]);
+
+    const orderIds = rejections.map(r => r.orderId);
+    const orders = await Order.find({ _id: { $in: orderIds } })
+      .populate('customerId', 'fullName publicId')
+      .lean();
+
+    const orderMap = new Map(orders.map(o => [o._id.toString(), o]));
+
+    const rejected = rejections
+      .map(r => {
+        const order = orderMap.get(r.orderId.toString());
+        if (!order) return null;
+        return maskedOrder({
+          ...order,
+          recordType: 'rejected',
+          reason: r.reason || 'driver_rejected',
+          reportAt: r.createdAt,
+        });
+      })
+      .filter(Boolean);
+
+    const delivered = deliveredOrders.map(o => maskedOrder({
+      ...o,
+      recordType: 'delivered',
+      reportAt: o.completedAt || o.createdAt,
+    }));
+
+    const report = [...rejected, ...delivered]
+      .sort((a, b) => new Date(b.reportAt) - new Date(a.reportAt));
+
+    res.json(report);
   } catch (err) {
     sendInternalServerError(res);
   }

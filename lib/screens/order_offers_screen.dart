@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import '../bloc/offer/offer_bloc.dart';
 import '../bloc/offer/offer_event.dart';
 import '../bloc/offer/offer_state.dart';
@@ -19,12 +20,56 @@ class OrderOffersScreen extends StatefulWidget {
 }
 
 class _OrderOffersScreenState extends State<OrderOffersScreen> {
+  final Set<String> _expiredOfferIds = {};
+  Timer? _offerTimer;
+  bool _cancelRequested = false;
+  bool _resendRequested = false;
+
   @override
   void initState() {
     super.initState();
     context.read<OfferBloc>().add(
       LoadOffersEvent(token: widget.token, orderId: widget.orderId),
     );
+    _offerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+
+      final state = context.read<OfferBloc>().state;
+
+      if (state is OffersLoaded) {
+        var shouldReload = false;
+
+        for (final offer in state.offers) {
+          final expiresAt = offer.expiresAt;
+
+          if (offer.status == 'pending' &&
+              expiresAt != null &&
+              !expiresAt.isAfter(DateTime.now()) &&
+              _expiredOfferIds.add(offer.id)) {
+            shouldReload = true;
+          }
+        }
+
+        setState(() {});
+
+        if (shouldReload) {
+          context.read<OfferBloc>().add(
+            LoadOffersEvent(
+              token: widget.token,
+              orderId: widget.orderId,
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _offerTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -57,6 +102,34 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                 if (state is OfferConflict) {
                   _showConflictDialog(context, state.message, state.orderId);
                 }
+                if (state is OffersLoaded && _cancelRequested) {
+                  _cancelRequested = false;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        AppLocalization.get(context, 'order_cancelled'),
+                      ),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  Navigator.pop(context);
+                  return;
+                }
+                if (state is OffersLoaded && _resendRequested) {
+                  _resendRequested = false;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        AppLocalization.get(context, 'order_resent'),
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+                if (state is OfferError) {
+                  _cancelRequested = false;
+                  _resendRequested = false;
+                }
               },
               builder: (context, state) {
                 if (state is OfferLoading)
@@ -64,11 +137,72 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                 if (state is OffersLoaded) {
                   if (state.offers.isEmpty)
                     return Center(
-                      child: Text(
-                        AppLocalization.get(context, 'no_offers'),
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.paddingHorizontal(context),
+                          vertical: Responsive.paddingVertical(context),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              AppLocalization.get(context, 'no_offers'),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() => _resendRequested = true);
+                                  context.read<OfferBloc>().add(
+                                    ResendOrderEvent(
+                                      token: widget.token,
+                                      orderId: widget.orderId,
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: Text(
+                                  AppLocalization.get(context, 'resend_order'),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _confirmCancel,
+                                icon: const Icon(Icons.cancel_outlined),
+                                label: Text(
+                                  AppLocalization.get(context, 'cancel_order'),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                  side: const BorderSide(color: Colors.red),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -89,6 +223,13 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                     itemCount: state.offers.length,
                     itemBuilder: (_, i) {
                       final o = state.offers[i];
+                      final expiresAt = o.expiresAt;
+                      final remainingSeconds = expiresAt == null
+                          ? 0
+                          : expiresAt.difference(DateTime.now()).inSeconds;
+                      final expired = o.status == 'pending' &&
+                          expiresAt != null &&
+                          remainingSeconds <= 0;
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         shape: RoundedRectangleBorder(
@@ -157,6 +298,7 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                     ),
                                   ],
                                 ),
+                              ],
                               const SizedBox(height: 8),
                               if (o.orderDescription.isNotEmpty)
                                 Text(
@@ -172,8 +314,31 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                     const Icon(Icons.timer_outlined, size: 14, color: Colors.orange),
                                     const SizedBox(width: 4),
                                     Text(
-                                      'الوقت المطلوب: ${o.estimatedTime} دقيقة',
+                                      AppLocalization.get(context, 'est_time')
+                                          .replaceAll('%d', '${o.estimatedTime}'),
                                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.orange),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (o.status == 'pending' && expiresAt != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      expired ? Icons.timer_off_outlined : Icons.timer_outlined,
+                                      size: 14,
+                                      color: Colors.red,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      expired
+                                          ? AppLocalization.get(context, 'offer_expired')
+                                          : AppLocalization.get(context, 'offer_expires_in').replaceAll(
+                                              '%d',
+                                              '${remainingSeconds > 0 ? remainingSeconds : 0}',
+                                            ),
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red),
                                     ),
                                   ],
                                 ),
@@ -192,7 +357,6 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                 ),
                               ],
                               const SizedBox(height: 12),
-                              ],
                               _buildOfferAction(context, o),
                             ],
                           ),
@@ -221,6 +385,45 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
   String _maskPhone(String phone) {
     if (phone.length <= 4) return '***';
     return '${phone.substring(0, phone.length - 3)}***';
+  }
+
+  Future<void> _confirmCancel() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalization.get(context, 'cancel_order')),
+        content: Text(
+          AppLocalization.get(context, 'cancel_order_confirm'),
+          textDirection: TextDirection.rtl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(AppLocalization.get(context, 'cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(
+              AppLocalization.get(context, 'confirm'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _cancelRequested = true);
+    context.read<OfferBloc>().add(
+      CancelOrderEvent(
+        token: widget.token,
+        orderId: widget.orderId,
+      ),
+    );
   }
 
   void _showConflictDialog(BuildContext context, String message, String orderId) {
@@ -252,6 +455,30 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
   }
 
   Widget _buildOfferAction(BuildContext context, dynamic o) {
+    final DateTime? expiresAt = o.expiresAt;
+    final expired = o.status == 'pending' &&
+        expiresAt != null &&
+        !expiresAt.isAfter(DateTime.now());
+
+    if (expired) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          AppLocalization.get(context, 'offer_expired'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.red[700],
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
     if (o.status == 'accepted') {
       return Container(
         width: double.infinity,

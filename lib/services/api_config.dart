@@ -8,9 +8,9 @@ class ApiConfig {
     'STARS_SERVER_URL',
   );
 
-  static const String _defaultDevelopmentServerUrl = 'http://192.168.1.10:3000';
+  static const String _defaultDevelopmentServerUrl = 'http://192.168.1.6:3000';
 
-  static String lanIp = '192.168.1.10';
+  static String lanIp = '192.168.1.6';
   static int port = 3000;
   static String? detectedArea;
 

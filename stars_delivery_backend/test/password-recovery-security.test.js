@@ -459,7 +459,7 @@ test(
       packageJson
         .dependencies
         .nodemailer,
-      '9.0.6',
+      '10.4.0',
     );
 
     for (

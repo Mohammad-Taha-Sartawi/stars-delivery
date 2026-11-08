@@ -322,17 +322,16 @@ class AppLocalization {
       'ar': 'المتبقي: %d دقيقة',
       'en': 'Remaining: %d minutes',
     },
-    'delivery_overdue': {
-      'ar': 'تجاوز الوقت المحدد',
-      'en': 'Overdue',
-    },
+    'delivery_overdue': {'ar': 'تجاوز الوقت المحدد', 'en': 'Overdue'},
     'offer_already_submitted': {
       'ar': 'لقد قدمت عرض سعر لهذا الطلب مسبقاً.',
       'en': 'You have already submitted an offer for this order.',
     },
     'provider_busy_offer': {
-      'ar': 'لا يمكنك تقديم عرض الآن لأن لديك طلباً نشطاً. أكمل طلبك الحالي أولاً.',
-      'en': 'You cannot submit an offer while you have an active order. Complete your current order first.',
+      'ar':
+          'لا يمكنك تقديم عرض الآن لأن لديك طلباً نشطاً. أكمل طلبك الحالي أولاً.',
+      'en':
+          'You cannot submit an offer while you have an active order. Complete your current order first.',
     },
     'offer_cooldown_active': {
       'ar': 'لا يمكن تقديم عرض سعر حاليا',
@@ -354,22 +353,13 @@ class AppLocalization {
       'ar': 'ينتهي العرض خلال %d ثانية',
       'en': 'Offer expires in %d seconds',
     },
-    'offer_expired': {
-      'ar': 'انتهت صلاحية العرض',
-      'en': 'Offer expired',
-    },
+    'offer_expired': {'ar': 'انتهت صلاحية العرض', 'en': 'Offer expired'},
     'offer_window_expired': {
       'ar': 'انتهت مدة قبول السعر',
       'en': 'Price offer acceptance period expired',
     },
-    'offer_window_expired_short': {
-      'ar': 'انتهت المدة',
-      'en': 'Expired',
-    },
-    'order_suspended': {
-      'ar': 'الطلب معلق',
-      'en': 'Order suspended',
-    },
+    'offer_window_expired_short': {'ar': 'انتهت المدة', 'en': 'Expired'},
+    'order_suspended': {'ar': 'الطلب معلق', 'en': 'Order suspended'},
     'order_suspended_report_in': {
       'ar': 'سيُنقل الطلب إلى التقارير خلال %d ثانية',
       'en': 'Order will move to reports in %d seconds',
@@ -426,10 +416,7 @@ class AppLocalization {
       'ar': 'تم رفض الطلب من السائقين',
       'en': 'The order was rejected by drivers',
     },
-    'status_cancelled': {
-      'ar': 'تم إلغاء الطلب',
-      'en': 'Order Cancelled',
-    },
+    'status_cancelled': {'ar': 'تم إلغاء الطلب', 'en': 'Order Cancelled'},
     'order_date': {'ar': 'تاريخ الطلب', 'en': 'Order Date'},
     'description': {'ar': 'الوصف', 'en': 'Description'},
     'images': {'ar': 'الصور', 'en': 'Images'},
@@ -469,12 +456,6 @@ class AppLocalization {
       'en': 'Order completed successfully',
     },
     'price': {'ar': 'السعر', 'en': 'Price'},
-
-    // Provider dashboard
-    'offered_orders_btn': {
-      'ar': 'الطلبات التي تم تقديم عرض سعر لها',
-      'en': 'Orders With Submitted Offers',
-    },
 
     // Reports
     'report_driver': {'ar': 'الابلاغ عن سائق', 'en': 'Report a Driver'},
@@ -536,5 +517,17 @@ class AppLocalization {
       'ar': 'فشل الإرسال. حاول مرة أخرى.',
       'en': 'Send failed. Try again.',
     },
+    'retry': {'ar': 'إعادة المحاولة', 'en': 'Retry'},
+    'profile': {'ar': 'الملف الشخصي', 'en': 'Profile'},
+    'logout': {'ar': 'تسجيل الخروج', 'en': 'Log out'},
+    'send': {'ar': 'إرسال', 'en': 'Send'},
+    'home_quick_actions': {'ar': 'الإجراءات السريعة', 'en': 'Quick actions'},
+    'support_contact_title': {
+      'ar': 'التواصل مع الدعم',
+      'en': 'Contact support',
+    },
+    'contact_support': {'ar': 'التواصل مع الدعم', 'en': 'Contact support'},
+    'agree': {'ar': 'أوافق', 'en': 'Agree'},
+    'decline': {'ar': 'أرفض', 'en': 'Decline'},
   };
 }

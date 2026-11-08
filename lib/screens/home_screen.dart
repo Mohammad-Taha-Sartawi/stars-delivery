@@ -12,11 +12,15 @@ import '../bloc/notification/notification_event.dart';
 import '../bloc/notification/notification_state.dart';
 import '../models/user_model.dart';
 import '../services/responsive.dart';
+import '../services/theme_service.dart';
 import '../services/localization_service.dart';
-import '../services/api_config.dart';
 import '../services/location_service.dart';
 import '../services/order_service.dart';
 import '../services/support_chat_service.dart';
+import '../widgets/ui/app_action_tile.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_section_header.dart';
+import '../widgets/ui/app_tone.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'notifications_screen.dart';
@@ -64,8 +68,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    _httpSessionRejectedSub =
-        MobileSessionFailure.instance.onRejected.listen((event) {
+    _httpSessionRejectedSub = MobileSessionFailure.instance.onRejected.listen((
+      event,
+    ) {
       if (!event.belongsTo(widget.token)) {
         return;
       }
@@ -101,7 +106,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _loadOrderCounts();
     });
 
-    _orderStatusSub = SocketService.instance.onOrderStatusChanged.listen((data) {
+    _orderStatusSub = SocketService.instance.onOrderStatusChanged.listen((
+      data,
+    ) {
       if (!mounted) return;
       _loadOrderCounts();
     });
@@ -120,23 +127,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final title = data['title']?.toString() ?? '';
       final body = data['body']?.toString() ?? '';
       if (title.isNotEmpty || body.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(title.isNotEmpty ? '$title - $body' : body),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppFeedback.warning(
+          context,
+          title.isNotEmpty ? '$title - $body' : body,
         );
       }
     });
 
-    _accountDeletedSub =
-        SocketService.instance.onAccountDeleted.listen((_) {
+    _accountDeletedSub = SocketService.instance.onAccountDeleted.listen((_) {
       _endSession();
     });
 
-    _sessionRevokedSub =
-        SocketService.instance.onSessionRevoked.listen((_) {
+    _sessionRevokedSub = SocketService.instance.onSessionRevoked.listen((_) {
       _endSession();
     });
   }
@@ -183,9 +185,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _loadAvailableDriversCount() async {
     try {
-      final count = await _orderService.getAvailableDriversCount(
-        widget.token,
-      );
+      final count = await _orderService.getAvailableDriversCount(widget.token);
 
       if (!mounted) {
         return;
@@ -241,9 +241,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
   }
@@ -283,385 +281,407 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final appState = context.watch<AppBloc>().state;
     final isAr = appState.locale.languageCode == 'ar';
+    final theme = Theme.of(context);
+
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: widget.user, token: widget.token)));
-            },
+        appBar: _buildAppBar(context),
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: Responsive.maxReadableContentWidth,
+              ),
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final bloc = context.read<NotificationBloc>();
+                  bloc.add(LoadNotifications(token: widget.token));
+                  await bloc.stream.firstWhere(
+                    (s) => s is! NotificationLoading,
+                  );
+                  await _loadOrderCounts();
+                  await _loadAvailableDriversCount();
+                  await _loadSupportUnreadCount();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: Responsive.pageInsets(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_pendingOrdersCount > 0) ...[
+                        _buildPendingBanner(context),
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
+                      Text(
+                        AppLocalization.get(context, 'welcome_back'),
+                        style: theme.textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        AppLocalization.get(context, 'customer_subtitle'),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      AppSectionHeader(
+                        title: AppLocalization.get(
+                          context,
+                          'home_quick_actions',
+                        ),
+                      ),
+                      AppActionWrap(
+                        children: [
+                          AppActionTile(
+                            icon: Icons.add_circle_outline,
+                            title: AppLocalization.get(context, 'new_order'),
+                            tone: AppTone.primary,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider(
+                                    create: (_) => OrderBloc(),
+                                    child: CreateOrderScreen(
+                                      user: widget.user,
+                                      token: widget.token,
+                                    ),
+                                  ),
+                                ),
+                              ).then((_) => _loadOrderCounts());
+                            },
+                          ),
+                          AppActionTile(
+                            icon: Icons.local_offer_outlined,
+                            title: AppLocalization.get(context, 'offers_title'),
+                            tone: AppTone.warning,
+                            badgeCount: _pendingOrdersCount,
+                            onTap: _openMyOrders,
+                          ),
+                          AppActionTile(
+                            icon: Icons.delivery_dining_outlined,
+                            title: AppLocalization.get(
+                              context,
+                              'in_progress_orders_btn',
+                            ),
+                            tone: AppTone.success,
+                            badgeCount: _inProgressOrdersCount,
+                            onTap: _openInProgressOrders,
+                          ),
+                          AppActionTile(
+                            icon: Icons.assessment_outlined,
+                            title: AppLocalization.get(context, 'report_30'),
+                            tone: AppTone.neutral,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => MyOrdersScreen(
+                                    token: widget.token,
+                                    titleKey: 'orders_report',
+                                    readOnlyReport: true,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      if (_availableDriversCount != null) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildAvailableDriversBanner(context),
+                      ],
+                      const SizedBox(height: AppSpacing.lg),
+                      AppActionWrap(
+                        children: [
+                          AppActionTile(
+                            icon: Icons.report_outlined,
+                            title: AppLocalization.get(
+                              context,
+                              'report_driver',
+                            ),
+                            tone: AppTone.danger,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ReportScreen(
+                                    token: widget.token,
+                                    reportType: 'driver',
+                                    title: AppLocalization.get(
+                                      context,
+                                      'report_driver',
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          AppActionTile(
+                            icon: Icons.headset_mic_outlined,
+                            title: AppLocalization.get(
+                              context,
+                              'contact_support',
+                            ),
+                            tone: AppTone.accent,
+                            badgeCount: _supportUnreadCount,
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      SupportChatScreen(token: widget.token),
+                                ),
+                              );
+                              _reloadSupportAfterChat();
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return AppBar(
+      title: Tooltip(
+        message: AppLocalization.get(context, 'profile'),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ProfileScreen(user: widget.user, token: widget.token),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Colors.blue,
-                  child: Text(widget.user.fullName.isNotEmpty ? widget.user.fullName[0].toUpperCase() : 'C', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  radius: AppSizes.avatarSm / 2,
+                  backgroundColor: scheme.primaryContainer,
+                  child: Text(
+                    widget.user.fullName.isNotEmpty
+                        ? widget.user.fullName[0].toUpperCase()
+                        : 'C',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: scheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Flexible(
-                  child: Text(widget.user.fullName, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 15)),
+                  child: Text(
+                    widget.user.fullName,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium,
+                  ),
                 ),
               ],
             ),
           ),
-          centerTitle: true,
-          actions: [
-            BlocBuilder<NotificationBloc, NotificationState>(
-              builder: (context, nState) {
-                final unread = nState is NotificationsLoaded
-                    ? nState.unreadCount
-                    : 0;
-                return Stack(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.black87,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: context.read<NotificationBloc>(),
-                              child: NotificationsScreen(token: widget.token),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    if (unread > 0)
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '$unread',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+        ),
+      ),
+      actions: [
+        BlocBuilder<NotificationBloc, NotificationState>(
+          builder: (context, nState) {
+            final unread = nState is NotificationsLoaded
+                ? nState.unreadCount
+                : 0;
+            return Stack(
+              children: [
+                IconButton(
+                  tooltip: AppLocalization.get(context, 'notifications'),
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<NotificationBloc>(),
+                          child: NotificationsScreen(token: widget.token),
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
-            BlocBuilder<AppBloc, AppState>(
-              builder: (context, appState) {
-                final isDark = appState.themeMode == ThemeMode.dark;
-                return IconButton(
-                  icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: Colors.grey[700]),
-                  onPressed: () => context.read<AppBloc>().add(ToggleTheme()),
-                );
-              },
-            ),
-            BlocBuilder<AppBloc, AppState>(
-              builder: (context, appState) {
-                final isAr = appState.locale.languageCode == 'ar';
-                return IconButton(
-                  icon: Text(isAr ? 'EN' : 'ع', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700], fontSize: 15)),
-                  onPressed: () => context.read<AppBloc>().add(ToggleLocale()),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.red),
-              onPressed: () {
-                SocketService.instance.disconnect();
-                context.read<AuthBloc>().add(LogoutEvent());
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              },
-            ),
-          ],
-        ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: RefreshIndicator(
-              onRefresh: () async {
-                final bloc = context.read<NotificationBloc>();
-                bloc.add(LoadNotifications(token: widget.token));
-                await bloc.stream.firstWhere((s) => s is! NotificationLoading);
-                await _loadOrderCounts();
-                await _loadAvailableDriversCount();
-                await _loadSupportUnreadCount();
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Responsive.paddingHorizontal(context),
-                  vertical: Responsive.paddingVertical(context),
+                    );
+                  },
                 ),
-                child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_pendingOrdersCount > 0) ...[
-                    GestureDetector(
-                      onTap: _openMyOrders,
+                if (unread > 0)
+                  PositionedDirectional(
+                    end: 6,
+                    top: 6,
+                    child: Semantics(
+                      label: '$unread',
+                      excludeSemantics: true,
                       child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
+                        padding: const EdgeInsetsDirectional.all(AppSpacing.xs),
                         decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange[300]!),
+                          color: scheme.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: scheme.surface, width: 1.5),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.pending_actions,
-                              color: Colors.orange[800],
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                AppLocalization.get(
-                                  context,
-                                  'pending_items_alert',
-                                ).replaceAll('%d', '$_pendingOrdersCount'),
-                                style: TextStyle(
-                                  color: Colors.orange[900],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_left,
-                              size: 18,
-                              color: Colors.orange[800],
-                            ),
-                          ],
+                        child: Text(
+                          '$unread',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: scheme.onError,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                  _ActionButton(
-                    icon: Icons.add_circle_outline,
-                    label: AppLocalization.get(context, 'new_order'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider(
-                            create: (_) => OrderBloc(),
-                            child: CreateOrderScreen(
-                              user: widget.user,
-                              token: widget.token,
-                            ),
-                          ),
-                        ),
-                      ).then((_) => _loadOrderCounts());
-                    },
                   ),
-                  const SizedBox(height: 16),
-                  _ActionButton(
-                    icon: Icons.local_offer_outlined,
-                    label: AppLocalization.get(context, 'offers_title'),
-                    badgeCount: _pendingOrdersCount,
-                    onTap: _openMyOrders,
-                  ),
-                  const SizedBox(height: 16),
-                  _ActionButton(
-                    icon: Icons.delivery_dining,
-                    label: AppLocalization.get(context, 'in_progress_orders_btn'),
-                    badgeCount: _inProgressOrdersCount,
-                    iconColor: Colors.teal,
-                    onTap: _openInProgressOrders,
-                  ),
-                  const SizedBox(height: 16),
-                  _ActionButton(
-                    icon: Icons.assessment_outlined,
-                    label: AppLocalization.get(context, 'report_30'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MyOrdersScreen(
-                            token: widget.token,
-                            titleKey: 'orders_report',
-                            readOnlyReport: true,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  if (_availableDriversCount != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.teal[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.teal[200]!),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delivery_dining,
-                            color: Colors.teal[800],
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _availableDriversCount == 0
-                                  ? AppLocalization.get(
-                                      context,
-                                      'no_available_drivers',
-                                    )
-                                  : AppLocalization.get(
-                                      context,
-                                      'available_drivers_count',
-                                    ).replaceAll(
-                                      '%d',
-                                      '${_availableDriversCount!}',
-                                    ),
-                              style: TextStyle(
-                                color: Colors.teal[900],
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  _ActionButton(
-                    icon: Icons.report_outlined,
-                    label: AppLocalization.get(context, 'report_driver'),
-                    iconColor: Colors.red,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ReportScreen(
-                            token: widget.token,
-                            reportType: 'driver',
-                            title: 'الابلاغ عن سائق',
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _ActionButton(
-                    icon: Icons.headset_mic_outlined,
-                    label: AppLocalization.get(context, 'contact_support'),
-                    iconColor: Colors.orange,
-                    badgeCount: _supportUnreadCount,
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SupportChatScreen(token: widget.token),
-                        ),
-                      );
-                      _reloadSupportAfterChat();
-                    },
-                  ),
-                ],
-                ),
-              ),
-            ),
-          ),
-          ),
+              ],
+            );
+          },
         ),
+        BlocBuilder<AppBloc, AppState>(
+          builder: (context, appState) {
+            final isDark = appState.themeMode == ThemeMode.dark;
+            return IconButton(
+              tooltip: AppLocalization.get(context, 'theme'),
+              icon: Icon(
+                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              ),
+              onPressed: () => context.read<AppBloc>().add(ToggleTheme()),
+            );
+          },
+        ),
+        BlocBuilder<AppBloc, AppState>(
+          builder: (context, appState) {
+            final isAr = appState.locale.languageCode == 'ar';
+            return IconButton(
+              tooltip: AppLocalization.get(context, 'language'),
+              icon: Text(isAr ? 'EN' : 'ع', style: theme.textTheme.labelLarge),
+              onPressed: () => context.read<AppBloc>().add(ToggleLocale()),
+            );
+          },
+        ),
+        IconButton(
+          tooltip: AppLocalization.get(context, 'logout'),
+          icon: Icon(Icons.logout, color: scheme.error),
+          onPressed: () {
+            SocketService.instance.disconnect();
+            context.read<AuthBloc>().add(LogoutEvent());
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          },
+        ),
+      ],
     );
   }
-}
 
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? iconColor;
-  final int badgeCount;
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.iconColor,
-    this.badgeCount = 0,
-  });
+  Widget _buildPendingBanner(BuildContext context) {
+    final theme = Theme.of(context);
+    final tone = appToneStyle(context, AppTone.warning);
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
-          backgroundColor: Colors.white,
-          foregroundColor: iconColor ?? Colors.blue[700],
-          side: BorderSide(color: Colors.grey[300]!),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
+    return Semantics(
+      button: true,
+      child: Material(
+        color: tone.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadiusDirectional.circular(AppRadius.md),
+          side: BorderSide(color: tone.border),
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 28, color: iconColor),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+        child: InkWell(
+          onTap: _openMyOrders,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
             ),
-            if (badgeCount > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 2,
+            child: Row(
+              children: [
+                Icon(Icons.pending_actions, color: tone.foreground),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    AppLocalization.get(
+                      context,
+                      'pending_items_alert',
+                    ).replaceAll('%d', '$_pendingOrdersCount'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: tone.foreground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
+                Icon(
+                  Directionality.of(context) == TextDirection.rtl
+                      ? Icons.chevron_left
+                      : Icons.chevron_right,
+                  size: AppSizes.iconSm,
+                  color: tone.foreground,
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailableDriversBanner(BuildContext context) {
+    final theme = Theme.of(context);
+    final tone = appToneStyle(context, AppTone.info);
+    final message = _availableDriversCount == 0
+        ? AppLocalization.get(context, 'no_available_drivers')
+        : AppLocalization.get(
+            context,
+            'available_drivers_count',
+          ).replaceAll('%d', '${_availableDriversCount!}');
+
+    return Semantics(
+      container: true,
+      label: message,
+      child: Material(
+        color: tone.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadiusDirectional.circular(AppRadius.md),
+          side: BorderSide(color: tone.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.delivery_dining_outlined, color: tone.foreground),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
                 child: Text(
-                  '$badgeCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: tone.foreground,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );

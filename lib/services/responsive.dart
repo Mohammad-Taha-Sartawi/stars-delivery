@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme_service.dart';
 
 class Responsive extends StatelessWidget {
   final Widget mobile;
@@ -36,6 +37,18 @@ class Responsive extends StatelessWidget {
 
   /// Max content width for large screens (centered layout)
   static const double maxContentWidth = 1200;
+
+  /// Auth forms stay narrow; content pages can use the full readable width.
+  static const double maxAuthWidth = AppSizes.authMaxWidth;
+  static const double maxReadableContentWidth = AppSizes.contentMaxWidth;
+  static const double wideBreakpoint = AppSizes.wideBreakpoint;
+
+  static EdgeInsetsDirectional pageInsets(BuildContext context) {
+    return EdgeInsetsDirectional.symmetric(
+      horizontal: paddingHorizontal(context),
+      vertical: paddingVertical(context),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

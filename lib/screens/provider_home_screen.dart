@@ -12,8 +12,10 @@ import '../bloc/provider/provider_state.dart';
 import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
 import '../bloc/notification/notification_state.dart';
+import '../models/provider_stats.dart';
 import '../models/user_model.dart';
 import '../services/responsive.dart';
+import '../services/theme_service.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
 import '../services/location_service.dart';
@@ -21,6 +23,12 @@ import '../services/provider_service.dart';
 import '../services/support_chat_service.dart';
 import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
+import '../widgets/ui/app_action_tile.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_section_header.dart';
+import '../widgets/ui/app_state_views.dart';
+import '../widgets/ui/app_status_badge.dart';
+import '../widgets/ui/app_tone.dart';
 import 'login_screen.dart';
 import 'pending_orders_screen.dart';
 import 'provider_active_orders_screen.dart';
@@ -43,7 +51,8 @@ class ProviderHomeScreen extends StatefulWidget {
   State<ProviderHomeScreen> createState() => _ProviderHomeScreenState();
 }
 
-class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBindingObserver {
+class _ProviderHomeScreenState extends State<ProviderHomeScreen>
+    with WidgetsBindingObserver {
   final ProviderService _providerService = ProviderService();
   Timer? _notifTimer;
   Timer? _unblockTimer;
@@ -86,33 +95,21 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
         return;
       }
 
-      context.read<ProviderBloc>().add(
-        LoadProviderStats(token: widget.token),
-      );
-      context.read<ProviderBloc>().add(
-        LoadPendingOrders(token: widget.token),
-      );
+      context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
+      context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalization.get(context, 'availability_updated'),
-          ),
-          backgroundColor: Colors.green,
-        ),
+      AppFeedback.success(
+        context,
+        AppLocalization.get(context, 'availability_updated'),
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
-          ),
-          backgroundColor: Colors.red,
-        ),
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
       if (mounted) {
@@ -126,8 +123,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    _httpSessionRejectedSub =
-        MobileSessionFailure.instance.onRejected.listen((event) {
+    _httpSessionRejectedSub = MobileSessionFailure.instance.onRejected.listen((
+      event,
+    ) {
       if (!event.belongsTo(widget.token)) {
         return;
       }
@@ -191,23 +189,18 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
       final title = data['title']?.toString() ?? '';
       final body = data['body']?.toString() ?? '';
       if (title.isNotEmpty || body.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(title.isNotEmpty ? '$title - $body' : body),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppFeedback.warning(
+          context,
+          title.isNotEmpty ? '$title - $body' : body,
         );
       }
     });
 
-    _accountDeletedSub =
-        SocketService.instance.onAccountDeleted.listen((_) {
+    _accountDeletedSub = SocketService.instance.onAccountDeleted.listen((_) {
       _endSession();
     });
 
-    _sessionRevokedSub =
-        SocketService.instance.onSessionRevoked.listen((_) {
+    _sessionRevokedSub = SocketService.instance.onSessionRevoked.listen((_) {
       _endSession();
     });
   }
@@ -249,9 +242,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
   }
@@ -286,117 +277,11 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
   Widget build(BuildContext context) {
     final appState = context.watch<AppBloc>().state;
     final isAr = appState.locale.languageCode == 'ar';
+
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: widget.user, token: widget.token)));
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Colors.orange,
-                  child: Text(widget.user.fullName.isNotEmpty ? widget.user.fullName[0].toUpperCase() : 'P', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    widget.user.fullName,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 15),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            BlocBuilder<NotificationBloc, NotificationState>(
-              builder: (context, nState) {
-                final unread = nState is NotificationsLoaded
-                    ? nState.unreadCount
-                    : 0;
-                return Stack(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.black87,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: context.read<NotificationBloc>(),
-                              child: NotificationsScreen(token: widget.token),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    if (unread > 0)
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '$unread',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            BlocBuilder<AppBloc, AppState>(
-              builder: (context, appState) {
-                final isDark = appState.themeMode == ThemeMode.dark;
-                return IconButton(
-                  icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: Colors.grey[700]),
-                  onPressed: () => context.read<AppBloc>().add(ToggleTheme()),
-                );
-              },
-            ),
-            BlocBuilder<AppBloc, AppState>(
-              builder: (context, appState) {
-                final isAr = appState.locale.languageCode == 'ar';
-                return IconButton(
-                  icon: Text(isAr ? 'EN' : 'ع', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700], fontSize: 15)),
-                  onPressed: () => context.read<AppBloc>().add(ToggleLocale()),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.red),
-              onPressed: () {
-                SocketService.instance.disconnect();
-                context.read<AuthBloc>().add(LogoutEvent());
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              },
-            ),
-          ],
-        ),
+        appBar: _buildAppBar(context),
         body: BlocListener<ProviderBloc, ProviderState>(
           listenWhen: (_, current) => current is ProviderStatsLoaded,
           listener: (context, state) {
@@ -405,669 +290,654 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
             }
           },
           child: BlocConsumer<ProviderBloc, ProviderState>(
-          listenWhen: (previous, current) {
-            if (current is ProviderStatsLoaded &&
-                current.pendingOrders != null &&
-                current.pendingOrders!.isNotEmpty) {
-              final prev = previous is ProviderStatsLoaded ? previous.pendingOrders : null;
-              return prev == null || prev.isEmpty;
-            }
-            return false;
+            listenWhen: (previous, current) {
+              if (current is ProviderStatsLoaded &&
+                  current.pendingOrders != null &&
+                  current.pendingOrders!.isNotEmpty) {
+                final prev = previous is ProviderStatsLoaded
+                    ? previous.pendingOrders
+                    : null;
+                return prev == null || prev.isEmpty;
+              }
+              return false;
+            },
+            listener: (context, state) {
+              if (state is ProviderStatsLoaded &&
+                  state.pendingOrders != null &&
+                  state.pendingOrders!.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PendingOrdersScreen(
+                        orders: state.pendingOrders!,
+                        token: widget.token,
+                        onRefresh: () {
+                          context.read<ProviderBloc>().add(
+                            LoadPendingOrders(token: widget.token),
+                          );
+                          context.read<ProviderBloc>().add(
+                            LoadProviderStats(token: widget.token),
+                          );
+                        },
+                      ),
+                    ),
+                  ).then((_) {
+                    if (!context.mounted) return;
+                    context.read<ProviderBloc>().add(
+                      LoadProviderStats(token: widget.token),
+                    );
+                  });
+                });
+              }
+            },
+            builder: (context, state) {
+              if (state is ProviderLoading) {
+                return const AppLoadingState();
+              }
+              if (state is ProviderError) {
+                return AppErrorState(
+                  message: state.message,
+                  onRetry: () {
+                    _refreshDashboard();
+                  },
+                );
+              }
+              if (state is ProviderStatsLoaded) {
+                return _buildDashboard(context, state.stats);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return AppBar(
+      title: Tooltip(
+        message: AppLocalization.get(context, 'profile'),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ProfileScreen(user: widget.user, token: widget.token),
+              ),
+            );
           },
-          listener: (context, state) {
-            if (state is ProviderStatsLoaded &&
-                state.pendingOrders != null &&
-                state.pendingOrders!.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PendingOrdersScreen(
-                      orders: state.pendingOrders!,
-                      token: widget.token,
-                      onRefresh: () {
-                        context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
-                        context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
-                      },
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: AppSizes.avatarSm / 2,
+                  backgroundColor: scheme.secondaryContainer,
+                  child: Text(
+                    widget.user.fullName.isNotEmpty
+                        ? widget.user.fullName[0].toUpperCase()
+                        : 'P',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: scheme.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ).then((_) {
-                  if (!mounted) return;
-                  context.read<ProviderBloc>().add(
-                    LoadProviderStats(token: widget.token),
-                  );
-                });
-              });
-            }
-          },
-          builder: (context, state) {
-            if (state is ProviderLoading)
-              return const Center(child: CircularProgressIndicator());
-            if (state is ProviderError)
-              return Center(
-                child: Text(
-                  state.message,
-                  style: const TextStyle(color: Colors.red),
                 ),
-              );
-            if (state is ProviderStatsLoaded) {
-              final s = state.stats;
-              return Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      final bloc = context.read<ProviderBloc>();
-                      bloc.add(LoadProviderStats(token: widget.token));
-                      bloc.add(LoadPendingOrders(token: widget.token));
-                      bloc.add(LoadOfferedOrders(token: widget.token));
-                      await bloc.stream.first;
-                    },
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Responsive.paddingHorizontal(context),
-                        vertical: Responsive.paddingVertical(context),
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: Text(
+                    widget.user.fullName,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        BlocBuilder<NotificationBloc, NotificationState>(
+          builder: (context, nState) {
+            final unread = nState is NotificationsLoaded
+                ? nState.unreadCount
+                : 0;
+            return Stack(
+              children: [
+                IconButton(
+                  tooltip: AppLocalization.get(context, 'notifications'),
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<NotificationBloc>(),
+                          child: NotificationsScreen(token: widget.token),
+                        ),
                       ),
-                      child: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: s.isAvailable
-                                ? Colors.green[50]
-                                : Colors.red[50],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: s.isAvailable
-                                  ? Colors.green[300]!
-                                  : Colors.red[300]!,
-                            ),
-                          ),
-                          child: SwitchListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                            ),
-                            value: s.isAvailable,
-                            onChanged: _updatingAvailability
-                                ? null
-                                : (value) => _setAvailability(value),
-                            title: Text(
-                              AppLocalization.get(
-                                context,
-                                'driver_availability',
-                              ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            subtitle: Text(
-                              s.isAvailable
-                                  ? AppLocalization.get(
-                                      context,
-                                      'driver_available',
-                                    )
-                                  : AppLocalization.get(
-                                      context,
-                                      'driver_unavailable',
-                                    ),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            secondary: Icon(
-                              s.isAvailable
-                                  ? Icons.toggle_on
-                                  : Icons.toggle_off,
-                              color: s.isAvailable
-                                  ? Colors.green
-                                  : Colors.red,
-                              size: 32,
-                            ),
+                    );
+                  },
+                ),
+                if (unread > 0)
+                  PositionedDirectional(
+                    end: 6,
+                    top: 6,
+                    child: Semantics(
+                      label: '$unread',
+                      excludeSemantics: true,
+                      child: Container(
+                        padding: const EdgeInsetsDirectional.all(AppSpacing.xs),
+                        decoration: BoxDecoration(
+                          color: scheme.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: scheme.surface, width: 1.5),
+                        ),
+                        child: Text(
+                          '$unread',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: scheme.onError,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        if (s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount > 0) ...[
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange[300]!),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.pending_actions,
-                                  color: Colors.orange[800],
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    AppLocalization.get(
-                                      context,
-                                      'pending_items_alert',
-                                    ).replaceAll(
-                                      '%d',
-                                      '${s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount}',
-                                    ),
-                                    style: TextStyle(
-                                      color: Colors.orange[900],
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      AppLocalization.get(context, 'daily_earnings'),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '${s.dailyEarnings.toStringAsFixed(0)} ILS',
-                                      style: const TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          '${s.dailyOrderCount}',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.blue,
-                                          ),
-                                        ),
-                                        Text(AppLocalization.get(context, 'today_orders').trim(),
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.black54,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.green[50],
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      AppLocalization.get(context, 'monthly_earnings'),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '${s.monthlyEarnings.toStringAsFixed(0)} ILS',
-                                      style: const TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final state = context.read<ProviderBloc>().state;
-                              if (state is ProviderStatsLoaded &&
-                                  state.pendingOrders != null &&
-                                  state.pendingOrders!.isNotEmpty) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PendingOrdersScreen(
-                                      orders: state.pendingOrders!,
-                                      token: widget.token,
-                                      onRefresh: () {
-                                        context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
-                                        context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
-                                      },
-                                    ),
-                                  ),
-                                ).then((_) {
-                                  if (!mounted) return;
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        BlocBuilder<AppBloc, AppState>(
+          builder: (context, appState) {
+            final isDark = appState.themeMode == ThemeMode.dark;
+            return IconButton(
+              tooltip: AppLocalization.get(context, 'theme'),
+              icon: Icon(
+                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              ),
+              onPressed: () => context.read<AppBloc>().add(ToggleTheme()),
+            );
+          },
+        ),
+        BlocBuilder<AppBloc, AppState>(
+          builder: (context, appState) {
+            final isAr = appState.locale.languageCode == 'ar';
+            return IconButton(
+              tooltip: AppLocalization.get(context, 'language'),
+              icon: Text(isAr ? 'EN' : 'ع', style: theme.textTheme.labelLarge),
+              onPressed: () => context.read<AppBloc>().add(ToggleLocale()),
+            );
+          },
+        ),
+        IconButton(
+          tooltip: AppLocalization.get(context, 'logout'),
+          icon: Icon(Icons.logout, color: scheme.error),
+          onPressed: () {
+            SocketService.instance.disconnect();
+            context.read<AuthBloc>().add(LogoutEvent());
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _refreshDashboard() async {
+    final bloc = context.read<ProviderBloc>();
+    bloc.add(LoadProviderStats(token: widget.token));
+    bloc.add(LoadPendingOrders(token: widget.token));
+    bloc.add(LoadOfferedOrders(token: widget.token));
+    await bloc.stream.firstWhere(
+      (state) => state is ProviderStatsLoaded || state is ProviderError,
+    );
+  }
+
+  // dart format off
+  int _pendingWorkCount(ProviderStats s) => s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount;
+  // dart format on
+
+  Widget _buildDashboard(BuildContext context, ProviderStats s) {
+    final pendingWorkCount = _pendingWorkCount(s);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: Responsive.maxReadableContentWidth,
+        ),
+        child: RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: Responsive.pageInsets(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppSectionHeader(
+                  title: AppLocalization.get(context, 'provider_dashboard'),
+                ),
+                _buildAvailabilityCard(context, s),
+                if (pendingWorkCount > 0) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _buildPendingWorkBanner(context, pendingWorkCount),
+                ],
+                const SizedBox(height: AppSpacing.lg),
+                _buildEarnings(context, s),
+                const SizedBox(height: AppSpacing.lg),
+                AppSectionHeader(
+                  title: AppLocalization.get(context, 'home_quick_actions'),
+                ),
+                AppActionWrap(
+                  children: [
+                    AppActionTile(
+                      icon: Icons.pending_actions_outlined,
+                      title: AppLocalization.get(context, 'pending_orders_btn'),
+                      tone: AppTone.danger,
+                      trailingLabel: '${s.pendingOrdersCount}',
+                      onTap: () {
+                        final state = context.read<ProviderBloc>().state;
+                        if (state is ProviderStatsLoaded &&
+                            state.pendingOrders != null &&
+                            state.pendingOrders!.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PendingOrdersScreen(
+                                orders: state.pendingOrders!,
+                                token: widget.token,
+                                onRefresh: () {
+                                  context.read<ProviderBloc>().add(
+                                    LoadPendingOrders(token: widget.token),
+                                  );
                                   context.read<ProviderBloc>().add(
                                     LoadProviderStats(token: widget.token),
                                   );
-                                });
-                              } else {
-                                context.read<ProviderBloc>().add(
-                                  LoadPendingOrders(token: widget.token),
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(
-                                color: Colors.red,
-                                width: 2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  AppLocalization.get(context, 'pending_orders_btn'),
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '${s.pendingOrdersCount}',
-                                      style: const TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(AppLocalization.get(context, 'order_count').trim(),
-                                      style: TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final state = context.read<ProviderBloc>().state;
-                              if (state is ProviderStatsLoaded &&
-                                  state.offeredOrders != null &&
-                                  state.offeredOrders!.isNotEmpty) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => OfferedOrdersScreen(
-                                      orders: state.offeredOrders!,
-                                      token: widget.token,
-                                      onRefresh: () {
-                                        context.read<ProviderBloc>().add(LoadOfferedOrders(token: widget.token));
-                                        context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
-                                      },
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                context.read<ProviderBloc>().add(
-                                  LoadOfferedOrders(token: widget.token),
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(
-                                color: Colors.blue,
-                                width: 2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  AppLocalization.get(context, 'offered_orders_btn'),
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '${s.offeredOrdersCount}',
-                                      style: const TextStyle(
-                                        color: Colors.blue,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(AppLocalization.get(context, 'order_count').trim(),
-                                      style: TextStyle(
-                                        color: Colors.blue,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider.value(
-                                    value: context.read<ProviderBloc>(),
-                                    child: ProviderActiveOrdersScreen(
-                                      token: widget.token,
-                                    ),
-                                  ),
-                                ),
-                              ).then((_) {
-                                if (!mounted) return;
-                                context.read<ProviderBloc>().add(
-                                  LoadProviderStats(token: widget.token),
-                                );
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(
-                                color: Colors.teal,
-                                width: 2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  AppLocalization.get(context, 'active_orders_btn'),
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '${s.activeOrdersCount}',
-                                      style: const TextStyle(
-                                        color: Colors.teal,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(AppLocalization.get(context, 'order_count').trim(),
-                                      style: TextStyle(
-                                        color: Colors.teal,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final providerBloc =
-                                  context.read<ProviderBloc>();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => RejectedOrdersScreen(
-                                    token: widget.token,
-                                  ),
-                                ),
-                              ).then((_) {
-                                providerBloc.add(
-                                  LoadProviderStats(token: widget.token),
-                                );
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(
-                                color: Colors.grey,
-                                width: 2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  AppLocalization.get(context, 'rejected_orders_btn'),
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '${s.ordersReportCount}',
-                                      style: TextStyle(
-                                        color: Colors.grey[700],
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(AppLocalization.get(context, 'order_count').trim(),
-                                      style: TextStyle(
-                                        color: Colors.grey[700],
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[50],
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                AppLocalization.get(context, 'platform_commission'),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${s.monthlyCommission.toStringAsFixed(0)}' + AppLocalization.get(context, 'commission_body').trim(),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ReportScreen(
-                                    token: widget.token,
-                                    reportType: 'user',
-                                    title: AppLocalization.get(context, 'report_customer'),
-                                  ),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.report_outlined, size: 22, color: Colors.red),
-                            label: const Text(
-                              'الابلاغ عن زبون',
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                                },
                               ),
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.red, width: 1.5),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => SupportChatScreen(token: widget.token),
-                                ),
-                              );
-
-                              if (mounted) {
-                                _loadSupportUnreadCount();
-                              }
-                            },
-                            icon: const Icon(Icons.headset_mic_outlined, size: 22, color: Colors.orange),
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  AppLocalization.get(context, 'contact_support'),
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                if (_supportUnreadCount > 0) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '$_supportUnreadCount',
-                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.orange, width: 1.5),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 0,
-                            ),
-                          ),
-                        ),
-                      ],
+                          ).then((_) {
+                            if (!context.mounted) return;
+                            context.read<ProviderBloc>().add(
+                              LoadProviderStats(token: widget.token),
+                            );
+                          });
+                        } else {
+                          context.read<ProviderBloc>().add(
+                            LoadPendingOrders(token: widget.token),
+                          );
+                        }
+                      },
                     ),
-                  ),
-                  ),
+                    AppActionTile(
+                      icon: Icons.local_offer_outlined,
+                      title: AppLocalization.get(context, 'offered_orders_btn'),
+                      tone: AppTone.info,
+                      trailingLabel: '${s.offeredOrdersCount}',
+                      onTap: () {
+                        final state = context.read<ProviderBloc>().state;
+                        if (state is ProviderStatsLoaded &&
+                            state.offeredOrders != null &&
+                            state.offeredOrders!.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OfferedOrdersScreen(
+                                orders: state.offeredOrders!,
+                                token: widget.token,
+                                onRefresh: () {
+                                  context.read<ProviderBloc>().add(
+                                    LoadOfferedOrders(token: widget.token),
+                                  );
+                                  context.read<ProviderBloc>().add(
+                                    LoadProviderStats(token: widget.token),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        } else {
+                          context.read<ProviderBloc>().add(
+                            LoadOfferedOrders(token: widget.token),
+                          );
+                        }
+                      },
+                    ),
+                    AppActionTile(
+                      icon: Icons.delivery_dining_outlined,
+                      title: AppLocalization.get(context, 'active_orders_btn'),
+                      tone: AppTone.success,
+                      trailingLabel: '${s.activeOrdersCount}',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<ProviderBloc>(),
+                              child: ProviderActiveOrdersScreen(
+                                token: widget.token,
+                              ),
+                            ),
+                          ),
+                        ).then((_) {
+                          if (!context.mounted) return;
+                          context.read<ProviderBloc>().add(
+                            LoadProviderStats(token: widget.token),
+                          );
+                        });
+                      },
+                    ),
+                    AppActionTile(
+                      icon: Icons.assignment_outlined,
+                      title: AppLocalization.get(
+                        context,
+                        'rejected_orders_btn',
+                      ),
+                      tone: AppTone.neutral,
+                      trailingLabel: '${s.ordersReportCount}',
+                      onTap: () {
+                        final providerBloc = context.read<ProviderBloc>();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                RejectedOrdersScreen(token: widget.token),
+                          ),
+                        ).then((_) {
+                          providerBloc.add(
+                            LoadProviderStats(token: widget.token),
+                          );
+                        });
+                      },
+                    ),
+                  ],
                 ),
-              );
-            }
-            return const SizedBox();
-          },
+                const SizedBox(height: AppSpacing.lg),
+                _buildCommissionCard(context, s),
+                const SizedBox(height: AppSpacing.lg),
+                AppActionWrap(
+                  children: [
+                    AppActionTile(
+                      icon: Icons.report_outlined,
+                      title: AppLocalization.get(context, 'report_customer'),
+                      tone: AppTone.danger,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReportScreen(
+                              token: widget.token,
+                              reportType: 'user',
+                              title: AppLocalization.get(
+                                context,
+                                'report_customer',
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    AppActionTile(
+                      icon: Icons.headset_mic_outlined,
+                      title: AppLocalization.get(context, 'contact_support'),
+                      tone: AppTone.accent,
+                      badgeCount: _supportUnreadCount,
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                SupportChatScreen(token: widget.token),
+                          ),
+                        );
+
+                        if (mounted) {
+                          _loadSupportUnreadCount();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xl),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityCard(BuildContext context, ProviderStats s) {
+    final theme = Theme.of(context);
+    final tone = appToneStyle(
+      context,
+      s.isAvailable ? AppTone.success : AppTone.danger,
+    );
+
+    return Material(
+      color: tone.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusDirectional.circular(AppRadius.lg),
+        side: BorderSide(color: tone.border),
+      ),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsetsDirectional.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        value: s.isAvailable,
+        onChanged: _updatingAvailability
+            ? null
+            : (value) => _setAvailability(value),
+        title: Text(
+          AppLocalization.get(context, 'driver_availability'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: tone.foreground,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          s.isAvailable
+              ? AppLocalization.get(context, 'driver_available')
+              : AppLocalization.get(context, 'driver_unavailable'),
+          style: theme.textTheme.bodySmall?.copyWith(color: tone.foreground),
+        ),
+        secondary: Icon(
+          s.isAvailable ? Icons.toggle_on : Icons.toggle_off,
+          color: tone.foreground,
+          size: AppSizes.iconLg,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingWorkBanner(BuildContext context, int total) {
+    final theme = Theme.of(context);
+    final tone = appToneStyle(context, AppTone.warning);
+
+    return Material(
+      color: tone.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusDirectional.circular(AppRadius.md),
+        side: BorderSide(color: tone.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.pending_actions, color: tone.foreground),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                AppLocalization.get(
+                  context,
+                  'pending_items_alert',
+                ).replaceAll('%d', '$total'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: tone.foreground,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            AppStatusBadge(
+              label: '$total',
+              tone: AppTone.warning,
+              icon: Icons.notifications_active_outlined,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEarnings(BuildContext context, ProviderStats s) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 560;
+        final cardWidth = isWide
+            ? (constraints.maxWidth - AppSpacing.md) / 2
+            : constraints.maxWidth;
+
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: [
+            SizedBox(
+              width: cardWidth,
+              child: _buildMetricCard(
+                context,
+                label: AppLocalization.get(context, 'daily_earnings'),
+                value: '${s.dailyEarnings.toStringAsFixed(0)} ILS',
+                tone: AppTone.info,
+                footer: Row(
+                  children: [
+                    Text(
+                      '${s.dailyOrderCount}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: appToneStyle(context, AppTone.info).foreground,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Flexible(
+                      child: Text(
+                        AppLocalization.get(context, 'today_orders').trim(),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: appToneStyle(context, AppTone.info).foreground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _buildMetricCard(
+                context,
+                label: AppLocalization.get(context, 'monthly_earnings'),
+                value: '${s.monthlyEarnings.toStringAsFixed(0)} ILS',
+                tone: AppTone.success,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMetricCard(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required AppTone tone,
+    Widget? footer,
+  }) {
+    final theme = Theme.of(context);
+    final toneStyle = appToneStyle(context, tone);
+
+    return Material(
+      color: toneStyle.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusDirectional.circular(AppRadius.lg),
+        side: BorderSide(color: toneStyle.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: toneStyle.foreground,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              value,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: toneStyle.foreground,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (footer != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              footer,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommissionCard(BuildContext context, ProviderStats s) {
+    final theme = Theme.of(context);
+    final tone = appToneStyle(context, AppTone.warning);
+
+    return Material(
+      color: tone.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusDirectional.circular(AppRadius.lg),
+        side: BorderSide(color: tone.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppLocalization.get(context, 'platform_commission'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: tone.foreground,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '${s.monthlyCommission.toStringAsFixed(0)}'
+              '${AppLocalization.get(context, 'commission_body').trim()}',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: tone.foreground,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );

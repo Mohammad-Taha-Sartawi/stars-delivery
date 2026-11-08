@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stars_delivery/services/api_config.dart';
 
@@ -9,7 +11,19 @@ void main() {
       android: true,
     );
 
-    expect(result, 'http://192.168.1.6:3000');
+    expect(result, 'http://192.168.1.7:3000');
+  });
+
+  test('Android debug discovers the backend across the local subnet', () {
+    final source = File('lib/services/api_config.dart').readAsStringSync();
+
+    expect(source, contains('_scanLocalSubnet'));
+
+    expect(source, contains('NetworkInterface.list'));
+
+    expect(source, contains("'/api/config'"));
+
+    expect(source, contains('start += 32'));
   });
 
   test('release and profile style modes require explicit configuration', () {

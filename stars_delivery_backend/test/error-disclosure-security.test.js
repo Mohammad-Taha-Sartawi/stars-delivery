@@ -15,13 +15,14 @@ const protectedFiles = new Map([
   ['src/index.js', 1],
   ['src/routes/auth.js', 2],
   ['src/routes/passwordRecovery.js', 1],
-  ['src/routes/chat.js', 8],
+  ['src/routes/chat.js', 10],
+  ['src/routes/adminChat.js', 2],
   ['src/routes/notifications.js', 4],
   ['src/routes/offers.js', 5],
   ['src/routes/orders.js', 5],
-  ['src/routes/provider.js', 6],
+  ['src/routes/provider.js', 7],
   ['src/routes/reports.js', 2],
-  ['src/routes/users.js', 12],
+  ['src/routes/users.js', 13],
 ]);
 
 function read(relative) {
@@ -101,7 +102,7 @@ test('all STARS-009A HTTP 500 sites use the safe helper', () => {
     total += calls.length;
   }
 
-  assert.equal(total, 46);
+  assert.equal(total, 52);
 });
 
 test('controlled non-500 application errors remain intact', () => {
@@ -271,7 +272,7 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
     ],
     [
       'src/routes/adminChat.js',
-      { error: 1, failure: 1 },
+      { error: 2, failure: 0 },
     ],
     [
       'src/routes/adminCommissions.js',
@@ -279,7 +280,11 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
     ],
     [
       'src/routes/adminDrivers.js',
-      { error: 6, failure: 6 },
+      { error: 7, failure: 8 },
+    ],
+    [
+      'src/routes/adminOrders.js',
+      { error: 2, failure: 4 },
     ],
     [
       'src/routes/adminReports.js',
@@ -287,7 +292,7 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
     ],
     [
       'src/routes/adminUsers.js',
-      { error: 1, failure: 3 },
+      { error: 2, failure: 3 },
     ],
   ]);
 
@@ -332,11 +337,11 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
     failureTotal += failureCalls.length;
   }
 
-  assert.equal(errorTotal, 14);
-  assert.equal(failureTotal, 15);
+  assert.equal(errorTotal, 19);
+  assert.equal(failureTotal, 20);
   assert.equal(
     errorTotal + failureTotal,
-    29,
+    39,
   );
 });
 

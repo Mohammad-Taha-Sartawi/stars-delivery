@@ -7,7 +7,6 @@ const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const RejectedOrder = require('../models/RejectedOrder');
 const User = require('../models/User');
-const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
@@ -62,25 +61,6 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
     });
     console.log(`[CREATE] saved order=${order._id} status=${order.status}`);
 
-    // Notify available providers in same area (all active providers if no area specified)
-    const providerQuery = {
-      role: 'provider',
-      status: 'active',
-      deleted: { $ne: true },
-      $or: [{ blockedUntil: null }, { blockedUntil: { $exists: false } }, { blockedUntil: { $lte: new Date() } }],
-    };
-    if (orderArea) providerQuery.area = orderArea;
-    const providers = await User.find(providerQuery);
-    const firstImage = images.length > 0 ? images[0] : '';
-    const notifications = providers.map(p => ({
-      userId: p._id, orderId: order._id, type: 'new_order',
-      title: 'طلب توصيل جديد', body: `طلب ${type} في منطقتك: ${description.substring(0, 80)}`,
-      image: firstImage,
-    }));
-    if (notifications.length > 0) {
-      await Notification.insertMany(notifications);
-    }
-
     // Emit real-time event to providers in the same area room
     const io = req.app.get('io');
     if (io) {
@@ -89,11 +69,6 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
         _id, type, description, phone, images, area: oArea, location: oLocation, status, createdAt,
         phoneMasked: phone.slice(0, -3) + '***',
       });
-      // Notify each connected provider to refresh their notification count
-      for (const p of providers) {
-        const unreadCount = await Notification.countDocuments({ userId: p._id, read: false });
-        io.to(`user:${p._id}`).emit('notification_count', { unreadCount });
-      }
     }
 
     // Include image URLs in response
@@ -108,7 +83,26 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
 
 router.get('/', auth, requireRole('customer'), async (req, res) => {
   try {
+    await lifecycle.expireStaleOffers();
+    await lifecycle.finalizeExpiredOrders();
+
     const orders = await Order.find({ customerId: req.userId, status: { $ne: 'cancelled' } }).sort({ createdAt: -1 }).lean();
+
+    for (const order of orders) {
+      if (
+        order.status === 'pending'
+        && !order.offerSuspendedUntil
+        && !order.offerWindowExpiredAt
+      ) {
+        const suspended = await lifecycle.suspendIfUnanswered(order);
+
+        if (suspended) {
+          order.offerWindowExpiredAt = suspended.offerWindowExpiredAt;
+          order.offerSuspendedUntil = suspended.offerSuspendedUntil;
+        }
+      }
+    }
+
     res.json(orders);
   } catch (err) {
     sendInternalServerError(res);
@@ -120,6 +114,9 @@ router.get('/:id', auth, async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(404).json({ error: 'Order not found' });
     }
+
+    await lifecycle.expireStaleOffers({ orderId: req.params.id });
+    await lifecycle.finalizeExpiredOrders({ orderId: req.params.id });
 
     const order = await Order.findById(req.params.id)
       .populate('customerId', 'fullName publicId')
@@ -142,6 +139,20 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'Order not available' });
     }
 
+    if (
+      isCustomer
+      && order.status === 'pending'
+      && !order.offerSuspendedUntil
+      && !order.offerWindowExpiredAt
+    ) {
+      const suspended = await lifecycle.suspendIfUnanswered(order);
+
+      if (suspended) {
+        order.offerWindowExpiredAt = suspended.offerWindowExpiredAt;
+        order.offerSuspendedUntil = suspended.offerSuspendedUntil;
+      }
+    }
+
     if (req.userRole === 'provider') {
       if (!isAssignedProvider) {
         order.phone = order.phone ? order.phone.slice(0, -3) + '***' : '';
@@ -161,6 +172,17 @@ router.get('/:id', auth, async (req, res) => {
         && req.authUser.offerCooldownUntil > new Date()
           ? req.authUser.offerCooldownUntil
           : null;
+    }
+
+    if (isCustomer) {
+      order.rejectedByDriversCount = await RejectedOrder.countDocuments({
+        orderId: order._id,
+        $or: [
+          { reason: 'driver_rejected' },
+          { reason: { $exists: false } },
+          { reason: null },
+        ],
+      });
     }
 
     res.json(order);

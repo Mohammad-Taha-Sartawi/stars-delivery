@@ -1,120 +1,455 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../services/responsive.dart';
-import '../services/localization_service.dart';
 import '../bloc/app/app_bloc.dart';
+import '../services/api_config.dart';
+import '../services/localization_service.dart';
+import '../services/responsive.dart';
+import '../widgets/image_preview.dart';
 
 class OfferedOrdersScreen extends StatelessWidget {
   final List<Map<String, dynamic>> orders;
   final String token;
   final VoidCallback? onRefresh;
-  const OfferedOrdersScreen({super.key, required this.orders, required this.token, this.onRefresh});
+  const OfferedOrdersScreen({
+    super.key,
+    required this.orders,
+    required this.token,
+    this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isAr = context.read<AppBloc>().state.locale.languageCode == 'ar';
+    final isAr = context.watch<AppBloc>().state.locale.languageCode == 'ar';
+    final scheme = Theme.of(context).colorScheme;
+
+    return Directionality(
+      textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: scheme.surface,
+          elevation: 0,
+          title: Text(
+            AppLocalization.get(context, 'offered_orders_btn'),
+            style: TextStyle(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+          centerTitle: true,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: scheme.onSurface),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            onRefresh?.call();
+          },
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: orders.isEmpty
+                  ? ListView(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.local_offer_outlined,
+                                size: 48,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                AppLocalization.get(
+                                  context,
+                                  'no_offered_orders',
+                                ),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Responsive.paddingHorizontal(context),
+                        vertical: Responsive.paddingVertical(context),
+                      ),
+                      itemCount: orders.length,
+                      itemBuilder: (context, index) {
+                        final o = orders[index];
+                        return _buildOrderCard(context, o, scheme);
+                      },
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(
+    BuildContext context,
+    Map<String, dynamic> o,
+    ColorScheme scheme,
+  ) {
     final typeLabels = {
       'product': AppLocalization.get(context, 'product'),
       'people': AppLocalization.get(context, 'people'),
       'goods': AppLocalization.get(context, 'goods'),
     };
-    return Directionality(
-      textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: const Text('الطلبات التي تم تقديم عرض سعر لها', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 15)),
-          centerTitle: true,
-          leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black87), onPressed: () => Navigator.pop(context)),
-        ),
-        body: RefreshIndicator(
-          onRefresh: () async { onRefresh?.call(); },
-          child: Center(
-            child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: orders.isEmpty
-                ? ListView(children: const [Center(child: Padding(padding: EdgeInsets.all(40), child: Text('لا توجد طلبات', style: TextStyle(fontSize: 16, color: Colors.grey))))])
-                : ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: Responsive.paddingHorizontal(context), vertical: Responsive.paddingVertical(context)),
-                    itemCount: orders.length,
-                    itemBuilder: (_, i) {
-                      final o = orders[i];
-                      final c = o['customerId'];
-                      final name = c is Map ? (c['fullName'] ?? '') : '';
-                      final pid = c is Map ? (c['publicId'] ?? '') : '';
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(typeLabels[o['type']] ?? o['type'] ?? '', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(10)),
-                                    child: Text('بانتظار الرد', style: TextStyle(fontSize: 11, color: Colors.blue[700])),
-                                  ),
-                                ],
-                              ),
-                              if (name.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.person_outline, size: 13, color: Colors.orange),
-                                    const SizedBox(width: 4),
-                                    Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                                    if (pid.isNotEmpty) ...[
-                                      const SizedBox(width: 6),
-                                      Text('#$pid', style: TextStyle(fontSize: 11, color: Colors.orange[700])),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                              const SizedBox(height: 6),
-                              if (o['offeredPrice'] != null && o['offeredPrice'] != 0) ...[
-                                Row(
-                                  children: [
-                                    const Icon(Icons.monetization_on, size: 13, color: Colors.green),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'تم عرض السعر: ${(o['offeredPrice'] as num).toStringAsFixed(0)} ILS',
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.green),
-                                    ),
-                                    if (o['offeredTime'] != null && o['offeredTime'] != 0) ...[
-                                      const SizedBox(width: 12),
-                                      const Icon(Icons.timer_outlined, size: 13, color: Colors.orange),
-                                      const SizedBox(width: 4),
-                                      Text('${o['offeredTime']} دقيقة', style: const TextStyle(fontSize: 12, color: Colors.orange)),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                              const SizedBox(height: 6),
-                              Text(o['description'] ?? '', style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                              if (o['area'] != null && o['area'].toString().isNotEmpty) ...[
-                                const SizedBox(height: 3),
-                                Row(children: [
-                                  const Icon(Icons.location_on, size: 13, color: Colors.grey),
-                                  const SizedBox(width: 4),
-                                  Text(o['area'].toString(), style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                                ]),
-                              ],
-                            ],
+    final typeLabel = typeLabels[o['type']] ?? o['type'] ?? '';
+    final typeIcon = switch (o['type']) {
+      'product' => Icons.inventory_2_outlined,
+      'people' => Icons.groups_outlined,
+      'goods' => Icons.local_shipping_outlined,
+      _ => Icons.local_shipping_outlined,
+    };
+    final customer = o['customerId'];
+    final customerName =
+        customer is Map ? (customer['fullName'] ?? '').toString() : '';
+    final customerPublicId =
+        customer is Map ? (customer['publicId'] ?? '').toString() : '';
+    final phone = (o['phone'] ?? '').toString();
+    final area = (o['area'] ?? '').toString();
+    final description = (o['description'] ?? '').toString();
+    final images =
+        o['images'] is List ? (o['images'] as List) : const [];
+    final offeredPrice = (o['offeredPrice'] as num?)?.toDouble() ?? 0;
+    final offeredTime = (o['offeredTime'] as num?)?.toInt() ?? 0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    typeIcon,
+                    color: scheme.onPrimaryContainer,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    typeLabel,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    AppLocalization.get(context, 'awaiting_response'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onTertiaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (description.isNotEmpty) ...[
+              Text(
+                AppLocalization.get(context, 'description'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.5,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            _buildInfoRow(
+              context,
+              icon: Icons.person_outline,
+              label: AppLocalization.get(context, 'customer'),
+              value: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      customerName.isNotEmpty
+                          ? customerName
+                          : AppLocalization.get(context, 'unknown'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (customerPublicId.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '#$customerPublicId',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: scheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            _buildInfoRow(
+              context,
+              icon: Icons.phone_outlined,
+              label: AppLocalization.get(context, 'phone_number'),
+              value: Text(
+                phone.isNotEmpty
+                    ? phone
+                    : AppLocalization.get(context, 'hidden_phone'),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (area.isNotEmpty)
+              _buildInfoRow(
+                context,
+                icon: Icons.location_on_outlined,
+                label: AppLocalization.get(context, 'area_region'),
+                value: Text(
+                  area,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            _buildOfferHighlight(context, scheme, offeredPrice, offeredTime),
+            if (images.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                AppLocalization.get(context, 'images'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 84,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: images.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final img = images[i].toString();
+                    final imageUrl = img.startsWith('http')
+                        ? img
+                        : '${ApiConfig.serverUrl}$img';
+                    return GestureDetector(
+                      onTap: () => ImagePreview.show(context, imageUrl),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          imageUrl,
+                          width: 84,
+                          height: 84,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            width: 84,
+                            height: 84,
+                            color: scheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-          ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Widget value,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: scheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                DefaultTextStyle.merge(
+                  style: TextStyle(color: scheme.onSurface),
+                  child: value,
+                ),
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfferHighlight(
+    BuildContext context,
+    ColorScheme scheme,
+    double price,
+    int time,
+  ) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalization.get(context, 'your_price'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSecondaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${price.toStringAsFixed(0)} ${AppLocalization.get(context, 'shekel')}',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSecondaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (time > 0) ...[
+            Container(
+              width: 1,
+              height: 44,
+              color: scheme.onSecondaryContainer.withValues(alpha: 0.25),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalization.get(context, 'offer_time'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSecondaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$time ${AppLocalization.get(context, 'minutes_suffix')}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

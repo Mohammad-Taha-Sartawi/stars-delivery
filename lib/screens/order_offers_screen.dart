@@ -6,6 +6,8 @@ import '../bloc/offer/offer_event.dart';
 import '../bloc/offer/offer_state.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
+import '../services/order_service.dart';
+import '../services/socket_service.dart';
 import '../bloc/app/app_bloc.dart';
 
 class OrderOffersScreen extends StatefulWidget {
@@ -21,9 +23,14 @@ class OrderOffersScreen extends StatefulWidget {
 
 class _OrderOffersScreenState extends State<OrderOffersScreen> {
   final Set<String> _expiredOfferIds = {};
+  final OrderService _orderService = OrderService();
   Timer? _offerTimer;
+  StreamSubscription? _newOfferSub;
   bool _cancelRequested = false;
   bool _resendRequested = false;
+  bool _orderWindowExpired = false;
+  String _orderType = '';
+  int _rejectedByDriversCount = 0;
 
   @override
   void initState() {
@@ -31,6 +38,23 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
     context.read<OfferBloc>().add(
       LoadOffersEvent(token: widget.token, orderId: widget.orderId),
     );
+    _loadOrderWindowState();
+    _newOfferSub = SocketService.instance.onNewOffer.listen((data) {
+      if (!mounted) {
+        return;
+      }
+
+      final incomingOrderId = data['orderId']?.toString();
+
+      if (incomingOrderId == null || incomingOrderId == widget.orderId) {
+        context.read<OfferBloc>().add(
+          LoadOffersEvent(
+            token: widget.token,
+            orderId: widget.orderId,
+          ),
+        );
+      }
+    });
     _offerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) {
         return;
@@ -55,6 +79,7 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
         setState(() {});
 
         if (shouldReload) {
+          _loadOrderWindowState();
           context.read<OfferBloc>().add(
             LoadOffersEvent(
               token: widget.token,
@@ -69,12 +94,49 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
   @override
   void dispose() {
     _offerTimer?.cancel();
+    _newOfferSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadOrderWindowState() async {
+    try {
+      final order = await _orderService.getOrder(
+        widget.token,
+        widget.orderId,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _orderWindowExpired =
+            order['status'] == 'pending' &&
+            order['offerWindowExpiredAt'] != null;
+        _orderType = order['type']?.toString() ?? '';
+        _rejectedByDriversCount =
+            (order['rejectedByDriversCount'] as num?)?.toInt() ?? 0;
+      });
+    } catch (_) {}
+  }
+
+  String _typeLabel(String type) {
+    switch (type) {
+      case 'product':
+        return AppLocalization.get(context, 'product');
+      case 'people':
+        return AppLocalization.get(context, 'people');
+      case 'goods':
+        return AppLocalization.get(context, 'goods');
+      default:
+        return type;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isAr = context.watch<AppBloc>().state.locale.languageCode == 'ar';
+    final typeLabel = _typeLabel(_orderType);
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
@@ -82,7 +144,9 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
           backgroundColor: Colors.white,
           elevation: 0,
           title: Text(
-            AppLocalization.get(context, 'offers_list'),
+            typeLabel.isEmpty
+                ? AppLocalization.get(context, 'offers_list')
+                : '${AppLocalization.get(context, 'offers_list')} • $typeLabel',
             style: const TextStyle(
               color: Colors.black87,
               fontWeight: FontWeight.bold,
@@ -117,6 +181,7 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                 }
                 if (state is OffersLoaded && _resendRequested) {
                   _resendRequested = false;
+                  setState(() => _orderWindowExpired = false);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -146,42 +211,64 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              AppLocalization.get(context, 'no_offers'),
-                              style: const TextStyle(
-                                color: Colors.grey,
+                              _rejectedByDriversCount > 0
+                                  ? AppLocalization.get(
+                                      context,
+                                      'order_rejected_by_drivers_count',
+                                    ).replaceAll(
+                                      '%d',
+                                      '$_rejectedByDriversCount',
+                                    )
+                                  : AppLocalization.get(
+                                      context,
+                                      'awaiting_driver_offers',
+                                    ),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _rejectedByDriversCount > 0
+                                    ? Colors.red[700]
+                                    : Colors.grey,
                                 fontSize: 16,
+                                fontWeight: _rejectedByDriversCount > 0
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                               ),
                             ),
                             const SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  setState(() => _resendRequested = true);
-                                  context.read<OfferBloc>().add(
-                                    ResendOrderEvent(
-                                      token: widget.token,
-                                      orderId: widget.orderId,
+                            if (_orderWindowExpired) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    setState(() => _resendRequested = true);
+                                    context.read<OfferBloc>().add(
+                                      ResendOrderEvent(
+                                        token: widget.token,
+                                        orderId: widget.orderId,
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(
+                                    AppLocalization.get(
+                                      context,
+                                      'resend_order',
                                     ),
-                                  );
-                                },
-                                icon: const Icon(Icons.refresh),
-                                label: Text(
-                                  AppLocalization.get(context, 'resend_order'),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
+                              const SizedBox(height: 10),
+                            ],
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(

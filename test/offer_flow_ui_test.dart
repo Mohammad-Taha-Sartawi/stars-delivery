@@ -35,4 +35,16 @@ void main() {
     expect(screen, contains("'time_required'"));
     expect(screen, contains("'invalid_time'"));
   });
+
+  test('customer offers screen refreshes live when a driver sends an offer', () {
+    final source = File('lib/screens/order_offers_screen.dart').readAsStringSync();
+
+    expect(source, contains('_newOfferSub'));
+
+    expect(source, contains('onNewOffer'));
+
+    expect(source, contains('incomingOrderId'));
+
+    expect(source, contains('LoadOffersEvent'));
+  });
 }

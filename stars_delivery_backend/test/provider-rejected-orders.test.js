@@ -68,7 +68,7 @@ test(
 
     assert.match(
       routes,
-      /RejectedOrder\.find\(\s*\{\s*providerId:\s*req\.userId\s*\}\s*\)/,
+      /RejectedOrder\.find\(\s*\{\s*providerId:\s*req\.userId,\s*createdAt:/s,
     );
 
     assert.match(routes, /excludedOrderIds/);
@@ -85,6 +85,28 @@ test(
     assert.match(routes, /recordType:\s*'delivered'/);
 
     assert.match(routes, /recordType:\s*'rejected'/);
+  },
+);
+
+test(
+  'driver report exposes full customer contact only for delivered orders',
+  () => {
+    const routes = source('src/routes/provider.js');
+
+    assert.match(
+      routes,
+      /const delivered = deliveredOrders\.map\(o => \(\{/,
+    );
+
+    assert.doesNotMatch(
+      routes,
+      /deliveredOrders\.map\(o => maskedOrder/,
+    );
+
+    assert.match(
+      routes,
+      /maskedOrder\(\{\s*\.\.\.order,\s*recordType: 'rejected'/s,
+    );
   },
 );
 

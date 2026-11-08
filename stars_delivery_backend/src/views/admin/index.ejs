@@ -27,6 +27,7 @@
         <div class="stat-card blue" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="users" data-admin-arg-2="all" data-admin-arg-3="جميع المستخدمين"><span class="icon"><i class="fas fa-user-friends"></i></span><div class="number" id="totalUsers">0</div><div class="label">إجمالي المستخدمين</div></div>
         <div class="stat-card green" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="users" data-admin-arg-2="active" data-admin-arg-3="المستخدمين النشطين"><span class="icon"><i class="fas fa-check-circle"></i></span><div class="number" id="activeUsers">0</div><div class="label">نشطون (مستخدمين)</div></div>
         <div class="stat-card red" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="users" data-admin-arg-2="inactive" data-admin-arg-3="المستخدمين غير النشطين"><span class="icon"><i class="fas fa-times-circle"></i></span><div class="number" id="inactiveUsers">0</div><div class="label">غير نشطين (مستخدمين)</div></div>
+        <div class="stat-card green no-click"><span class="icon"><i class="fas fa-toggle-on"></i></span><div class="number" id="availableDrivers">0</div><div class="label">سائقون متاحون الآن</div></div>
       </div>
       <div class="triple-metrics">
         <div class="metric-card card-products"><div class="label"><span><i class="fas fa-shopping-bag"></i> طلبات المنتجات</span><span><i class="fas fa-arrow-up" data-presentation="p002"></i> +12%</span></div><div class="value" id="prodCount">0</div><div class="sub-info"><span><i class="fas fa-clock"></i> متوسط الانتظار: <span id="prodWait">4</span> د</span><span><i class="fas fa-check-circle"></i> نشط: <span id="prodActive">6</span></span></div></div>
@@ -45,6 +46,35 @@
       </div>
     </div>
 
+    <!-- الطلبات -->
+    <div id="page-orders" class="page-section">
+      <div class="top-header"><h1>الطلبات <small>جميع طلبات التوصيل والنقل</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplayOrders">جاري التحميل...</span></div></div>
+      <div class="search-container">
+        <div class="search-box">
+          <input id="orderSearchInput" type="text" placeholder="رقم الطلب أو وصف الطلب...">
+          <select id="orderStatusFilter">
+            <option value="all">كل الحالات</option>
+            <option value="pending">قيد الانتظار</option>
+            <option value="offered">عروض متوفرة</option>
+            <option value="accepted">تم قبول عرض</option>
+            <option value="fulfilling">جاري العمل على الطلب</option>
+            <option value="completed">تم انجاز الطلب</option>
+            <option value="cancelled">تم إلغاء الطلب</option>
+            <option value="expired">انتهت مدة قبول السعر</option>
+          </select>
+          <select id="orderTypeFilter">
+            <option value="all">كل الأنواع</option>
+            <option value="product">طلب منتج</option>
+            <option value="people">نقل أشخاص</option>
+            <option value="goods">نقل بضاعة</option>
+          </select>
+          <input id="orderAreaFilter" type="text" placeholder="المنطقة (اختياري)">
+          <button id="orderSearchBtn"><i class="fas fa-search"></i> بحث</button>
+        </div>
+      </div>
+      <div id="ordersContent" class="result-card"></div>
+    </div>
+
     <!-- السائقين -->
     <div id="page-drivers" class="page-section">
       <div class="top-header"><h1>إدارة السائقين <small>بحث برقم السائق (أرقام فقط)</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay2">جاري التحميل...</span></div></div>
@@ -55,6 +85,7 @@
           <button class="back-home" data-page="dashboard"><i class="fas fa-arrow-right"></i> الرئيسية</button>
         </div>
         <div id="driverResult" class="result-card"></div>
+        <div id="driversList" class="result-card"></div>
       </div>
     </div>
 
@@ -68,6 +99,7 @@
           <button class="back-home" data-page="dashboard"><i class="fas fa-arrow-right"></i> الرئيسية</button>
         </div>
         <div id="userResult" class="result-card"></div>
+        <div id="usersList" class="result-card"></div>
       </div>
     </div>
 

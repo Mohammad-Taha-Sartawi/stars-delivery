@@ -36,6 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _providerDocumentPicker = ImagePicker();
 
   ProviderRegistrationDocument? _driverLicenseDocument;
+  final Set<String> _serviceTypes = {'product', 'people', 'goods'};
 
   bool _isLogin = true;
   bool _passwordMatch = true;
@@ -288,6 +289,37 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 16),
                               if (_selectedRole == 'provider') ...[
+                                Text(
+                                  AppLocalization.get(context, 'service_types'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: ['product', 'people', 'goods']
+                                      .map(
+                                        (type) => FilterChip(
+                                          label: Text(
+                                            AppLocalization.get(context, type),
+                                          ),
+                                          selected: _serviceTypes.contains(type),
+                                          onSelected: (selected) {
+                                            setState(() {
+                                              if (selected) {
+                                                _serviceTypes.add(type);
+                                              } else {
+                                                _serviceTypes.remove(type);
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                                const SizedBox(height: 16),
                                 Text(
                                   AppLocalization.get(
                                     context,
@@ -859,6 +891,19 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
+      if (_selectedRole == 'provider' && _serviceTypes.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalization.get(context, 'service_type_required'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+
+        return;
+      }
+
       if (_selectedRole == 'provider' && _driverLicenseDocument == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -985,6 +1030,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
         role: _selectedRole,
         area: _selectedArea ?? '',
+        serviceTypes: _serviceTypes.toList(),
         driverLicenseDocument: driverLicenseDocument,
       ),
     );

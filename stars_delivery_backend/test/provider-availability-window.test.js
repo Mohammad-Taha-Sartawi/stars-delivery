@@ -21,7 +21,7 @@ test(
 );
 
 test(
-  'blocked providers receive no available orders or order notifications',
+  'blocked or unavailable providers receive no available orders',
   () => {
     const provider = source('src/routes/provider.js');
 
@@ -30,21 +30,29 @@ test(
       /user\.blockedUntil > new Date\(\)/,
     );
 
-    assert.match(
-      provider,
-      /pendingOrdersCount = blocked \? 0/,
-    );
+    assert.match(provider, /blocked \|\| unavailable/);
+
+    assert.match(provider, /user\.isAvailable === false/);
 
     assert.match(
       provider,
       /blockedUntil: blocked \? user\.blockedUntil : null/,
     );
 
-    const orders = source('src/routes/orders.js');
+    assert.match(
+      provider,
+      /router\.put\('\/availability'/,
+    );
+
+    assert.match(provider, /isAvailable: available/);
 
     assert.match(
-      orders,
-      /blockedUntil: \{ \$lte: new Date\(\) \}/,
+      provider,
+      /isAvailable: user\.isAvailable !== false/,
     );
+
+    const users = source('src/routes/users.js');
+
+    assert.match(users, /isAvailable: \{ \$ne: false \}/);
   },
 );

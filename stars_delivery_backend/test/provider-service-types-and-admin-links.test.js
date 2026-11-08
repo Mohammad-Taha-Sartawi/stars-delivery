@@ -1,0 +1,91 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+
+const {
+  normalizeServiceTypes,
+  serviceTypesFromAdminLabel,
+  serviceTypesLabel,
+} = require('../src/services/providerServiceTypes');
+
+const backendRoot = path.resolve(__dirname, '..');
+
+function source(file) {
+  return fs.readFileSync(path.join(backendRoot, file), 'utf8');
+}
+
+test('provider service types normalize and map to dashboard labels', () => {
+  assert.deepEqual(
+    normalizeServiceTypes('people, product,product,unknown'),
+    ['people', 'product'],
+  );
+
+  assert.deepEqual(
+    serviceTypesFromAdminLabel('توصيل ركاب + منتجات'),
+    ['product', 'people'],
+  );
+
+  assert.deepEqual(
+    serviceTypesFromAdminLabel('الكل (ركاب + منتجات + بضائع)'),
+    ['product', 'people', 'goods'],
+  );
+
+  assert.equal(serviceTypesLabel([]), 'جميع الخدمات');
+  assert.equal(serviceTypesLabel(['goods']), 'نقل بضائع');
+});
+
+test('provider registration and approval preserve specialty data', () => {
+  const auth = source('src/routes/auth.js');
+  const adminDrivers = source('src/routes/adminDrivers.js');
+  const pendingModel = source('src/models/PendingProvider.js');
+  const userModel = source('src/models/User.js');
+
+  assert.match(auth, /normalizeServiceTypes/);
+  assert.match(auth, /serviceTypes,/);
+  assert.match(pendingModel, /serviceTypes/);
+  assert.match(userModel, /serviceTypes/);
+  assert.match(adminDrivers, /serviceTypesFromAdminLabel/);
+  assert.match(adminDrivers, /serviceTypes:\s*pending\.serviceTypes/);
+});
+
+test('provider order feed is scoped to the provider specialities', () => {
+  const provider = source('src/routes/provider.js');
+  const lifecycle = source('src/services/orderLifecycle.js');
+
+  assert.match(provider, /normalizeServiceTypes\(user\.serviceTypes\)/);
+  assert.match(provider, /areaFilter\.type = \{ \$in: serviceTypes \}/);
+  assert.match(lifecycle, /providerServiceTypes/);
+  assert.match(lifecycle, /orderFilter\.type = \{ \$in: providerServiceTypes \}/);
+});
+
+test('dashboard exposes orders, driver availability and driver reports', () => {
+  const index = source('src/index.js');
+  const adminDrivers = source('src/routes/adminDrivers.js');
+  const adminOrders = source('src/routes/adminOrders.js');
+  const adminApi = source('src/routes/adminApi.js');
+
+  assert.match(
+    index,
+    /app\.use\('\/admin\/orders', requireAdminSession, adminCsrfProtection, adminOrderRoutes\)/,
+  );
+
+  assert.match(adminDrivers, /router\.put\('\/:id\/availability'/);
+  assert.match(adminDrivers, /router\.get\('\/:id\/reports'/);
+  assert.match(adminDrivers, /phoneNumbers\?\.find/);
+
+  assert.match(adminOrders, /router\.post\('\/:id\/cancel'/);
+  assert.match(adminOrders, /router\.post\('\/:id\/resend'/);
+  assert.match(adminOrders, /router\.post\('\/:id\/end-suspension'/);
+  assert.match(adminOrders, /router\.post\('\/:id\/offers\/:offerId\/reject'/);
+  assert.match(adminOrders, /populate\('customerId'/);
+  assert.match(adminOrders, /populate\('providerId'/);
+
+  assert.match(adminApi, /availableDrivers/);
+});
+
+test('admin user search maps stored phone numbers', () => {
+  const adminUsers = source('src/routes/adminUsers.js');
+
+  assert.match(adminUsers, /phoneNumbers\?\.find/);
+});

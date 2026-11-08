@@ -11,7 +11,7 @@ const orderSchema = new mongoose.Schema({
   location: { type: String, default: '' },
   status: {
     type: String,
-    enum: ['pending', 'offered', 'accepted', 'fulfilling', 'completed', 'cancelled'],
+    enum: ['pending', 'offered', 'accepted', 'fulfilling', 'completed', 'cancelled', 'expired'],
     default: 'pending',
   },
   price: { type: Number, default: 0 },
@@ -19,6 +19,8 @@ const orderSchema = new mongoose.Schema({
   platformCommission: { type: Number, default: 0 },
   estimatedTime: { type: Number, default: 0 },
   acceptedAt: { type: Date, default: null },
+  offerWindowExpiredAt: { type: Date, default: null },
+  offerSuspendedUntil: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   completedAt: { type: Date, default: null },
 });

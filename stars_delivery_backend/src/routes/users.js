@@ -22,6 +22,44 @@ const {
 const router = express.Router();
 router.use(auth, requireRole('customer', 'provider'));
 
+router.get('/available-providers', requireRole('customer'), async (req, res) => {
+  try {
+    const now = new Date();
+    const area = req.authUser.area || req.query.area || '';
+    const filter = {
+      role: 'provider',
+      status: 'active',
+      deleted: { $ne: true },
+      isAvailable: { $ne: false },
+      $and: [
+        {
+          $or: [
+            { blockedUntil: null },
+            { blockedUntil: { $exists: false } },
+            { blockedUntil: { $lte: now } },
+          ],
+        },
+        {
+          $or: [
+            { offerCooldownUntil: null },
+            { offerCooldownUntil: { $exists: false } },
+            { offerCooldownUntil: { $lte: now } },
+          ],
+        },
+      ],
+    };
+
+    if (area) {
+      filter.area = area;
+    }
+
+    const count = await User.countDocuments(filter);
+    res.json({ count, area });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
 router.put('/location', async (req, res) => {
   try {
     const { latitude, longitude, area } = req.body;

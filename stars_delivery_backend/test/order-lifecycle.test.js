@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const Offer = require('../src/models/Offer');
 const Order = require('../src/models/Order');
+const RejectedOrder = require('../src/models/RejectedOrder');
 const User = require('../src/models/User');
 const Notification = require('../src/models/Notification');
 const lifecycle = require('../src/services/orderLifecycle');
@@ -77,6 +78,7 @@ test('submitOffer serializes on the provider and rejects an existing provider/or
   const original = {
     startSession: mongoose.startSession,
     userFindOneAndUpdate: User.findOneAndUpdate,
+    rejectedFindOne: RejectedOrder.findOne,
     offerFindOne: Offer.findOne,
     orderUpdateOne: Order.updateOne,
     offerCreate: Offer.create,
@@ -97,6 +99,26 @@ test('submitOffer serializes on the provider and rejects an existing provider/or
           _id: 'provider-1',
           fullName: 'Provider',
         }),
+      };
+    };
+
+    RejectedOrder.findOne = (filter) => {
+      assert.deepEqual(filter, {
+        orderId: 'order-1',
+        providerId: 'provider-1',
+      });
+
+      sequence.push('rejected-check');
+
+      return {
+        select() {
+          return this;
+        },
+        session(activeSession) {
+          assert.equal(activeSession, session);
+          return this;
+        },
+        lean: async () => null,
       };
     };
 
@@ -149,6 +171,7 @@ test('submitOffer serializes on the provider and rejects an existing provider/or
 
     assert.deepEqual(sequence, [
       'provider-lock',
+      'rejected-check',
       'duplicate-check',
     ]);
 
@@ -158,10 +181,89 @@ test('submitOffer serializes on the provider and rejects an existing provider/or
   } finally {
     mongoose.startSession = original.startSession;
     User.findOneAndUpdate = original.userFindOneAndUpdate;
+    RejectedOrder.findOne = original.rejectedFindOne;
     Offer.findOne = original.offerFindOne;
     Order.updateOne = original.orderUpdateOne;
     Offer.create = original.offerCreate;
     Notification.create = original.notificationCreate;
+  }
+});
+
+test('submitOffer blocks a provider who already rejected the order', async () => {
+  const session = {
+    withTransaction: async (work) => work(session),
+    endSession: async () => {},
+  };
+
+  const original = {
+    startSession: mongoose.startSession,
+    userFindOneAndUpdate: User.findOneAndUpdate,
+    rejectedFindOne: RejectedOrder.findOne,
+    offerFindOne: Offer.findOne,
+    orderUpdateOne: Order.updateOne,
+  };
+
+  let duplicateChecks = 0;
+  let orderWrites = 0;
+
+  try {
+    mongoose.startSession = async () => session;
+
+    User.findOneAndUpdate = () => ({
+      lean: async () => ({
+        _id: 'provider-1',
+        fullName: 'Provider',
+      }),
+    });
+
+    RejectedOrder.findOne = (filter) => {
+      assert.deepEqual(filter, {
+        orderId: 'order-1',
+        providerId: 'provider-1',
+      });
+
+      return {
+        select() {
+          return this;
+        },
+        session(activeSession) {
+          assert.equal(activeSession, session);
+          return this;
+        },
+        lean: async () => ({ _id: 'rejection-1' }),
+      };
+    };
+
+    Offer.findOne = () => {
+      duplicateChecks += 1;
+      throw new Error('duplicate lookup must not run');
+    };
+
+    Order.updateOne = () => {
+      orderWrites += 1;
+      throw new Error('order mutation must not run');
+    };
+
+    await assert.rejects(
+      () => lifecycle.submitOffer({
+        orderId: 'order-1',
+        providerId: 'provider-1',
+        price: 20,
+        estimatedTime: 10,
+      }),
+      (error) =>
+        error instanceof lifecycle.LifecycleConflict
+        && error.code === 'OFFER_NOT_AVAILABLE'
+    );
+
+    assert.equal(duplicateChecks, 0);
+    assert.equal(orderWrites, 0);
+  } finally {
+    mongoose.startSession = original.startSession;
+    User.findOneAndUpdate = original.userFindOneAndUpdate;
+    RejectedOrder.findOne = original.rejectedFindOne;
+    Offer.findOne = original.offerFindOne;
+    Order.updateOne = original.orderUpdateOne;
   }
 });
 
@@ -247,7 +349,7 @@ test('acceptance passes the transaction session to every database mutation', asy
     };
 
     await lifecycle.acceptOffer({ offerId: 'offer-1', customerId: 'customer-1' });
-    assert.equal(writes.length, 8);
+    assert.equal(writes.length, 6);
     assert.ok(writes.every((activeSession) => activeSession === session));
   } finally {
     mongoose.startSession = original.startSession;
@@ -668,7 +770,6 @@ test('transitionOrder requires provider ownership and exact source state', async
     });
 
     assert.equal(result.status, 'fulfilling');
-    assert.equal(notificationSession, session);
   } finally {
     mongoose.startSession = original.startSession;
     Order.findOneAndUpdate = original.orderFindOneAndUpdate;

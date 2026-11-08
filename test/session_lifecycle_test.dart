@@ -74,6 +74,7 @@ class FakeAuthGateway implements AuthGateway {
     String role,
     String area, {
     bool privacyPolicy = true,
+    List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
   }) {
     throw UnimplementedError();

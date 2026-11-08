@@ -103,6 +103,7 @@ updateClocks();
 // ================================================
 const pages = {
   dashboard: document.getElementById('page-dashboard'),
+  orders: document.getElementById('page-orders'),
   drivers: document.getElementById('page-drivers'),
   users: document.getElementById('page-users'),
   commissions: document.getElementById('page-commissions'),
@@ -129,6 +130,9 @@ document.querySelectorAll('.sidebar ul li[data-page]').forEach(item => {
     switchPage(page);
     document.querySelectorAll('.sidebar ul li').forEach(li => li.classList.remove('active'));
     this.classList.add('active');
+    if (page === 'orders') loadOrders();
+    if (page === 'drivers') loadDriversList();
+    if (page === 'users') loadUsersList();
     if (page === 'commissions') loadCommissions();
     if (page === 'driver-reports') loadDriverReports();
       if (page === 'user-reports') loadUserReports();
@@ -227,7 +231,9 @@ const adminActionHandlers = Object.freeze({
   changeUserPassword,
   closeChat,
   closeDocuments,
+  closeDriverReport,
   closeListModal,
+  closeOrderDetails,
   closeReport,
   closeReportDetail,
   closeResetPassword,
@@ -240,7 +246,11 @@ const adminActionHandlers = Object.freeze({
   handleResetPassword,
   markPaid,
   openChat,
+  openDriverReports,
   openListModal,
+  openOrderDetails,
+  selectDriverFromList,
+  selectUserFromList,
   openReplyModal,
   openResetPassword,
   rejectProvider,
@@ -249,6 +259,11 @@ const adminActionHandlers = Object.freeze({
   sendBroadcast,
   sendChatMessage,
   sendReply,
+  adminCancelOrder,
+  adminEndSuspension,
+  adminRejectOffer,
+  adminResendOrder,
+  toggleDriverAvailability,
   viewDocuments,
   viewPendingProviderDocuments,
   viewDriverOrdersViaDB,
@@ -539,6 +554,7 @@ function renderDriverResultFromDB(data) {
     <div class="row"><span class="label">رقم الجوال</span><span class="value">${escapeHtml(driver.phone)}</span></div>
     <div class="row"><span class="label">نوع الخدمة</span><span class="value">${escapeHtml(driver.serviceType || 'غير محدد')}</span></div>
     <div class="row"><span class="label">نوع السائق</span><span class="value">${escapeHtml(driver.licenseType || 'غير محدد')}</span></div>
+    <div class="row"><span class="label">حالة التوفر</span><span class="value">${driver.isAvailable ? '<span class="order-status-badge completed">متاح الآن</span>' : '<span class="order-status-badge cancelled">غير متاح</span>'}${driver.blockedUntil && new Date(driver.blockedUntil) > new Date() ? ' <span class="order-status-badge pending">مشغول بطلب</span>' : ''}</span></div>
     <div class="row"><span class="label">المنطقة</span><span class="value">${escapeHtml(driver.area)}</span></div>
     <div class="row"><span class="label">الحالة</span><span class="value">${getStatusBadge(driver.status)}</span></div>
     <div class="row"><span class="label">حالة الدفع</span><span class="value">${isPaid ? `<span class="paid-badge">مدفوع</span>` : `<span class="unpaid-badge">غير مدفوع (${escapeHtml(commission)} )</span>`}</span></div>
@@ -548,6 +564,8 @@ function renderDriverResultFromDB(data) {
     <div class="action-buttons">
       <button class="action-btn chat" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openChat" data-admin-arg-count="2" data-admin-arg-1="driver" data-admin-arg-2="${escapeHtml(String(driver._id))}">مراسلة</button>
       <button class="action-btn report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="viewDriverOrdersViaDB" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تقرير الطلبات</button>
+      <button class="action-btn orders-report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openDriverReports" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تقرير رفض وتسليم الطلبات</button>
+      <button class="action-btn ${driver.isAvailable ? 'freeze' : 'activate'}" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="toggleDriverAvailability" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${driver.isAvailable ? 'true' : 'false'}">${driver.isAvailable ? 'إيقاف التوفر' : 'جعله متاحاً'}</button>
       <button class="action-btn change-password" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="changeDriverPassword" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تغيير كلمة المرور</button>
       <button class="action-btn docs" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="viewDocuments" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${escapeHtml(String(driver.name || ''))}">الوثائق</button>
       <button class="action-btn freeze" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="freezeDriver" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تجميد</button>
@@ -613,22 +631,65 @@ function renderUserResultFromDB(user) {
 // 8. الشات
 // ================================================
 let currentChatTarget = null;
+let currentChatName = '';
+let legacyChatPollTimer = null;
 
 async function openChat(type, id) {
   currentChatTarget = { type, id };
+  currentChatName = '';
+
+  if (!supportSocket || !supportSocket.connected) {
+    connectSupportSocket();
+  }
+
   try {
     const res = await adminFetch(`/admin/chat/messages/${type}/${id}`);
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
 
+    currentChatName = data.name || '';
     document.getElementById('chatTitle').textContent = `محادثة مع ${data.name}`;
     document.getElementById('chatSub').textContent = `مراسلة ${data.name} (${type === 'driver' ? 'سائق' : 'مستخدم'})`;
     renderChatMessages(data.messages, data.name);
     document.getElementById('chatModal').classList.add('show');
     document.getElementById('chatInput').value = '';
     document.getElementById('chatInput').focus();
+    startLegacyChatPolling();
   } catch (err) {
     alert('حدث خطأ في فتح المحادثة');
+  }
+}
+
+function startLegacyChatPolling() {
+  if (legacyChatPollTimer) clearInterval(legacyChatPollTimer);
+  legacyChatPollTimer = setInterval(refreshLegacyChat, 10000);
+}
+
+function stopLegacyChatPolling() {
+  if (legacyChatPollTimer) {
+    clearInterval(legacyChatPollTimer);
+    legacyChatPollTimer = null;
+  }
+}
+
+async function refreshLegacyChat() {
+  if (
+    !currentChatTarget
+    || !document.getElementById('chatModal').classList.contains('show')
+  ) {
+    return;
+  }
+
+  try {
+    const res = await adminFetch(
+      `/admin/chat/messages/${currentChatTarget.type}/${currentChatTarget.id}`,
+    );
+    const data = await res.json();
+    if (data.error) return;
+    currentChatName = data.name || currentChatName;
+    renderChatMessages(data.messages, currentChatName);
+  } catch (err) {
+    console.error('Refresh chat:', err);
   }
 }
 
@@ -663,7 +724,8 @@ async function sendChatMessage() {
     });
     const data = await res.json();
     if (data.success) {
-      renderChatMessages(data.messages, '');
+      currentChatName = data.name || currentChatName;
+      renderChatMessages(data.messages, currentChatName);
       input.value = '';
     } else {
       alert(data.message);
@@ -676,6 +738,8 @@ async function sendChatMessage() {
 function closeChat() {
   document.getElementById('chatModal').classList.remove('show');
   currentChatTarget = null;
+  currentChatName = '';
+  stopLegacyChatPolling();
 }
 
 document.getElementById('chatInput').addEventListener('keypress', function (e) {
@@ -692,6 +756,7 @@ async function loadDashboardStats() {
     document.getElementById('totalDrivers').textContent = data.totalDrivers;
     document.getElementById('activeDrivers').textContent = data.activeDrivers;
     document.getElementById('inactiveDrivers').textContent = data.inactiveDrivers;
+    document.getElementById('availableDrivers').textContent = data.availableDrivers || 0;
     document.getElementById('totalUsers').textContent = data.totalUsers;
     document.getElementById('activeUsers').textContent = data.activeUsers;
     document.getElementById('inactiveUsers').textContent = data.inactiveUsers;
@@ -1389,11 +1454,11 @@ async function viewDriverOrdersViaDB(driverId) {
     if (driver.financial && driver.financial.transactions && driver.financial.transactions.length > 0) {
       let rows = '';
       driver.financial.transactions.forEach(t => {
-        rows += `<tr><td>${escapeHtml(t.id.slice(-8))}</td><td>${escapeHtml(t.desc)}</td><td>${escapeHtml(t.date)}</td><td class="amount">${escapeHtml(t.amount)} </td></tr>`;
+        rows += `<tr><td>${escapeHtml(t.id.slice(-8))}</td><td>${escapeHtml(t.desc)}</td><td>${escapeHtml(t.date)}</td><td class="amount">${escapeHtml(t.amount)} </td><td><button class="order-action-btn details" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openOrderDetails" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(t.id))}">عرض</button></td></tr>`;
       });
       content.innerHTML = `
         <div class="invoice-box">
-          <table class="invoice-table"><thead><tr><th>رقم المعاملة</th><th>الوصف</th><th>التاريخ</th><th>المبلغ</th></tr></thead><tbody>${rows}</tbody></table>
+          <table class="invoice-table"><thead><tr><th>رقم المعاملة</th><th>الوصف</th><th>التاريخ</th><th>المبلغ</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table>
           <div class="invoice-total"><span class="total-label">صافي الأرباح</span><span class="total-value">${escapeHtml(netProfit)} </span></div>
           <div data-presentation="p029"><span>آخر 30 يوم: ${escapeHtml(last30Profit)} </span><span>عمولة المنصة: ${escapeHtml(totalCommission || 0)} </span></div>
         </div>`;
@@ -1415,14 +1480,437 @@ async function viewUserOrdersViaDB(userId) {
     if (user.orders && user.orders.length > 0) {
       let rows = '';
       user.orders.forEach(o => {
-        rows += `<tr><td>${escapeHtml(o.orderId)}</td><td>${escapeHtml(o.type)}</td><td>${escapeHtml(o.date)}</td><td>${escapeHtml(o.status)}</td><td class="amount">${escapeHtml(o.amount)} </td></tr>`;
+        rows += `<tr><td>${escapeHtml(o.orderId)}</td><td>${escapeHtml(o.type)}</td><td>${escapeHtml(o.date)}</td><td>${escapeHtml(o.status)}</td><td class="amount">${escapeHtml(o.amount)} </td><td><button class="order-action-btn details" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openOrderDetails" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(o.fullId || ''))}">عرض</button></td></tr>`;
       });
-      content.innerHTML = `<div class="invoice-box"><table class="invoice-table"><thead><tr><th>رقم الطلب</th><th>النوع</th><th>التاريخ</th><th>الحالة</th><th>المبلغ</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      content.innerHTML = `<div class="invoice-box"><table class="invoice-table"><thead><tr><th>رقم الطلب</th><th>النوع</th><th>التاريخ</th><th>الحالة</th><th>المبلغ</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     } else {
       content.innerHTML = '<p data-presentation="p030">لا توجد طلبات مسجلة.</p>';
     }
     document.getElementById('userOrdersModal').classList.add('show');
   } catch (err) { alert('حدث خطأ في تحميل الطلبات'); }
+}
+
+// ================================================
+// 19. إدارة الطلبات وتقارير السائق
+// ================================================
+function adminOrderStatusLabel(status) {
+  const map = {
+    pending: 'قيد الانتظار',
+    offered: 'عروض متوفرة',
+    accepted: 'تم قبول عرض',
+    fulfilling: 'جاري العمل على الطلب',
+    completed: 'تم انجاز الطلب',
+    cancelled: 'تم إلغاء الطلب',
+    expired: 'انتهت مدة قبول السعر',
+  };
+  return map[status] || status || 'غير محدد';
+}
+
+function adminOrderTypeLabel(type) {
+  const map = {
+    product: 'طلب منتج',
+    people: 'نقل أشخاص',
+    goods: 'نقل بضاعة',
+  };
+  return map[type] || type || 'غير محدد';
+}
+
+function adminOrderStatusBadge(status) {
+  return `<span class="order-status-badge ${escapeHtml(status)}">${escapeHtml(adminOrderStatusLabel(status))}</span>`;
+}
+
+function adminOrderCustomer(order) {
+  const customer = order.customerId;
+  if (!customer || typeof customer !== 'object') {
+    return { name: 'غير محدد', publicId: '', phone: '' };
+  }
+  const phones = Array.isArray(customer.phoneNumbers) ? customer.phoneNumbers : [];
+  const primary = phones.find((phone) => phone.primary) || phones[0] || {};
+  return {
+    name: customer.fullName || 'غير محدد',
+    publicId: customer.publicId || '',
+    phone: primary.number || '',
+  };
+}
+
+function adminOrderProvider(order) {
+  const provider = order.providerId;
+  if (!provider || typeof provider !== 'object') {
+    return { name: 'غير معين', publicId: '', phone: '' };
+  }
+  const phones = Array.isArray(provider.phoneNumbers) ? provider.phoneNumbers : [];
+  const primary = phones.find((phone) => phone.primary) || phones[0] || {};
+  return {
+    name: provider.fullName || 'غير معين',
+    publicId: provider.publicId || '',
+    phone: primary.number || '',
+  };
+}
+
+function adminOrderDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('ar-EG');
+}
+
+async function loadOrders() {
+  const search = (document.getElementById('orderSearchInput')?.value || '').trim();
+  const status = document.getElementById('orderStatusFilter')?.value || 'all';
+  const type = document.getElementById('orderTypeFilter')?.value || 'all';
+  const area = (document.getElementById('orderAreaFilter')?.value || '').trim();
+  const params = new URLSearchParams();
+  if (search) params.set('q', search);
+  if (status && status !== 'all') params.set('status', status);
+  if (type && type !== 'all') params.set('type', type);
+  if (area) params.set('area', area);
+
+  const container = document.getElementById('ordersContent');
+  if (!container) return;
+
+  try {
+    const res = await adminFetch(`/admin/orders?${params.toString()}`);
+    const orders = await res.json();
+
+    if (!Array.isArray(orders)) {
+      container.innerHTML = `<p data-presentation="p030">${escapeHtml(orders.error || 'تعذر تحميل الطلبات')}</p>`;
+      container.classList.add('show');
+      return;
+    }
+
+    if (orders.length === 0) {
+      container.innerHTML = '<p data-presentation="p030">لا توجد طلبات مطابقة.</p>';
+      container.classList.add('show');
+      return;
+    }
+
+    const rows = orders.map((order) => {
+      const customer = adminOrderCustomer(order);
+      const provider = adminOrderProvider(order);
+      const id = String(order._id || '');
+      const safeId = escapeHtml(id);
+      const isClosed = ['completed', 'cancelled'].includes(order.status);
+      let actions = `<button class="order-action-btn details" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openOrderDetails" data-admin-arg-count="1" data-admin-arg-1="${safeId}"><i class="fas fa-eye"></i> تفاصيل</button>`;
+      if (!isClosed) {
+        actions += ` <button class="order-action-btn cancel" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="adminCancelOrder" data-admin-arg-count="1" data-admin-arg-1="${safeId}"><i class="fas fa-ban"></i> إلغاء</button>`;
+      }
+      if (['pending', 'offered'].includes(order.status)) {
+        actions += ` <button class="order-action-btn resend" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="adminResendOrder" data-admin-arg-count="1" data-admin-arg-1="${safeId}"><i class="fas fa-paper-plane"></i> إعادة إرسال</button>`;
+      }
+      if (order.status === 'pending' && order.offerSuspendedUntil) {
+        actions += ` <button class="order-action-btn suspend" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="adminEndSuspension" data-admin-arg-count="1" data-admin-arg-1="${safeId}"><i class="fas fa-hourglass-end"></i> إنهاء التعليق</button>`;
+      }
+      const suspended = order.offerSuspendedUntil && new Date(order.offerSuspendedUntil) > new Date();
+      return `<tr>
+        <td>${safeId.slice(-8)}</td>
+        <td>${escapeHtml(adminOrderTypeLabel(order.type))}</td>
+        <td>${escapeHtml(customer.name)}${customer.publicId ? `<br><small>#${escapeHtml(customer.publicId)}</small>` : ''}</td>
+        <td>${escapeHtml(provider.name)}${provider.publicId ? `<br><small>#${escapeHtml(provider.publicId)}</small>` : ''}</td>
+        <td>${escapeHtml(order.area || '')}</td>
+        <td>${adminOrderStatusBadge(order.status)}${suspended ? `<br><small class="order-meta">معلق حتى ${escapeHtml(adminOrderDate(order.offerSuspendedUntil))}</small>` : ''}</td>
+        <td>${escapeHtml(String(order.price || 0))}</td>
+        <td>${escapeHtml(adminOrderDate(order.createdAt))}</td>
+        <td><div class="order-actions">${actions}</div></td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `<div data-presentation="p002"><table class="orders-table"><thead><tr><th>الطلب</th><th>النوع</th><th>الزبون</th><th>السائق</th><th>المنطقة</th><th>الحالة</th><th>السعر</th><th>التاريخ</th><th>إجراءات</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    container.classList.add('show');
+  } catch (err) {
+    container.innerHTML = '<p data-presentation="p030">حدث خطأ في تحميل الطلبات.</p>';
+    container.classList.add('show');
+  }
+}
+
+async function openOrderDetails(orderId) {
+  try {
+    const res = await adminFetch(`/admin/orders/${encodeURIComponent(orderId)}`);
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+
+    const { order, offers, rejections } = data;
+    const customer = adminOrderCustomer(order);
+    const provider = adminOrderProvider(order);
+
+    let html = `
+      <div class="row"><span class="label">رقم الطلب</span><span class="value">${escapeHtml(String(order._id))}</span></div>
+      <div class="row"><span class="label">النوع</span><span class="value">${escapeHtml(adminOrderTypeLabel(order.type))}</span></div>
+      <div class="row"><span class="label">الحالة</span><span class="value">${adminOrderStatusBadge(order.status)}</span></div>
+      <div class="row"><span class="label">الزبون</span><span class="value">${escapeHtml(customer.name)} ${customer.publicId ? `(#${escapeHtml(customer.publicId)})` : ''}${customer.phone ? ` - ${escapeHtml(customer.phone)}` : ''}</span></div>
+      <div class="row"><span class="label">السائق</span><span class="value">${escapeHtml(provider.name)} ${provider.publicId ? `(#${escapeHtml(provider.publicId)})` : ''}${provider.phone ? ` - ${escapeHtml(provider.phone)}` : ''}</span></div>
+      <div class="row"><span class="label">المنطقة</span><span class="value">${escapeHtml(order.area || 'غير محدد')}</span></div>
+      <div class="row"><span class="label">الوصف</span><span class="value">${escapeHtml(order.description || '')}</span></div>
+      <div class="row"><span class="label">هاتف الطلب</span><span class="value">${escapeHtml(order.phone || '')}</span></div>
+      <div class="row"><span class="label">السعر</span><span class="value">${escapeHtml(String(order.price || 0))}</span></div>
+      <div class="row"><span class="label">تاريخ الإنشاء</span><span class="value">${escapeHtml(adminOrderDate(order.createdAt))}</span></div>
+      <div class="row"><span class="label">انتهاء مهلة العرض</span><span class="value">${escapeHtml(adminOrderDate(order.offerWindowExpiredAt))}</span></div>
+      <div class="row"><span class="label">نهاية التعليق</span><span class="value">${escapeHtml(adminOrderDate(order.offerSuspendedUntil))}</span></div>
+      <div class="row"><span class="label">تاريخ الإنجاز</span><span class="value">${escapeHtml(adminOrderDate(order.completedAt))}</span></div>
+    `;
+
+    html += '<div class="order-section-title">عروض الأسعار</div>';
+    if (!offers || offers.length === 0) {
+      html += '<p data-presentation="p030">لا توجد عروض.</p>';
+    } else {
+      offers.forEach((offer) => {
+        const offerProvider = offer.providerId && typeof offer.providerId === 'object' ? offer.providerId : {};
+        const rejectButton = offer.status === 'pending'
+          ? `<button class="order-action-btn reject" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="adminRejectOffer" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(order._id))}" data-admin-arg-2="${escapeHtml(String(offer._id))}"><i class="fas fa-times"></i> رفض العرض</button>`
+          : '';
+        html += `<div class="order-offer-row">
+          <div class="line"><strong>${escapeHtml(offerProvider.fullName || 'غير محدد')}</strong><span>${escapeHtml(String(offer.price || 0))} شيكل</span></div>
+          <div class="line"><span class="muted">الوقت: ${escapeHtml(String(offer.estimatedTime || 0))} دقيقة</span><span class="muted">${escapeHtml(offer.status || '')}</span></div>
+          <div class="line"><span class="muted">${escapeHtml(adminOrderDate(offer.createdAt))}</span>${rejectButton}</div>
+        </div>`;
+      });
+    }
+
+    html += '<div class="order-section-title">سجل الرفض والانتهاء</div>';
+    if (!rejections || rejections.length === 0) {
+      html += '<p data-presentation="p030">لا يوجد سجل رفض.</p>';
+    } else {
+      rejections.forEach((rejection) => {
+        const rejectionProvider = rejection.providerId && typeof rejection.providerId === 'object' ? rejection.providerId : {};
+        const reason = rejection.reason === 'offer_expired' ? 'انتهاء مدة عرض السعر' : 'تم رفض الطلب من جهتك';
+        html += `<div class="order-offer-row">
+          <div class="line"><strong>${escapeHtml(rejectionProvider.fullName || 'غير محدد')}</strong><span class="muted">${escapeHtml(adminOrderDate(rejection.createdAt))}</span></div>
+          <div class="line"><span class="muted">${escapeHtml(reason)}</span></div>
+        </div>`;
+      });
+    }
+
+    document.getElementById('orderDetailsSub').textContent = `طلب #${String(order._id).slice(-8)} - ${customer.name}`;
+    document.getElementById('orderDetailsContent').innerHTML = html;
+    document.getElementById('orderDetailsModal').classList.add('show');
+  } catch (err) {
+    alert('حدث خطأ في تحميل تفاصيل الطلب');
+  }
+}
+
+async function adminCancelOrder(orderId) {
+  if (!confirm('هل تريد إلغاء هذا الطلب نهائياً؟')) return;
+  await runOrderAction(orderId, 'cancel');
+}
+
+async function adminResendOrder(orderId) {
+  if (!confirm('هل تريد إعادة إرسال الطلب للسائقين؟')) return;
+  await runOrderAction(orderId, 'resend');
+}
+
+async function adminEndSuspension(orderId) {
+  if (!confirm('هل تريد إنهاء تعليق الطلب ونقله إلى التقارير؟')) return;
+  await runOrderAction(orderId, 'end-suspension');
+}
+
+async function runOrderAction(orderId, action) {
+  try {
+    const res = await adminFetch(`/admin/orders/${encodeURIComponent(orderId)}/${action}`, { method: 'POST' });
+    const data = await res.json();
+    alert(data.message || data.error || 'تم تنفيذ الإجراء');
+    loadOrders();
+    if (document.getElementById('orderDetailsModal').classList.contains('show')) {
+      openOrderDetails(orderId);
+    }
+  } catch (err) {
+    alert('تعذر تنفيذ الإجراء');
+  }
+}
+
+async function adminRejectOffer(orderId, offerId) {
+  if (!confirm('هل تريد رفض عرض السعر هذا؟')) return;
+  try {
+    const res = await adminFetch(`/admin/orders/${encodeURIComponent(orderId)}/offers/${encodeURIComponent(offerId)}/reject`, { method: 'POST' });
+    const data = await res.json();
+    alert(data.message || data.error || 'تم رفض العرض');
+    loadOrders();
+    openOrderDetails(orderId);
+  } catch (err) {
+    alert('تعذر رفض العرض');
+  }
+}
+
+function closeOrderDetails() {
+  document.getElementById('orderDetailsModal').classList.remove('show');
+}
+
+async function openDriverReports(driverId) {
+  try {
+    const res = await adminFetch(`/admin/drivers/${encodeURIComponent(driverId)}/reports`);
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+
+    let html = '';
+    if (!data.report || data.report.length === 0) {
+      html = '<p data-presentation="p030">لا توجد سجلات في التقرير.</p>';
+    } else {
+      data.report.forEach((entry) => {
+        const customer = entry.customerId && typeof entry.customerId === 'object' ? entry.customerId : {};
+        const isDelivered = entry.recordType === 'delivered';
+        const reason = isDelivered
+          ? 'تم انجاز الطلب'
+          : entry.reason === 'offer_expired'
+            ? 'انتهاء مدة عرض السعر'
+            : 'تم رفض الطلب من جهتك';
+        html += `<div class="order-offer-row">
+          <div class="line"><strong>${escapeHtml(adminOrderTypeLabel(entry.type))}</strong><span>${escapeHtml(reason)}</span></div>
+          <div class="line"><span class="muted">الزبون: ${escapeHtml(customer.fullName || 'غير محدد')}${customer.publicId ? ` (#${escapeHtml(customer.publicId)})` : ''}</span><span class="muted">${escapeHtml(entry.phone || '')}</span></div>
+          <div class="line"><span class="muted">${escapeHtml(entry.description || '')}</span><span class="muted">${escapeHtml(adminOrderDate(entry.reportAt))}</span></div>
+        </div>`;
+      });
+    }
+
+    document.getElementById('driverReportSub').textContent = `السائق: ${data.provider.name} (${data.provider.publicId || ''})`;
+    document.getElementById('driverReportContent').innerHTML = html;
+    document.getElementById('driverReportModal').classList.add('show');
+  } catch (err) {
+    alert('حدث خطأ في تحميل تقرير السائق');
+  }
+}
+
+function closeDriverReport() {
+  document.getElementById('driverReportModal').classList.remove('show');
+}
+
+async function toggleDriverAvailability(driverId, currentAvailability) {
+  const nextAvailability = String(currentAvailability) !== 'true';
+  try {
+    const res = await adminFetch(`/admin/drivers/${encodeURIComponent(driverId)}/availability`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ available: nextAvailability }),
+    });
+    const data = await res.json();
+    alert(data.success ? (nextAvailability ? 'تم جعل السائق متاحاً' : 'تم جعل السائق غير متاح') : (data.message || 'تعذر تحديث حالة التوفر'));
+    searchDriver();
+    loadDriversList();
+  } catch (err) {
+    alert('تعذر تحديث حالة التوفر');
+  }
+}
+
+document.getElementById('orderSearchBtn').addEventListener('click', loadOrders);
+document.getElementById('orderSearchInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadOrders(); });
+document.getElementById('orderAreaFilter').addEventListener('keypress', e => { if (e.key === 'Enter') loadOrders(); });
+document.getElementById('orderStatusFilter').addEventListener('change', loadOrders);
+document.getElementById('orderTypeFilter').addEventListener('change', loadOrders);
+
+
+// ================================================
+// 20. قوائم السائقين والمستخدمين أسفل شريط البحث
+// ================================================
+function adminAccountStatusLabel(status) {
+  const map = {
+    active: 'نشط',
+    inactive: 'غير نشط',
+    blocked: 'مجمد',
+    pending: 'قيد المراجعة',
+  };
+  return map[status] || status || 'غير محدد';
+}
+
+function adminAccountStatusBadge(status) {
+  const normalized = status === 'blocked' ? 'cancelled' : (status === 'active' ? 'completed' : 'pending');
+  return `<span class="order-status-badge ${normalized}">${escapeHtml(adminAccountStatusLabel(status))}</span>`;
+}
+
+async function loadDriversList() {
+  const container = document.getElementById('driversList');
+  if (!container) return;
+
+  try {
+    const res = await adminFetch('/admin/drivers');
+    const drivers = await res.json();
+
+    if (!Array.isArray(drivers)) {
+      container.innerHTML = `<p data-presentation="p030">${escapeHtml(drivers.error || 'تعذر تحميل السائقين')}</p>`;
+      container.classList.add('show');
+      return;
+    }
+
+    if (drivers.length === 0) {
+      container.innerHTML = '<p data-presentation="p030">لا يوجد سائقون مسجلون.</p>';
+      container.classList.add('show');
+      return;
+    }
+
+    const rows = drivers.map((driver) => {
+      const id = escapeHtml(String(driver._id));
+      const busy = driver.blockedUntil && new Date(driver.blockedUntil) > new Date();
+      const availability = driver.isAvailable
+        ? '<span class="order-status-badge completed">متاح</span>'
+        : '<span class="order-status-badge cancelled">غير متاح</span>';
+      return `<tr>
+        <td><strong>${escapeHtml(driver.fullName || 'غير محدد')}</strong>${driver.publicId ? `<br><small>#${escapeHtml(driver.publicId)}</small>` : ''}</td>
+        <td>${escapeHtml(driver.phone || '')}</td>
+        <td>${escapeHtml(driver.area || 'غير محدد')}</td>
+        <td>${escapeHtml(providerServiceTypesLabel(driver.serviceTypes))}</td>
+        <td>${adminAccountStatusBadge(driver.status)}</td>
+        <td>${availability}${busy ? ' <span class="order-status-badge pending">مشغول</span>' : ''}</td>
+        <td><button class="order-action-btn details" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="selectDriverFromList" data-admin-arg-count="1" data-admin-arg-1="${id}"><i class="fas fa-eye"></i> عرض</button></td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `<h4 data-presentation="p017">قائمة السائقين</h4>
+      <table class="orders-table"><thead><tr><th>السائق</th><th>الجوال</th><th>المنطقة</th><th>نوع الخدمة</th><th>الحالة</th><th>التوفر</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table>`;
+    container.classList.add('show');
+  } catch (err) {
+    container.innerHTML = '<p data-presentation="p030">حدث خطأ في تحميل السائقين.</p>';
+    container.classList.add('show');
+  }
+}
+
+async function loadUsersList() {
+  const container = document.getElementById('usersList');
+  if (!container) return;
+
+  try {
+    const res = await adminFetch('/admin/users');
+    const users = await res.json();
+
+    if (!Array.isArray(users)) {
+      container.innerHTML = `<p data-presentation="p030">${escapeHtml(users.error || 'تعذر تحميل المستخدمين')}</p>`;
+      container.classList.add('show');
+      return;
+    }
+
+    if (users.length === 0) {
+      container.innerHTML = '<p data-presentation="p030">لا يوجد مستخدمون مسجلون.</p>';
+      container.classList.add('show');
+      return;
+    }
+
+    const rows = users.map((user) => {
+      const id = escapeHtml(String(user._id));
+      return `<tr>
+        <td><strong>${escapeHtml(user.fullName || 'غير محدد')}</strong>${user.publicId ? `<br><small>#${escapeHtml(user.publicId)}</small>` : ''}</td>
+        <td>${escapeHtml(user.email || '')}</td>
+        <td>${escapeHtml(user.phone || '')}</td>
+        <td>${escapeHtml(user.area || 'غير محدد')}</td>
+        <td>${adminAccountStatusBadge(user.status)}</td>
+        <td><button class="order-action-btn details" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="selectUserFromList" data-admin-arg-count="1" data-admin-arg-1="${id}"><i class="fas fa-eye"></i> عرض</button></td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `<h4 data-presentation="p017">قائمة المستخدمين</h4>
+      <table class="orders-table"><thead><tr><th>المستخدم</th><th>البريد</th><th>الجوال</th><th>المنطقة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table>`;
+    container.classList.add('show');
+  } catch (err) {
+    container.innerHTML = '<p data-presentation="p030">حدث خطأ في تحميل المستخدمين.</p>';
+    container.classList.add('show');
+  }
+}
+
+function selectDriverFromList(id) {
+  const input = document.getElementById('driverSearchInput');
+  if (input) input.value = id;
+  searchDriver();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function selectUserFromList(id) {
+  const input = document.getElementById('userSearchInput');
+  if (input) input.value = id;
+  searchUser();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function closeDocuments() { document.getElementById('documentsModal').classList.remove('show'); }
@@ -1525,13 +2013,23 @@ function initSupportChat() {
 }
 
 function connectSupportSocket() {
-  supportSocket = io({ transports: ['websocket'] });
+  if (supportSocket) {
+    if (!supportSocket.connected) supportSocket.connect();
+    return;
+  }
+
+  supportSocket = io({ transports: ['websocket'], withCredentials: true });
   supportSocket.on('connect', () => console.log('Admin socket connected to support'));
   supportSocket.on('support_message', (data) => {
     const badge = document.getElementById('chatBadge');
-    const current = parseInt(badge.textContent || '0');
-    badge.textContent = current + 1;
-    setInlineDisplay(badge, true);
+    if (badge) {
+      const current = parseInt(badge.textContent || '0');
+      badge.textContent = current + 1;
+      setInlineDisplay(badge, true);
+    }
+    if (currentChatTarget && String(currentChatTarget.id) === String(data.userId)) {
+      refreshLegacyChat();
+    }
     if (document.getElementById('page-support-chat').classList.contains('active-page')) {
       loadConversations();
       if (activeChatUserId === data.userId) appendChatMessage('user', data.text, data.createdAt);
@@ -1544,7 +2042,21 @@ async function loadConversations() {
     const res = await adminFetch('/api/chat/admin/conversations');
     conversations = await res.json();
     renderConversations();
+    updateSupportBadge();
   } catch (err) { console.error('Load conversations:', err); }
+}
+
+function updateSupportBadge() {
+  const badge = document.getElementById('chatBadge');
+  if (!badge) return;
+
+  const total = (conversations || []).reduce(
+    (sum, conversation) => sum + (conversation.unread || 0),
+    0,
+  );
+
+  badge.textContent = String(total);
+  setInlineDisplay(badge, total > 0);
 }
 
 function renderConversations() {
@@ -1731,6 +2243,8 @@ async function loadChatMessages(userId) {
       console.error(
         `Mark-read failed with HTTP ${readRes.status}`,
       );
+    } else {
+      loadConversations();
     }
   } catch (err) { console.error(err); }
 }
@@ -1805,6 +2319,7 @@ async function sendAdminReply() {
       text,
       new Date().toISOString(),
     );
+    loadConversations();
   } catch (err) {
     console.error(err);
   }
@@ -1836,6 +2351,19 @@ function escapeHtml(value) {
 // ================================================
 // 19. طلبات تسجيل السائقين
 // ================================================
+function providerServiceTypesLabel(types) {
+  const labels = {
+    product: 'توصيل منتجات',
+    people: 'توصيل ركاب',
+    goods: 'نقل بضائع',
+  };
+  const values = Array.isArray(types) ? types : [];
+  if (values.length === 0 || values.length === 3) {
+    return 'جميع الخدمات';
+  }
+  return values.map((type) => labels[type] || type).join(' + ');
+}
+
 async function loadPendingProviders() {
   try {
     const res =
@@ -1978,6 +2506,7 @@ async function loadPendingProviders() {
           + `<td><strong>${escapeHtml(provider.fullName)}</strong></td>`
           + `<td>${escapeHtml(provider.email)}</td>`
           + `<td>${escapeHtml(provider.phone)}</td>`
+          + `<td>${escapeHtml(providerServiceTypesLabel(provider.serviceTypes))}</td>`
           + `<td>${escapeHtml(provider.area || 'غير محدد')}</td>`
           + `<td>${escapeHtml(new Date(provider.createdAt).toLocaleDateString('ar-EG'))}</td>`
           + `<td><span class="${statusClass}">${escapeHtml(documentStatusText)}</span></td>`
@@ -2015,6 +2544,7 @@ async function loadPendingProviders() {
         + `<th>الاسم</th>`
         + `<th>البريد</th>`
         + `<th>الجوال</th>`
+        + `<th>نوع الخدمة</th>`
         + `<th>المنطقة</th>`
         + `<th>تاريخ التسجيل</th>`
         + `<th>الوثائق</th>`
@@ -2108,6 +2638,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDashboardStats();
   loadCommissions();
   loadAreasForDropdown();
+  initSupportChat();
 });
 
 async function loadAreasForDropdown() {

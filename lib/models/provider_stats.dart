@@ -11,6 +11,7 @@ class ProviderStats {
   final int activeOrdersCount;
   final String? blockedUntil;
   final String? offerCooldownUntil;
+  final bool isAvailable;
 
   ProviderStats({
     required this.dailyEarnings,
@@ -25,6 +26,7 @@ class ProviderStats {
     required this.activeOrdersCount,
     this.blockedUntil,
     this.offerCooldownUntil,
+    this.isAvailable = true,
   });
 
   factory ProviderStats.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class ProviderStats {
       activeOrdersCount: (json['activeOrdersCount'] ?? 0).toInt(),
       blockedUntil: json['blockedUntil']?.toString(),
       offerCooldownUntil: json['offerCooldownUntil']?.toString(),
+      isAvailable: json['isAvailable'] != false,
     );
   }
 }

@@ -69,8 +69,16 @@ class OfferService {
   }
 
   Future<void> resendOrder(String token, String orderId) async {
-    await _dio.post('/offers/$orderId/resend',
-      options: Options(headers: {'Authorization': 'Bearer $token'}));
+    try {
+      await _dio.post('/offers/$orderId/resend',
+        options: Options(headers: {'Authorization': 'Bearer $token'}));
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      throw Exception(
+        (data is Map ? data['message'] ?? data['error'] : null)?.toString()
+            ?? 'Failed to resend order',
+      );
+    }
   }
 
   Future<void> cancelOrder(String token, String orderId) async {

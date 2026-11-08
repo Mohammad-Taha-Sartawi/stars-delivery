@@ -15,7 +15,7 @@ const os = require('os');
 const path = require('path');
 const { Server } = require('socket.io');
 const { loadAppConfig } = require('./config');
-const { expireStaleOffers } = require('./services/orderLifecycle');
+const { expireStaleOffers, finalizeExpiredOrders } = require('./services/orderLifecycle');
 const { createAdminSessionMiddleware } = require('./middleware/adminSession');
 const requireAdminSession = require('./middleware/requireAdminSession');
 const authenticateSocket = require('./socket/authenticateSocket');
@@ -41,6 +41,7 @@ const adminCommissionRoutes = require('./routes/adminCommissions');
 const adminAreaRoutes = require('./routes/adminAreas');
 const adminBroadcastRoutes = require('./routes/adminBroadcast');
 const adminChatRoutes = require('./routes/adminChat');
+const adminOrderRoutes = require('./routes/adminOrders');
 const adminApiRoutes = require('./routes/adminApi');
 
 const app = express();
@@ -100,8 +101,23 @@ app.use('/api', (req, res, next) => {
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views', 'admin'));
 
+const mongoClientPromise = new Promise((resolve) => {
+  const resolveWhenConnected = () => {
+    if (mongoose.connection.readyState === 1) {
+      try {
+        resolve(mongoose.connection.getClient());
+        return;
+      } catch (_) {}
+    }
+
+    setTimeout(resolveWhenConnected, 1000);
+  };
+
+  resolveWhenConnected();
+});
+
 const sessionMiddleware = createAdminSessionMiddleware({
-  mongoUri: appConfig.mongodbUri,
+  clientPromise: mongoClientPromise,
   sessionSecret: appConfig.sessionSecret,
 });
 app.use(sessionMiddleware);
@@ -162,6 +178,7 @@ function startOfferCleanup() {
 
     try {
       await expireStaleOffers();
+      await finalizeExpiredOrders();
     } catch (_) {}
   }, 30000);
 }
@@ -403,6 +420,7 @@ app.use('/admin/commissions', requireAdminSession, adminCsrfProtection, adminCom
 app.use('/admin/areas', requireAdminSession, adminCsrfProtection, adminAreaRoutes);
 app.use('/admin/broadcast', requireAdminSession, adminCsrfProtection, adminBroadcastRoutes);
 app.use('/admin/chat', requireAdminSession, adminCsrfProtection, adminChatRoutes);
+app.use('/admin/orders', requireAdminSession, adminCsrfProtection, adminOrderRoutes);
 app.use('/admin/api', requireAdminSession, adminCsrfProtection, adminApiRoutes);
 
 app.get('/admin', requireAdminSession, adminCsrfProtection, (req, res) => {

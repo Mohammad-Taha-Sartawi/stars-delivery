@@ -116,6 +116,16 @@ test('connect-mongo v6 CommonJS default export exposes MongoStore.create', () =>
   assert.equal(typeof MongoStore.create, 'function');
 });
 
+test('admin session store can share the mongoose client promise instead of opening a second client', () => {
+  const clientPromise = new Promise(() => {});
+  const options = createAdminSessionOptions({
+    sessionSecret: secret,
+    clientPromise,
+  });
+
+  assert.equal(options.store.clientP, clientPromise);
+});
+
 test('Socket.IO Server dependency can construct and close an isolated server', async () => {
   assert.equal(typeof Server, 'function');
   const httpServer = http.createServer();

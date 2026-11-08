@@ -1,52 +1,125 @@
-const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
+const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
-const router = express.Router();
+const mongoose = require('mongoose');
+const ChatMessage = require('../models/ChatMessage');
 const User = require('../models/User');
+
+const router = express.Router();
+
+function targetRole(type) {
+  return type === 'driver' ? 'provider' : 'customer';
+}
+
+function formatMessage(message) {
+  return {
+    sender: message.sender === 'admin' ? 'admin' : 'other',
+    text: message.text,
+    time: new Date(message.createdAt).toLocaleTimeString(
+      'ar-EG',
+      {
+        hour: '2-digit',
+        minute: '2-digit',
+      },
+    ),
+  };
+}
+
+async function findTarget(type, id) {
+  if (!mongoose.isValidObjectId(id)) {
+    return null;
+  }
+
+  return User.findOne(
+    {
+      _id: id,
+      role: targetRole(type),
+      deleted: { $ne: true },
+    },
+    'fullName name role',
+  ).lean();
+}
+
+async function loadMessages(userId) {
+  return ChatMessage.find({ userId })
+    .sort({ createdAt: 1 })
+    .limit(200)
+    .lean();
+}
 
 router.get('/messages/:type/:id', async (req, res) => {
   try {
     const { type, id } = req.params;
-    let target;
-    if (type === 'driver') {
-      target = await User.findOne({ _id: id, role: 'provider' });
-    } else {
-      target = await User.findOne({ _id: id, role: 'customer' });
+
+    if (type !== 'driver' && type !== 'user') {
+      return res.status(400).json({ error: 'نوع المحادثة غير صالح' });
     }
-    if (!target) return res.json({ error: 'الطرف غير موجود' });
-    res.json({ messages: target.messages || [], name: target.fullName || target.name, type });
+
+    const target = await findTarget(type, id);
+
+    if (!target) {
+      return res.status(404).json({ error: 'الطرف غير موجود' });
+    }
+
+    const messages = await loadMessages(target._id);
+
+    return res.json({
+      messages: messages.map(formatMessage),
+      name: target.fullName || target.name || '',
+      type,
+    });
   } catch (err) {
-    sendInternalServerError(res);
+    return sendInternalServerError(res);
   }
 });
 
 router.post('/send/:type/:id', async (req, res) => {
   try {
     const { type, id } = req.params;
-    const { text } = req.body;
-    if (!text) return res.json({ success: false, message: 'الرجاء كتابة رسالة' });
 
-    let target;
-    if (type === 'driver') {
-      target = await User.findOne({ _id: id, role: 'provider' });
-    } else {
-      target = await User.findOne({ _id: id, role: 'customer' });
+    if (type !== 'driver' && type !== 'user') {
+      return res.status(400).json({ success: false, message: 'نوع المحادثة غير صالح' });
     }
-    if (!target) return res.json({ success: false, message: 'الطرف غير موجود' });
 
-    const time = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-    if (!target.messages) target.messages = [];
-    target.messages.push({ sender: 'admin', text, time });
-    await target.save();
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
 
-    const responses = ['شكراً لك على تواصلك.', 'سأقوم بمراجعة ذلك.', 'تم استلام رسالتك.', 'أنا حالياً مشغول، سأرد لاحقاً.', 'ممتاز، سأعمل على ذلك.', 'هل يمكنك توضيح أكثر؟', 'أنا في الطريق الآن.', 'تم إنجاز المطلوب.', 'سأتصل بك لاحقاً.', 'أنا بحاجة للمزيد من التفاصيل.'];
-    const autoReply = responses[Math.floor(Math.random() * responses.length)];
-    const autoReplyTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-    target.messages.push({ sender: 'other', text: autoReply, time: autoReplyTime });
-    await target.save();
+    if (!text) {
+      return res.status(400).json({ success: false, message: 'الرجاء كتابة رسالة' });
+    }
 
-    res.json({ success: true, messages: target.messages });
+    const target = await findTarget(type, id);
+
+    if (!target) {
+      return res.status(404).json({ success: false, message: 'الطرف غير موجود' });
+    }
+
+    const message = await ChatMessage.create({
+      userId: target._id,
+      sender: 'admin',
+      text,
+      read: false,
+    });
+
+    const io = req.app.get('io');
+
+    if (io) {
+      io.to(`user:${target._id}`).emit('support_reply', {
+        _id: message._id,
+        userId: target._id,
+        sender: 'admin',
+        text: message.text,
+        createdAt: message.createdAt,
+      });
+    }
+
+    const messages = await loadMessages(target._id);
+
+    return res.json({
+      success: true,
+      name: target.fullName || target.name || '',
+      messages: messages.map(formatMessage),
+    });
   } catch (err) {
-    sendInternalServerFailure(res);
+    return sendInternalServerError(res);
   }
 });
 

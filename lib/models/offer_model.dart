@@ -12,6 +12,7 @@ class OfferModel {
   final DateTime? expiresAt;
   final String orderDescription;
   final String orderArea;
+  final String orderType;
 
   OfferModel({
     required this.id, required this.orderId, required this.providerId,
@@ -19,7 +20,7 @@ class OfferModel {
     required this.providerPublicId,
     required this.price, required this.estimatedTime, required this.status, required this.createdAt,
     this.expiresAt,
-    required this.orderDescription, required this.orderArea,
+    required this.orderDescription, required this.orderArea, this.orderType = '',
   });
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
@@ -39,6 +40,7 @@ class OfferModel {
       expiresAt: DateTime.tryParse(json['expiresAt']?.toString() ?? ''),
       orderDescription: o is Map ? (o['description'] ?? '') : '',
       orderArea: o is Map ? (o['area'] ?? '') : '',
+      orderType: o is Map ? (o['type'] ?? '') : '',
     );
   }
 }

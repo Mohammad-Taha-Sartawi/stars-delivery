@@ -63,4 +63,21 @@ class OrderService {
       throw Exception(e.response?.data?['error'] ?? 'Failed to load order');
     }
   }
+
+  Future<int> getAvailableDriversCount(String token) async {
+    try {
+      final response = await _dio.get('/users/available-providers',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final data = response.data;
+
+      return data is Map
+          ? (data['count'] as num?)?.toInt() ?? 0
+          : 0;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data?['error'] ?? 'Failed to load available drivers',
+      );
+    }
+  }
 }

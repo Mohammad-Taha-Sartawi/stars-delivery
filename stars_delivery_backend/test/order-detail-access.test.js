@@ -35,5 +35,11 @@ test(
     assert.match(routes, /order\.myOffer = offer \|\| null/);
 
     assert.match(routes, /order\.rejected = Boolean\(rejected\)/);
+
+    assert.match(routes, /rejectedByDriversCount/);
+
+    assert.match(routes, /RejectedOrder\.countDocuments/);
+
+    assert.match(routes, /reason: 'driver_rejected'/);
   },
 );

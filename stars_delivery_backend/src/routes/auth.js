@@ -1,5 +1,8 @@
 const multer = require('multer');
 const {
+  normalizeServiceTypes,
+} = require('../services/providerServiceTypes');
+const {
   MAX_PROVIDER_DOCUMENT_SIZE,
   REQUIRED_PROVIDER_DOCUMENT_FIELDS,
   hasProviderDocumentUploads,
@@ -117,6 +120,11 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
       });
     }
 
+    const serviceTypes =
+      role === 'provider'
+        ? normalizeServiceTypes(req.body.serviceTypes)
+        : [];
+
     let inspectedProviderDocuments =
       null;
 
@@ -173,6 +181,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
           password:
             hashed,
           area,
+          serviceTypes,
           providerDocuments,
         });
       } catch (error) {

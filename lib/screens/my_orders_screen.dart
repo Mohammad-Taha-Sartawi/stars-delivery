@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import '../bloc/offer/offer_bloc.dart';
 import 'order_offers_screen.dart';
+import 'order_report_screen.dart';
 import '../services/order_service.dart';
 import '../services/offer_service.dart';
 import '../services/responsive.dart';
@@ -13,11 +14,13 @@ class MyOrdersScreen extends StatefulWidget {
   final String token;
   final Set<String>? statuses;
   final String titleKey;
+  final bool readOnlyReport;
   const MyOrdersScreen({
     super.key,
     required this.token,
     this.statuses,
     this.titleKey = 'my_orders',
+    this.readOnlyReport = false,
   });
   @override
   State<MyOrdersScreen> createState() => _MyOrdersScreenState();
@@ -125,6 +128,37 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
+  Future<void> _resendOrder(String orderId) async {
+    try {
+      await _offerService.resendOrder(widget.token, orderId);
+      await _loadOrders();
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalization.get(context, 'order_resent')),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   String _statusLabel(String? status) {
     switch (status) {
       case 'pending':
@@ -209,6 +243,34 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                           'goods': AppLocalization.get(context, 'goods'),
                         };
                         final status = o['status']?.toString() ?? '';
+                        final offerSuspendedUntil = DateTime.tryParse(
+                          o['offerSuspendedUntil']?.toString() ?? '',
+                        );
+                        final suspensionRemaining = offerSuspendedUntil == null
+                            ? 0
+                            : offerSuspendedUntil
+                                .difference(DateTime.now())
+                                .inSeconds;
+                        final isOfferSuspended =
+                            status == 'pending' && suspensionRemaining > 0;
+                        final isOfferExpired =
+                            status == 'expired' ||
+                            (status == 'pending' &&
+                                o['offerWindowExpiredAt'] != null &&
+                                !isOfferSuspended);
+                        final statusLabel = isOfferSuspended
+                            ? AppLocalization.get(context, 'order_suspended')
+                            : isOfferExpired
+                                ? AppLocalization.get(
+                                    context,
+                                    'offer_window_expired_short',
+                                  )
+                                : _statusLabel(status);
+                        final statusColor = isOfferSuspended
+                            ? Colors.orange
+                            : isOfferExpired
+                                ? Colors.red
+                                : _statusColor(status);
                         final acceptedAt = DateTime.tryParse(
                           o['acceptedAt']?.toString() ?? '',
                         );
@@ -260,21 +322,32 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: _statusColor(
-                                  o['status'],
-                                ).withValues(alpha: 0.15),
+                                color: statusColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                _statusLabel(o['status']),
+                                statusLabel,
                                 style: TextStyle(
-                                  color: _statusColor(o['status']),
+                                  color: statusColor,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
                               ),
                             ),
                             onTap: () {
+                              if (widget.readOnlyReport) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => OrderReportScreen(
+                                      token: widget.token,
+                                      orderId: o['_id']?.toString() ?? '',
+                                    ),
+                                  ),
+                                ).then((_) => _loadOrders());
+                                return;
+                              }
+
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -289,6 +362,63 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                               ).then((_) => _loadOrders());
                             },
                           ),
+                          if (isOfferSuspended)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.hourglass_bottom,
+                                    size: 14,
+                                    color: Colors.orange[800],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      AppLocalization.get(
+                                        context,
+                                        'order_suspended_report_in',
+                                      ).replaceAll(
+                                        '%d',
+                                        '$suspensionRemaining',
+                                      ),
+                                      style: TextStyle(
+                                        color: Colors.orange[800],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (isOfferExpired)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.timer_off_outlined,
+                                    size: 14,
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      AppLocalization.get(
+                                        context,
+                                        'offer_window_expired',
+                                      ),
+                                      style: TextStyle(
+                                        color: Colors.red[700],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           if (showDeliveryClock)
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -362,30 +492,71 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 ],
                               ),
                             ),
-                          if (o['status'] == 'pending')
+                          if (o['status'] == 'pending' &&
+                              !widget.readOnlyReport)
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _cancelOrder(
-                                    o['_id']?.toString() ?? '',
-                                  ),
-                                  icon: const Icon(
-                                    Icons.cancel_outlined,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    AppLocalization.get(context, 'cancel_order'),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                    side: const BorderSide(color: Colors.red),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                              child: Column(
+                                children: [
+                                  if (widget.titleKey == 'offers_title' &&
+                                      o['offerWindowExpiredAt'] != null) ...[
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _resendOrder(
+                                          o['_id']?.toString() ?? '',
+                                        ),
+                                        icon: const Icon(
+                                          Icons.refresh,
+                                          size: 18,
+                                        ),
+                                        label: Text(
+                                          AppLocalization.get(
+                                            context,
+                                            'resend_order',
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.orange,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _cancelOrder(
+                                        o['_id']?.toString() ?? '',
+                                      ),
+                                      icon: const Icon(
+                                        Icons.cancel_outlined,
+                                        size: 18,
+                                      ),
+                                      label: Text(
+                                        AppLocalization.get(
+                                          context,
+                                          'cancel_order',
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                        side: const BorderSide(
+                                          color: Colors.red,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                             ],

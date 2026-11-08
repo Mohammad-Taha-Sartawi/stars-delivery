@@ -35,6 +35,11 @@ class AppLocalization {
     'customer_subtitle': {'ar': 'أحتاج توصيل', 'en': 'Need delivery'},
     'provider_subtitle': {'ar': 'أقدم خدمة التوصيل', 'en': 'Offer delivery'},
 
+    'service_types': {'ar': 'نوع الخدمة', 'en': 'Service Type'},
+    'service_type_required': {
+      'ar': 'اختر نوع خدمة واحداً على الأقل',
+      'en': 'Select at least one service type',
+    },
     'provider_documents_title': {
       'ar': 'وثائق التحقق من السائق',
       'en': 'Provider Verification Documents',
@@ -255,6 +260,30 @@ class AppLocalization {
       'ar': 'لديك %d طلب/عرض قيد الانتظار',
       'en': 'You have %d pending order(s)/offer(s)',
     },
+    'driver_availability': {
+      'ar': 'متاح لاستقبال الطلبات',
+      'en': 'Available for orders',
+    },
+    'driver_available': {
+      'ar': 'متاح - تصلك طلبات جديدة',
+      'en': 'Available - new orders will reach you',
+    },
+    'driver_unavailable': {
+      'ar': 'غير متاح - لن تصلك طلبات جديدة',
+      'en': 'Unavailable - no new orders will reach you',
+    },
+    'availability_updated': {
+      'ar': 'تم تحديث حالة التوفر',
+      'en': 'Availability updated',
+    },
+    'available_drivers_count': {
+      'ar': 'السائقون المتاحون حالياً في منطقتك: %d',
+      'en': 'Drivers currently available in your area: %d',
+    },
+    'no_available_drivers': {
+      'ar': 'لا يوجد سائقون متاحون حالياً في منطقتك',
+      'en': 'No drivers are currently available in your area',
+    },
     'commission_body': {
       'ar': ' شيكل بناء على الطلبات الناجحة',
       'en': ' ILS based on successful orders',
@@ -277,6 +306,7 @@ class AppLocalization {
       'en': 'Estimated Delivery Time',
     },
     'custom_time': {'ar': 'وقت مخصص (دقائق)', 'en': 'Custom Time (minutes)'},
+    'offer_time': {'ar': 'الوقت المطلوب', 'en': 'Required time'},
     'submit_offer': {'ar': 'تقديم عرض سعر', 'en': 'Submit Offer'},
     'send_offer': {'ar': 'إرسال العرض', 'en': 'Send Offer'},
     'price_required': {'ar': 'السعر مطلوب', 'en': 'Price required'},
@@ -328,12 +358,36 @@ class AppLocalization {
       'ar': 'انتهت صلاحية العرض',
       'en': 'Offer expired',
     },
+    'offer_window_expired': {
+      'ar': 'انتهت مدة قبول السعر',
+      'en': 'Price offer acceptance period expired',
+    },
+    'offer_window_expired_short': {
+      'ar': 'انتهت المدة',
+      'en': 'Expired',
+    },
+    'order_suspended': {
+      'ar': 'الطلب معلق',
+      'en': 'Order suspended',
+    },
+    'order_suspended_report_in': {
+      'ar': 'سيُنقل الطلب إلى التقارير خلال %d ثانية',
+      'en': 'Order will move to reports in %d seconds',
+    },
     'your_price': {'ar': 'سعر التوصيل', 'en': 'Delivery Price'},
     'price_hint': {
       'ar': 'أدخل سعر التوصيل بالشيكل',
       'en': 'Enter delivery price in SHE',
     },
     'offers_list': {'ar': 'عروض الأسعار', 'en': 'Price Offers'},
+    'awaiting_driver_offers': {
+      'ar': 'قيد انتظار عروض السائقين',
+      'en': 'Waiting for driver offers',
+    },
+    'order_rejected_by_drivers_count': {
+      'ar': 'تم رفض طلبك من قبل %d سائقين',
+      'en': 'Your order was rejected by %d drivers',
+    },
     'no_offers': {'ar': 'لا توجد عروض بعد', 'en': 'No offers yet'},
     'accepted': {'ar': 'مقبول', 'en': 'Accepted'},
     'rejected': {'ar': 'مرفوض', 'en': 'Rejected'},
@@ -365,6 +419,18 @@ class AppLocalization {
     'order_cancelled': {'ar': 'تم إلغاء الطلب', 'en': 'Order cancelled'},
     'no_orders': {'ar': 'لا توجد طلبات', 'en': 'No orders'},
     'order_details': {'ar': 'تفاصيل الطلب', 'en': 'Order Details'},
+    'orders_report': {'ar': 'تقرير الطلبات', 'en': 'Orders Report'},
+    'order_report': {'ar': 'تقرير الطلب', 'en': 'Order Report'},
+    'offers_history': {'ar': 'سجل العروض', 'en': 'Offers History'},
+    'order_rejected_by_drivers': {
+      'ar': 'تم رفض الطلب من السائقين',
+      'en': 'The order was rejected by drivers',
+    },
+    'status_cancelled': {
+      'ar': 'تم إلغاء الطلب',
+      'en': 'Order Cancelled',
+    },
+    'order_date': {'ar': 'تاريخ الطلب', 'en': 'Order Date'},
     'description': {'ar': 'الوصف', 'en': 'Description'},
     'images': {'ar': 'الصور', 'en': 'Images'},
     'phone_hidden': {'ar': 'رقم مخفي', 'en': 'Hidden Phone'},

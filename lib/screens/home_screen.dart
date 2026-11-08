@@ -16,6 +16,7 @@ import '../services/localization_service.dart';
 import '../services/api_config.dart';
 import '../services/location_service.dart';
 import '../services/order_service.dart';
+import '../services/support_chat_service.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'notifications_screen.dart';
@@ -45,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer? _notifTimer;
   int _pendingOrdersCount = 0;
   int _inProgressOrdersCount = 0;
+  int? _availableDriversCount;
+  int _supportUnreadCount = 0;
+  late ChatService _supportChatService;
   StreamSubscription? _newOfferSub;
   StreamSubscription? _orderStatusSub;
   StreamSubscription? _offerAcceptedSub;
@@ -52,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription? _accountDeletedSub;
   StreamSubscription? _sessionRevokedSub;
   StreamSubscription? _httpSessionRejectedSub;
+  StreamSubscription? _supportReplySub;
   bool _sessionExitStarted = false;
 
   @override
@@ -77,43 +82,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
 
     _loadOrderCounts();
+    _loadAvailableDriversCount();
+    _supportChatService = ChatService(widget.token);
+    _loadSupportUnreadCount();
+    _supportReplySub = SocketService.instance.onSupportReply.listen((_) {
+      _loadSupportUnreadCount();
+    });
 
     _notifTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
       );
+      _loadSupportUnreadCount();
     });
 
     _newOfferSub = SocketService.instance.onNewOffer.listen((data) {
       if (!mounted) return;
-      context.read<NotificationBloc>().add(
-        LoadNotifications(token: widget.token),
-      );
       _loadOrderCounts();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${AppLocalization.get(context, 'new_offer_received')} ${data['price']} ILS',
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     });
 
     _orderStatusSub = SocketService.instance.onOrderStatusChanged.listen((data) {
       if (!mounted) return;
-      context.read<NotificationBloc>().add(
-        LoadNotifications(token: widget.token),
-      );
       _loadOrderCounts();
     });
 
     _offerAcceptedSub = SocketService.instance.onOfferAccepted.listen((data) {
       if (!mounted) return;
-      context.read<NotificationBloc>().add(
-        LoadNotifications(token: widget.token),
-      );
+      _loadOrderCounts();
     });
 
     _broadcastSub = SocketService.instance.onBroadcast.listen((data) {
@@ -121,6 +116,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
       );
+      _loadSupportUnreadCount();
+      final title = data['title']?.toString() ?? '';
+      final body = data['body']?.toString() ?? '';
+      if (title.isNotEmpty || body.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(title.isNotEmpty ? '$title - $body' : body),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     });
 
     _accountDeletedSub =
@@ -159,6 +166,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _pendingOrdersCount = pending;
         _inProgressOrdersCount = inProgress;
       });
+    } catch (_) {}
+  }
+
+  Future<void> _loadSupportUnreadCount() async {
+    try {
+      final count = await _supportChatService.getUnreadCount();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _supportUnreadCount = count);
+    } catch (_) {}
+  }
+
+  Future<void> _loadAvailableDriversCount() async {
+    try {
+      final count = await _orderService.getAvailableDriversCount(
+        widget.token,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _availableDriversCount = count);
     } catch (_) {}
   }
 
@@ -220,6 +253,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (st == AppLifecycleState.resumed) {
       LocationService.syncToBackend(widget.token);
       _loadOrderCounts();
+      _loadAvailableDriversCount();
+      _loadSupportUnreadCount();
+    }
+  }
+
+  void _reloadSupportAfterChat() {
+    if (mounted) {
+      _loadSupportUnreadCount();
     }
   }
 
@@ -234,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _accountDeletedSub?.cancel();
     _sessionRevokedSub?.cancel();
     _httpSessionRejectedSub?.cancel();
+    _supportReplySub?.cancel();
     super.dispose();
   }
 
@@ -357,6 +399,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 bloc.add(LoadNotifications(token: widget.token));
                 await bloc.stream.firstWhere((s) => s is! NotificationLoading);
                 await _loadOrderCounts();
+                await _loadAvailableDriversCount();
+                await _loadSupportUnreadCount();
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -453,11 +497,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => MyOrdersScreen(token: widget.token),
+                          builder: (_) => MyOrdersScreen(
+                            token: widget.token,
+                            titleKey: 'orders_report',
+                            readOnlyReport: true,
+                          ),
                         ),
                       );
                     },
                   ),
+                  if (_availableDriversCount != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.teal[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.teal[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delivery_dining,
+                            color: Colors.teal[800],
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _availableDriversCount == 0
+                                  ? AppLocalization.get(
+                                      context,
+                                      'no_available_drivers',
+                                    )
+                                  : AppLocalization.get(
+                                      context,
+                                      'available_drivers_count',
+                                    ).replaceAll(
+                                      '%d',
+                                      '${_availableDriversCount!}',
+                                    ),
+                              style: TextStyle(
+                                color: Colors.teal[900],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   _ActionButton(
                     icon: Icons.report_outlined,
@@ -481,13 +574,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     icon: Icons.headset_mic_outlined,
                     label: AppLocalization.get(context, 'contact_support'),
                     iconColor: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
+                    badgeCount: _supportUnreadCount,
+                    onTap: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => SupportChatScreen(token: widget.token),
                         ),
                       );
+                      _reloadSupportAfterChat();
                     },
                   ),
                 ],

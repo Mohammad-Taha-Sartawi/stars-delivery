@@ -9,7 +9,6 @@ import '../models/user_model.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
-import '../services/mobile_api_client.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   final UserModel user;
@@ -29,28 +28,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
-  List<String> _frequentItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadFrequentItems();
-  }
-
-  Future<void> _loadFrequentItems() async {
-    try {
-      final dio = MobileApiClient.create(
-        baseUrl: ApiConfig.apiUrl,
-        headers: {
-          'Authorization': 'Bearer ${widget.token}',
-        },
-        connectTimeout: null,
-        receiveTimeout: null,
-      );
-      final res = await dio.get('/users/frequent-items');
-      if (mounted) setState(() => _frequentItems = List<String>.from(res.data['items'] ?? []));
-    } catch (_) {}
-  }
 
   @override
   void dispose() {
@@ -142,21 +119,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (_frequentItems.isNotEmpty) ...[
-                            const Text('العناصر المتكررة:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: _frequentItems.map((item) => ActionChip(
-                                label: Text(item, style: const TextStyle(fontSize: 12)),
-                                onPressed: () {
-                                  _descController.text = item;
-                                },
-                              )).toList(),
-                            ),
-                            const SizedBox(height: 14),
-                          ],
                           TextFormField(
                             controller: _descController,
                             maxLines: 4,

@@ -57,6 +57,24 @@ void main() {
     expect(source, contains("'offer_cooldown_active'"));
   });
 
+  test('offers list shows an expired window instead of pending', () {
+    final source = File('lib/screens/my_orders_screen.dart').readAsStringSync();
+
+    expect(source, contains("o['offerWindowExpiredAt']"));
+
+    expect(source, contains("'offer_window_expired'"));
+
+    expect(source, contains("'offer_window_expired_short'"));
+
+    expect(source, contains("o['offerSuspendedUntil']"));
+
+    expect(source, contains("'order_suspended'"));
+
+    expect(source, contains("'order_suspended_report_in'"));
+
+    expect(source, contains('Colors.red'));
+  });
+
   test('offer service reads the cooldown retry delay', () {
     final source = File('lib/services/offer_service.dart').readAsStringSync();
 

@@ -91,6 +91,37 @@ router.post('/send', auth, requireRole('customer', 'provider'), async (req, res)
   }
 });
 
+router.get('/unread-count', auth, requireRole('customer', 'provider'), async (req, res) => {
+  try {
+    const count = await ChatMessage.countDocuments({
+      userId: req.userId,
+      sender: 'admin',
+      read: false,
+    });
+
+    res.json({ count });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.put('/read', auth, requireRole('customer', 'provider'), async (req, res) => {
+  try {
+    await ChatMessage.updateMany(
+      {
+        userId: req.userId,
+        sender: 'admin',
+        read: false,
+      },
+      { read: true },
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
 // All /admin routes below require the hardened administrator session.
 router.use(
   '/admin',
@@ -329,6 +360,8 @@ router.post('/admin/reply/:userId', async (req, res) => {
     if (io) {
       io.to(`user:${rawConversationId}`).emit('support_reply', {
         _id: msg._id,
+        userId: rawConversationId,
+        sender: 'admin',
         text: msg.text,
         createdAt: msg.createdAt,
       });

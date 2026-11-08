@@ -10,12 +10,14 @@ const {
   providerDocumentDownloadName,
 } = require('../services/providerDocumentStorage');
 const { executeTransaction } = require('../services/transaction');
+const { serviceTypesFromAdminLabel, serviceTypesLabel } = require('../services/providerServiceTypes');
 const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const RejectedOrder = require('../models/RejectedOrder');
 const Order = require('../models/Order');
 const Notification = require('../models/Notification');
 const PendingProvider = require('../models/PendingProvider');
@@ -33,17 +35,160 @@ const {
 
 const upload = multer();
 
+router.put('/:id/availability', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ success: false, message: 'السائق غير موجود' });
+    }
+
+    const available = req.body?.available;
+
+    if (typeof available !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'حالة التوفر غير صالحة' });
+    }
+
+    const driver = await User.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        role: 'provider',
+        deleted: { $ne: true },
+      },
+      { $set: { isAvailable: available } },
+      { new: true },
+    ).select('isAvailable').lean();
+
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'السائق غير موجود' });
+    }
+
+    res.json({
+      success: true,
+      isAvailable: driver.isAvailable !== false,
+    });
+  } catch (err) {
+    sendInternalServerFailure(res);
+  }
+});
+
+router.get('/:id/reports', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ error: 'السائق غير موجود' });
+    }
+
+    const provider = await User.findOne({
+      _id: req.params.id,
+      role: 'provider',
+    }).select('fullName publicId').lean();
+
+    if (!provider) {
+      return res.status(404).json({ error: 'السائق غير موجود' });
+    }
+
+    const now = new Date();
+    const [rejections, deliveredOrders] = await Promise.all([
+      RejectedOrder.find({
+        providerId: provider._id,
+        createdAt: { $lte: now },
+      }).sort({ createdAt: -1 }).lean(),
+      Order.find({
+        providerId: provider._id,
+        status: 'completed',
+      }).populate('customerId', 'fullName publicId').lean(),
+    ]);
+
+    const orderIds = rejections.map((rejection) => rejection.orderId);
+    const orders = await Order.find({
+      _id: { $in: orderIds },
+    }).populate('customerId', 'fullName publicId').lean();
+    const orderMap = new Map(orders.map((order) => [order._id.toString(), order]));
+
+    const maskPhone = (phone) => (
+      phone ? `${phone.slice(0, -3)}***` : ''
+    );
+
+    const rejected = rejections
+      .map((rejection) => {
+        const order = orderMap.get(rejection.orderId.toString());
+        if (!order) return null;
+        return {
+          ...order,
+          recordType: 'rejected',
+          reason: rejection.reason || 'driver_rejected',
+          reportAt: rejection.createdAt,
+          phone: maskPhone(order.phone),
+        };
+      })
+      .filter(Boolean);
+
+    const delivered = deliveredOrders.map((order) => ({
+      ...order,
+      recordType: 'delivered',
+      reportAt: order.completedAt || order.createdAt,
+    }));
+
+    res.json({
+      provider: {
+        name: provider.fullName,
+        publicId: provider.publicId,
+      },
+      report: [...rejected, ...delivered].sort(
+        (a, b) => new Date(b.reportAt) - new Date(a.reportAt),
+      ),
+    });
+  } catch (err) {
+    sendInternalServerFailure(res);
+  }
+});
+
+router.get('/', async (req, res) => {
+  try {
+    const drivers = await User.find({ role: 'provider' })
+      .select('fullName publicId email phoneNumbers area status isAvailable serviceTypes licenseType blockedUntil offerCooldownUntil createdAt deleted')
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    res.json(drivers.map((driver) => ({
+      _id: driver._id.toString(),
+      fullName: driver.fullName,
+      publicId: driver.publicId || '',
+      email: driver.email || '',
+      phone:
+        driver.phoneNumbers?.find((phone) => phone.primary)?.number
+        || driver.phoneNumbers?.[0]?.number
+        || '',
+      area: driver.area || '',
+      status: driver.status || '',
+      isAvailable: driver.isAvailable !== false,
+      serviceTypes: driver.serviceTypes || [],
+      licenseType: driver.licenseType || '',
+      blockedUntil: driver.blockedUntil || null,
+      offerCooldownUntil: driver.offerCooldownUntil || null,
+      createdAt: driver.createdAt,
+    })));
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
 router.get('/search', async (req, res) => {
   try {
     const { id } = req.query;
     if (!id) return res.json({ error: 'الرجاء إدخال رقم السائق أو الاسم' });
 
+    const searchTerms = [
+      { publicId: id },
+      { fullName: { $regex: id, $options: 'i' } },
+    ];
+
+    if (mongoose.isValidObjectId(id)) {
+      searchTerms.push({ _id: id });
+    }
+
     const match = await User.findOne({
       role: 'provider',
-      $or: [
-        { publicId: id },
-        { fullName: { $regex: id, $options: 'i' } },
-      ],
+      $or: searchTerms,
     }).lean();
 
     if (!match) return res.json({ error: 'لم يتم العثور على سائق' });
@@ -65,9 +210,17 @@ router.get('/search', async (req, res) => {
       driverId: match.publicId || match._id.toString().slice(-8),
       name: match.fullName || match.name,
       email: match.email,
-      phone: match.phone,
-      serviceType: 'توصيل',
-      licenseType: match.publicId ? 'موثق' : 'غير موثق',
+      phone:
+        match.phoneNumbers?.find((phone) => phone.primary)?.number
+        || match.phoneNumbers?.[0]?.number
+        || match.phone
+        || '',
+      serviceType: serviceTypesLabel(match.serviceTypes),
+      serviceTypes: match.serviceTypes || [],
+      licenseType: match.licenseType || 'غير محدد',
+      isAvailable: match.isAvailable !== false,
+      blockedUntil: match.blockedUntil || null,
+      offerCooldownUntil: match.offerCooldownUntil || null,
       area: match.area || 'غير محدد',
       status: match.status === 'blocked' ? 'inactive' : match.status,
       financial: {
@@ -81,7 +234,7 @@ router.get('/search', async (req, res) => {
       }
     };
 
-    res.json({ driver, commission: orderCount, netProfit, last30Profit, totalCommission });
+    res.json({ driver, orderCount, commission: totalCommission, netProfit, last30Profit, totalCommission });
   } catch (err) {
     sendInternalServerError(res);
   }
@@ -172,6 +325,8 @@ router.post('/', async (req, res) => {
         password: hashedPassword,
         role: 'provider',
         area: driverArea || '',
+        serviceTypes: serviceTypesFromAdminLabel(driverServiceType),
+        licenseType: driverLicenseType || '',
         status: 'active',
         publicId,
       });
@@ -743,6 +898,10 @@ router.post('/pending/:id/approve', async (req, res) => {
                   'provider',
                 area:
                   pending.area,
+                serviceTypes:
+                  pending.serviceTypes || [],
+                licenseType:
+                  pending.licenseType || '',
                 publicId,
                 primaryPhone:
                   pending.phone,

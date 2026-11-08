@@ -17,6 +17,8 @@ import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
 import '../services/location_service.dart';
+import '../services/provider_service.dart';
+import '../services/support_chat_service.dart';
 import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
 import 'login_screen.dart';
@@ -42,6 +44,7 @@ class ProviderHomeScreen extends StatefulWidget {
 }
 
 class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBindingObserver {
+  final ProviderService _providerService = ProviderService();
   Timer? _notifTimer;
   Timer? _unblockTimer;
   StreamSubscription? _newOrderSub;
@@ -51,7 +54,72 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
   StreamSubscription? _accountDeletedSub;
   StreamSubscription? _sessionRevokedSub;
   StreamSubscription? _httpSessionRejectedSub;
+  StreamSubscription? _supportReplySub;
   bool _sessionExitStarted = false;
+  bool _updatingAvailability = false;
+  int _supportUnreadCount = 0;
+  late ChatService _supportChatService;
+
+  Future<void> _loadSupportUnreadCount() async {
+    try {
+      final count = await _supportChatService.getUnreadCount();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _supportUnreadCount = count);
+    } catch (_) {}
+  }
+
+  Future<void> _setAvailability(bool value) async {
+    if (_updatingAvailability) {
+      return;
+    }
+
+    setState(() => _updatingAvailability = true);
+
+    try {
+      await _providerService.setAvailability(widget.token, value);
+
+      if (!mounted) {
+        return;
+      }
+
+      context.read<ProviderBloc>().add(
+        LoadProviderStats(token: widget.token),
+      );
+      context.read<ProviderBloc>().add(
+        LoadPendingOrders(token: widget.token),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalization.get(context, 'availability_updated'),
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _updatingAvailability = false);
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -81,10 +149,17 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
       LoadNotifications(token: widget.token),
     );
 
+    _supportChatService = ChatService(widget.token);
+    _loadSupportUnreadCount();
+    _supportReplySub = SocketService.instance.onSupportReply.listen((_) {
+      _loadSupportUnreadCount();
+    });
+
     _notifTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
       );
+      _loadSupportUnreadCount();
     });
 
     _newOrderSub = SocketService.instance.onNewOrder.listen((_) {
@@ -107,11 +182,23 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
     });
 
-    _broadcastSub = SocketService.instance.onBroadcast.listen((_) {
+    _broadcastSub = SocketService.instance.onBroadcast.listen((data) {
       if (!mounted) return;
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
       );
+      _loadSupportUnreadCount();
+      final title = data['title']?.toString() ?? '';
+      final body = data['body']?.toString() ?? '';
+      if (title.isNotEmpty || body.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(title.isNotEmpty ? '$title - $body' : body),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     });
 
     _accountDeletedSub =
@@ -175,6 +262,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
       LocationService.syncToBackend(widget.token);
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
       context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
+      _loadSupportUnreadCount();
     }
   }
 
@@ -190,6 +278,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
     _accountDeletedSub?.cancel();
     _sessionRevokedSub?.cancel();
     _httpSessionRejectedSub?.cancel();
+    _supportReplySub?.cancel();
     super.dispose();
   }
 
@@ -383,6 +472,64 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
                       ),
                       child: Column(
                       children: [
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: s.isAvailable
+                                ? Colors.green[50]
+                                : Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: s.isAvailable
+                                  ? Colors.green[300]!
+                                  : Colors.red[300]!,
+                            ),
+                          ),
+                          child: SwitchListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            value: s.isAvailable,
+                            onChanged: _updatingAvailability
+                                ? null
+                                : (value) => _setAvailability(value),
+                            title: Text(
+                              AppLocalization.get(
+                                context,
+                                'driver_availability',
+                              ),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            subtitle: Text(
+                              s.isAvailable
+                                  ? AppLocalization.get(
+                                      context,
+                                      'driver_available',
+                                    )
+                                  : AppLocalization.get(
+                                      context,
+                                      'driver_unavailable',
+                                    ),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            secondary: Icon(
+                              s.isAvailable
+                                  ? Icons.toggle_on
+                                  : Icons.toggle_off,
+                              color: s.isAvailable
+                                  ? Colors.green
+                                  : Colors.red,
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         if (s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount > 0) ...[
                           Container(
                             width: double.infinity,
@@ -862,22 +1009,45 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with WidgetsBin
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
+                            onPressed: () async {
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => SupportChatScreen(token: widget.token),
                                 ),
                               );
+
+                              if (mounted) {
+                                _loadSupportUnreadCount();
+                              }
                             },
                             icon: const Icon(Icons.headset_mic_outlined, size: 22, color: Colors.orange),
-                            label: Text(
-                              AppLocalization.get(context, 'contact_support'),
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  AppLocalization.get(context, 'contact_support'),
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (_supportUnreadCount > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$_supportUnreadCount',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,

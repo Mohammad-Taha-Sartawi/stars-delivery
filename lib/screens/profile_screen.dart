@@ -24,11 +24,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _currentPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
-  final _freqItemCtrl = TextEditingController();
-  List<String> _frequentItems = [];
   List<Map<String, dynamic>> _phones = [];
   final _phoneCtrl = TextEditingController();
-  bool _loadingItems = true;
   bool _loadingPhones = true;
 
   @override
@@ -37,7 +34,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameCtrl.text = widget.user.fullName;
     _emailCtrl.text = widget.user.email;
     _loadPhones();
-    if (widget.user.role == 'customer') _loadFrequentItems();
   }
 
   @override
@@ -47,42 +43,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _currentPassCtrl.dispose();
     _newPassCtrl.dispose();
     _confirmPassCtrl.dispose();
-    _freqItemCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadFrequentItems() async {
-    try {
-      final dio = _client();
-      final res = await dio.get('/users/frequent-items');
-      if (!mounted) return;
-      setState(() {
-        _frequentItems = List<String>.from(res.data['items'] ?? []);
-        _loadingItems = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loadingItems = false);
-    }
-  }
-
-  Future<void> _addFrequentItem() async {
-    final text = _freqItemCtrl.text.trim();
-    if (text.isEmpty) return;
-    try {
-      final dio = _client();
-      await dio.post('/users/frequent-items', data: {'item': text});
-      _freqItemCtrl.clear();
-      _loadFrequentItems();
-    } catch (_) {}
-  }
-
-  Future<void> _removeFrequentItem(String item) async {
-    try {
-      final dio = _client();
-      await dio.delete('/users/frequent-items', data: {'item': item});
-      _loadFrequentItems();
-    } catch (_) {}
   }
 
   Future<void> _loadPhones() async {
@@ -405,18 +367,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextField(controller: _confirmPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'تأكيد كلمة المرور', border: OutlineInputBorder())),
               const SizedBox(height: 8),
               SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _changePassword, child: const Text('تغيير كلمة المرور'))),
-              if (widget.user.role == 'customer') ...[
-                const SizedBox(height: 24),
-                const Text('العناصر المتكررة', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: TextField(controller: _freqItemCtrl, decoration: const InputDecoration(hintText: 'أضف عنصراً جديداً', border: OutlineInputBorder()), onSubmitted: (_) => _addFrequentItem())),
-                  const SizedBox(width: 8),
-                  IconButton(onPressed: _addFrequentItem, icon: const Icon(Icons.add_circle, color: Colors.green)),
-                ]),
-                const SizedBox(height: 8),
-                if (_loadingItems) const CircularProgressIndicator() else ..._frequentItems.map((item) => ListTile(dense: true, title: Text(item, style: const TextStyle(fontSize: 14)), trailing: IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: () => _removeFrequentItem(item)))),
-              ],
             ],
           ),
         ),

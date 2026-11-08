@@ -3,14 +3,15 @@ const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const RejectedOrder = require('../models/RejectedOrder');
 const User = require('../models/User');
-const Notification = require('../models/Notification');
 const { executeTransaction } = require('./transaction');
 const { ACCEPTABLE_OFFER_ORDER_STATES, canAcceptOfferRecord, nextProviderStatus } = require('./orderState');
+const { normalizeServiceTypes } = require('./providerServiceTypes');
 
 const ACCEPTABLE_ORDER_STATUSES = ACCEPTABLE_OFFER_ORDER_STATES;
 const PROVIDER_ACCEPTANCE_BLOCK_MS = 15 * 60 * 1000;
 const OFFER_VALIDITY_MS = 60 * 1000;
 const OFFER_COOLDOWN_MS = 60 * 1000;
+const OFFER_SUSPENSION_MS = 300 * 1000;
 const CONFLICT_MESSAGES = {
   ORDER_NOT_AVAILABLE: 'The order is no longer available for this action.',
   OFFER_NOT_AVAILABLE: 'The offer is no longer available.',
@@ -50,8 +51,91 @@ async function inTransaction(work) {
   return executeTransaction({ startSession: () => mongoose.startSession(), work });
 }
 
+async function suspendIfUnanswered(order, now = new Date()) {
+  const activeOffer = await Offer.exists({
+    orderId: order._id,
+    status: 'pending',
+    $or: [
+      { expiresAt: { $gt: now } },
+      { expiresAt: null },
+      { expiresAt: { $exists: false } },
+    ],
+  });
+
+  if (activeOffer) {
+    return null;
+  }
+
+  const rejectedProviderIds = await RejectedOrder.find({
+    orderId: order._id,
+  }).distinct('providerId');
+
+  const responderFilter = {
+    role: 'provider',
+    status: 'active',
+    deleted: { $ne: true },
+    isAvailable: { $ne: false },
+    $and: [
+      {
+        $or: [
+          { blockedUntil: null },
+          { blockedUntil: { $exists: false } },
+          { blockedUntil: { $lte: now } },
+        ],
+      },
+      {
+        $or: [
+          { offerCooldownUntil: null },
+          { offerCooldownUntil: { $exists: false } },
+          { offerCooldownUntil: { $lte: now } },
+        ],
+      },
+    ],
+  };
+
+  if (order.area) {
+    responderFilter.area = order.area;
+  }
+
+  if (rejectedProviderIds.length > 0) {
+    responderFilter._id = { $nin: rejectedProviderIds };
+  }
+
+  const responders = await User.countDocuments(responderFilter);
+
+  if (responders > 0) {
+    return null;
+  }
+
+  const suspendedUntil = new Date(now.getTime() + OFFER_SUSPENSION_MS);
+  const update = await Order.updateOne(
+    {
+      _id: order._id,
+      status: { $in: ['pending', 'offered'] },
+      offerSuspendedUntil: null,
+    },
+    {
+      $set: {
+        status: 'pending',
+        offerWindowExpiredAt: now,
+        offerSuspendedUntil: suspendedUntil,
+      },
+    },
+  );
+
+  if (update.modifiedCount !== 1) {
+    return null;
+  }
+
+  return {
+    offerWindowExpiredAt: now,
+    offerSuspendedUntil: suspendedUntil,
+  };
+}
+
 async function expireStaleOffers({ orderId } = {}) {
   const now = new Date();
+  const suspensionEnd = new Date(now.getTime() + OFFER_SUSPENSION_MS);
   const filter = { status: 'pending', expiresAt: { $lte: now } };
 
   if (orderId) {
@@ -76,7 +160,7 @@ async function expireStaleOffers({ orderId } = {}) {
         {
           $setOnInsert: {
             reason: 'offer_expired',
-            createdAt: offer.expiresAt || now,
+            createdAt: suspensionEnd,
           },
         },
         { upsert: true },
@@ -96,15 +180,54 @@ async function expireStaleOffers({ orderId } = {}) {
       status: { $in: ['pending', 'accepted'] },
     });
 
-    if (!active) {
+    if (active) {
+      continue;
+    }
+
+    const order = await Order.findById(id)
+      .select('_id area')
+      .lean();
+
+    if (!order) {
+      continue;
+    }
+
+    const suspended = await suspendIfUnanswered(order, now);
+
+    if (!suspended) {
       await Order.updateOne(
         { _id: id, status: 'offered' },
-        { $set: { status: 'pending' } },
+        {
+          $set: {
+            status: 'pending',
+            offerWindowExpiredAt: null,
+            offerSuspendedUntil: null,
+          },
+        },
       );
     }
   }
 
   return orderIds;
+}
+
+async function finalizeExpiredOrders({ orderId } = {}) {
+  const now = new Date();
+  const filter = {
+    status: 'pending',
+    offerSuspendedUntil: { $lte: now },
+  };
+
+  if (orderId) {
+    filter._id = orderId;
+  }
+
+  const result = await Order.updateMany(
+    filter,
+    { $set: { status: 'expired' } },
+  );
+
+  return result.modifiedCount || 0;
 }
 
 async function acceptOffer({ offerId, customerId }) {
@@ -151,6 +274,8 @@ async function acceptOffer({ offerId, customerId }) {
         platformCommission: 1,
         estimatedTime: offer.estimatedTime || 0,
         acceptedAt: new Date(),
+        offerWindowExpiredAt: null,
+        offerSuspendedUntil: null,
       },
     }, { session });
     if (orderUpdate.modifiedCount !== 1) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', order._id);
@@ -160,15 +285,6 @@ async function acceptOffer({ offerId, customerId }) {
 
     await Offer.updateMany({ orderId: order._id, _id: { $ne: offer._id } }, { $set: { status: 'rejected' } }, { session });
     await Offer.updateMany({ providerId: offer.providerId, status: 'pending', _id: { $ne: offer._id } }, { $set: { status: 'rejected' } }, { session });
-
-    const customer = await User.findById(customerId).select('fullName').session(session).lean();
-    await Notification.create([{
-      userId: offer.providerId,
-      orderId: order._id,
-      type: 'offer_accepted',
-      title: 'تم قبول عرضك',
-      body: `السيد ${customer?.fullName || ''} قبل عرضك للطلب #${order._id}`,
-    }], { session });
 
     return {
       orderId: order._id,
@@ -229,6 +345,12 @@ async function submitOffer({ orderId, providerId, price, estimatedTime }) {
       // this lookup then observes the existing offer and rejects the duplicate.
       // This avoids automatically creating a unique index against unknown
       // existing production data before an explicit duplicate-data audit.
+      const rejectedOrder = await RejectedOrder.findOne({ orderId, providerId })
+        .select('_id')
+        .session(session)
+        .lean();
+      if (rejectedOrder) throw new LifecycleConflict('OFFER_NOT_AVAILABLE', orderId);
+
       const existingOffer = await Offer.findOne({ orderId, providerId })
         .select('_id status expiresAt')
         .session(session)
@@ -244,7 +366,27 @@ async function submitOffer({ orderId, providerId, price, estimatedTime }) {
         throw new LifecycleConflict('OFFER_NOT_AVAILABLE', orderId);
       }
 
-    const orderUpdate = await Order.updateOne({ _id: orderId, status: { $in: ACCEPTABLE_ORDER_STATUSES } }, { $set: { status: 'offered' } }, { session });
+    const providerServiceTypes = normalizeServiceTypes(provider.serviceTypes);
+    const orderFilter = {
+      _id: orderId,
+      status: { $in: ACCEPTABLE_ORDER_STATUSES },
+      $or: [
+        { offerSuspendedUntil: null },
+        { offerSuspendedUntil: { $exists: false } },
+      ],
+    };
+
+    if (providerServiceTypes.length > 0) {
+      orderFilter.type = { $in: providerServiceTypes };
+    }
+
+    const orderUpdate = await Order.updateOne(orderFilter, {
+      $set: {
+        status: 'offered',
+        offerWindowExpiredAt: null,
+        offerSuspendedUntil: null,
+      },
+    }, { session });
     if (orderUpdate.matchedCount !== 1) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', orderId);
 
     let offer;
@@ -262,13 +404,6 @@ async function submitOffer({ orderId, providerId, price, estimatedTime }) {
     }
 
     const order = await Order.findById(orderId).select('customerId').session(session).lean();
-    await Notification.create([{
-      userId: order.customerId,
-      orderId,
-      type: 'new_offer',
-      title: 'عرض سعر جديد',
-      body: `السائق ${provider.fullName} قدم عرض سعر بقيمة ${price} شيكل`,
-    }], { session });
     return { offer: offer.toObject(), customerId: order.customerId, providerName: provider.fullName, providerPhone: provider.phone };
   });
 }
@@ -284,6 +419,8 @@ async function resetOrder({ orderId, customerId }) {
         platformCommission: 0,
         estimatedTime: 0,
         acceptedAt: null,
+        offerWindowExpiredAt: null,
+        offerSuspendedUntil: null,
       },
     }, { new: true, session }).lean();
     if (!updated) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', orderId);
@@ -312,13 +449,6 @@ async function transitionOrder({ orderId, providerId, from, to }) {
     if (to === 'completed') {
       await User.updateOne({ _id: providerId }, { $set: { blockedUntil: null } }, { session });
     }
-    await Notification.create([{
-      userId: updated.customerId,
-      orderId: updated._id,
-      type: to === 'completed' ? 'order_completed' : 'order_pending',
-      title: to === 'completed' ? 'تم اكتمال الطلب' : 'جاري تنفيذ الطلب',
-      body: to === 'completed' ? 'تم تسليم طلبك بنجاح' : 'السائق يقوم بتنفيذ طلبك الآن',
-    }], { session });
     return updated;
   });
 }
@@ -327,12 +457,15 @@ module.exports = {
   ACCEPTABLE_ORDER_STATUSES,
   PROVIDER_ACCEPTANCE_BLOCK_MS,
   OFFER_VALIDITY_MS,
+  OFFER_SUSPENSION_MS,
   LifecycleConflict,
   conflictResponse,
   isTransactionUnavailable,
   acceptOffer,
   submitOffer,
   expireStaleOffers,
+  suspendIfUnanswered,
+  finalizeExpiredOrders,
   resetOrder,
   cancelOrder,
   transitionOrder,

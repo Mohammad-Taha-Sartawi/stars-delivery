@@ -32,4 +32,34 @@ void main() {
 
     expect(source, contains("'order_cancelled'"));
   });
+
+  test('offers list can resend a pending order to drivers', () {
+    final source = File('lib/screens/my_orders_screen.dart').readAsStringSync();
+
+    expect(source, contains('_resendOrder'));
+
+    expect(source, contains("widget.titleKey == 'offers_title'"));
+
+    expect(source, contains("o['offerWindowExpiredAt'] != null"));
+
+    expect(source, contains("'resend_order'"));
+  });
+
+  test('per-order offers page only resends after the window expires', () {
+    final source = File('lib/screens/order_offers_screen.dart').readAsStringSync();
+
+    expect(source, contains('_orderWindowExpired'));
+
+    expect(source, contains('_loadOrderWindowState'));
+
+    expect(source, contains("order['offerWindowExpiredAt'] != null"));
+  });
+
+  test('offer service surfaces resend failures', () {
+    final source = File('lib/services/offer_service.dart').readAsStringSync();
+
+    expect(source, contains("'/offers/\$orderId/resend'"));
+
+    expect(source, contains("'Failed to resend order'"));
+  });
 }

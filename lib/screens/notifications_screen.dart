@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/notification/notification_bloc.dart';
@@ -20,12 +21,27 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     context.read<NotificationBloc>().add(
       LoadNotifications(token: widget.token),
     );
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        context.read<NotificationBloc>().add(
+          LoadNotifications(token: widget.token),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   @override

@@ -20,4 +20,30 @@ void main() {
 
     expect(source, contains('state.stats.blockedUntil'));
   });
+
+  test('provider home exposes an availability switch', () {
+    final home = File('lib/screens/provider_home_screen.dart').readAsStringSync();
+
+    expect(home, contains('_setAvailability'));
+
+    expect(home, contains('SwitchListTile'));
+
+    expect(home, contains("'driver_availability'"));
+
+    expect(home, contains("'driver_available'"));
+
+    expect(home, contains("'driver_unavailable'"));
+
+    final service = File('lib/services/provider_service.dart').readAsStringSync();
+
+    expect(service, contains("'/provider/availability'"));
+
+    final stats = File('lib/models/provider_stats.dart').readAsStringSync();
+
+    expect(stats, contains('isAvailable'));
+
+    final localization = File('lib/services/localization_service.dart').readAsStringSync();
+
+    expect(localization, contains("'availability_updated'"));
+  });
 }

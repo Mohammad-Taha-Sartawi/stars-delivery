@@ -89,6 +89,19 @@ class ProviderService {
     }
   }
 
+  Future<void> setAvailability(String token, bool available) async {
+    try {
+      await _dio.put('/provider/availability',
+        data: {'available': available},
+        options: Options(headers: { 'Authorization': 'Bearer $token' }),
+      );
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data?['error'] ?? 'Failed to update availability',
+      );
+    }
+  }
+
   Future<void> markFulfilling(String token, String orderId) async {
     try {
       await _dio.put('/orders/$orderId/fulfilling',

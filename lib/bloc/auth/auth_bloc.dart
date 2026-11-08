@@ -111,6 +111,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         event.role,
         event.area,
         privacyPolicy: event.privacyPolicy,
+        serviceTypes: event.serviceTypes,
         driverLicenseDocument: event.driverLicenseDocument,
       );
 

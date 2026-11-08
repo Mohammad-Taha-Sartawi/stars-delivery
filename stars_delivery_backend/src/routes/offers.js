@@ -71,6 +71,7 @@ router.get('/order/:orderId', auth, requireRole('customer'), async (req, res) =>
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
     await lifecycle.expireStaleOffers({ orderId: order._id });
+    await lifecycle.finalizeExpiredOrders({ orderId: order._id });
 
     const offers = await Offer.find({ orderId: req.params.orderId })
       .populate('providerId', 'fullName phone area publicId')

@@ -80,7 +80,7 @@ test('presentation tokens preserve all migrated inline styles externally', () =>
 
   assert.equal(
     tokenMatches.length,
-    63,
+    78,
   );
 
   const tokens = new Set(
@@ -124,7 +124,7 @@ test('delegated browser actions replace legacy inline handlers', () => {
 
   assert.equal(
     clickActions.length,
-    45,
+    58,
   );
 
   assert.equal(
@@ -179,12 +179,12 @@ test('delegated admin actions require the admin session capability', () => {
 
   assert.equal(
     generatedActions.length,
-    26,
+    37,
   );
 
   assert.equal(
     generatedCapabilities.length,
-    26,
+    37,
   );
 
   const generatedActionLines = browserSource

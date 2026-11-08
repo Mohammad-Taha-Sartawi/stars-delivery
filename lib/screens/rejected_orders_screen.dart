@@ -142,6 +142,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
         final name = customer is Map ? (customer['fullName'] ?? '') : '';
         final pid = customer is Map ? (customer['publicId'] ?? '') : '';
         final delivered = order['recordType'] == 'delivered';
+        final phone = order['phone']?.toString() ?? '';
 
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
@@ -214,6 +215,26 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                ],
+                if (phone.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.phone,
+                        size: 13,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        phone,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[700],
+                        ),
+                      ),
                     ],
                   ),
                 ],

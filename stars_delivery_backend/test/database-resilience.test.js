@@ -132,3 +132,27 @@ test(
     );
   },
 );
+
+test(
+  'admin sessions share the retrying mongoose client instead of crashing on a second connection',
+  () => {
+    assert.match(indexSource, /mongoClientPromise/);
+
+    assert.match(
+      indexSource,
+      /mongoose\.connection\.getClient\(\)/,
+    );
+
+    assert.match(
+      indexSource,
+      /clientPromise: mongoClientPromise/,
+    );
+
+    const sessionSource = fs.readFileSync(
+      path.join(backendRoot, 'src/middleware/adminSession.js'),
+      'utf8',
+    );
+
+    assert.match(sessionSource, /clientPromise/);
+  },
+);

@@ -141,6 +141,7 @@ abstract interface class AuthGateway {
     String role,
     String area, {
     bool privacyPolicy = true,
+    List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
   });
 
@@ -191,6 +192,7 @@ class AuthService implements AuthGateway {
     String role,
     String area, {
     bool privacyPolicy = true,
+    List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
   }) async {
     try {
@@ -216,6 +218,7 @@ class AuthService implements AuthGateway {
 
       final formData = FormData.fromMap({
         ...fields.map((key, value) => MapEntry(key, value.toString())),
+        'serviceTypes': serviceTypes.join(','),
         'driverLicenseDocument': _multipartProviderDocument(
           driverLicenseDocument,
         ),

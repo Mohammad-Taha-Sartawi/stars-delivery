@@ -1,5 +1,6 @@
 const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
@@ -14,17 +15,49 @@ const {
   mobileSessionRotationFilter,
 } = require('../services/mobileSession');
 
+router.get('/', async (req, res) => {
+  try {
+    const users = await User.find({ role: 'customer' })
+      .select('fullName publicId email phoneNumbers area status createdAt deleted')
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    res.json(users.map((user) => ({
+      _id: user._id.toString(),
+      fullName: user.fullName,
+      publicId: user.publicId || '',
+      email: user.email || '',
+      phone:
+        user.phoneNumbers?.find((phone) => phone.primary)?.number
+        || user.phoneNumbers?.[0]?.number
+        || '',
+      area: user.area || '',
+      status: user.status || '',
+      createdAt: user.createdAt,
+    })));
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
 router.get('/search', async (req, res) => {
   try {
     const { id } = req.query;
     if (!id) return res.json({ error: 'الرجاء إدخال ID المستخدم أو الاسم' });
 
+    const searchTerms = [
+      { publicId: id },
+      { fullName: { $regex: id, $options: 'i' } },
+    ];
+
+    if (mongoose.isValidObjectId(id)) {
+      searchTerms.push({ _id: id });
+    }
+
     const user = await User.findOne({
       role: 'customer',
-      $or: [
-        { publicId: id },
-        { fullName: { $regex: id, $options: 'i' } },
-      ],
+      $or: searchTerms,
     }).lean();
 
     if (!user) return res.json({ error: 'لم يتم العثور على مستخدم' });
@@ -35,11 +68,16 @@ router.get('/search', async (req, res) => {
       userId: user.publicId || user._id.toString().slice(-8),
       name: user.fullName || user.name,
       email: user.email,
-      phone: user.phone,
+      phone:
+        user.phoneNumbers?.find((phone) => phone.primary)?.number
+        || user.phoneNumbers?.[0]?.number
+        || user.phone
+        || '',
       joinDate: user.createdAt ? user.createdAt.toISOString().split('T')[0] : 'غير محدد',
       area: user.area || 'غير محدد',
       status: user.status === 'blocked' ? 'inactive' : user.status,
       orders: orders.map(o => ({
+        fullId: o._id.toString(),
         orderId: o._id.toString().slice(-8),
         type: o.type || 'غير محدد',
         date: o.createdAt ? o.createdAt.toISOString().split('T')[0] : 'غير محدد',

@@ -106,18 +106,22 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
   }
 
   Widget _buildCooldownBanner(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.red[50],
+        color: scheme.errorContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red[200]!),
+        border: Border.all(
+          color: scheme.error.withValues(alpha: 0.4),
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.timer_off_outlined, color: Colors.red),
+          Icon(Icons.timer_off_outlined, color: scheme.onErrorContainer),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -125,8 +129,8 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
               children: [
                 Text(
                   AppLocalization.get(context, 'offer_cooldown_active'),
-                  style: const TextStyle(
-                    color: Colors.red,
+                  style: TextStyle(
+                    color: scheme.onErrorContainer,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -134,8 +138,8 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
                 Text(
                   AppLocalization.get(context, 'cooldown_remaining')
                       .replaceAll('%d', '$_cooldownSeconds'),
-                  style: const TextStyle(
-                    color: Colors.red,
+                  style: TextStyle(
+                    color: scheme.onErrorContainer,
                     fontSize: 12,
                   ),
                 ),
@@ -147,41 +151,43 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
     );
   }
 
-  Widget _buildCustomerRow(BuildContext context, Map<String, dynamic> o) {
-    final c = o['customerId'];
-    final String name;
-    final String pid;
-    if (c is Map) {
-      name = (c['fullName'] ?? '').toString();
-      pid = (c['publicId'] ?? '').toString();
-    } else {
-      name = '';
-      pid = '';
-    }
-    return Row(
-      children: [
-        const Icon(Icons.person_outline, size: 14, color: Colors.orange),
-        const SizedBox(width: 4),
-        Text(
-          name.isNotEmpty ? name : AppLocalization.get(context, 'unknown'),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-        ),
-        if (pid.isNotEmpty) ...[
+  Widget _buildInfoRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Widget value,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: scheme.primary),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: Colors.orange[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange[200]!),
-            ),
-            child: Text(
-              '#$pid',
-              style: TextStyle(fontSize: 11, color: Colors.orange[800], fontWeight: FontWeight.bold),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                DefaultTextStyle.merge(
+                  style: TextStyle(color: scheme.onSurface),
+                  child: value,
+                ),
+              ],
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 
@@ -288,22 +294,23 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final isAr = context.watch<AppBloc>().state.locale.languageCode == 'ar';
+    final scheme = Theme.of(context).colorScheme;
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: scheme.surface,
           elevation: 0,
           title: Text(
             AppLocalization.get(context, 'new_orders_title'),
-            style: const TextStyle(
-              color: Colors.black87,
+            style: TextStyle(
+              color: scheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
           centerTitle: true,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
+            icon: Icon(Icons.arrow_back, color: scheme.onSurface),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -317,8 +324,28 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
             constraints: const BoxConstraints(maxWidth: 600),
             child: _orders.isEmpty
                 ? ListView(
-                    children: const [
-                      Center(child: Padding(padding: EdgeInsets.all(40), child: Text('لا توجد طلبات', style: TextStyle(fontSize: 16, color: Colors.grey)))),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.inbox_outlined,
+                              size: 48,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              AppLocalization.get(context, 'no_new_orders'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   )
                 : ListView.builder(
@@ -338,106 +365,237 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
                         'people': AppLocalization.get(context, 'people'),
                         'goods': AppLocalization.get(context, 'goods'),
                       };
+                      final typeLabel =
+                          typeLabels[o['type']] ?? o['type'] ?? '';
+                      final typeIcon = switch (o['type']) {
+                        'product' => Icons.inventory_2_outlined,
+                        'people' => Icons.groups_outlined,
+                        'goods' => Icons.local_shipping_outlined,
+                        _ => Icons.local_shipping_outlined,
+                      };
+                      final customer = o['customerId'];
+                      final customerName = customer is Map
+                          ? (customer['fullName'] ?? '').toString()
+                          : '';
+                      final customerPublicId = customer is Map
+                          ? (customer['publicId'] ?? '').toString()
+                          : '';
+                      final phone = (o['phone'] ?? '').toString();
+                      final area = (o['area'] ?? '').toString();
+                      final description =
+                          (o['description'] ?? '').toString();
+                      final images = o['images'] is List
+                          ? (o['images'] as List)
+                          : const [];
+
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        elevation: 0,
+                        color: Theme.of(context).cardColor,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: scheme.outlineVariant),
                         ),
-                        elevation: 1,
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                typeLabels[o['type']] ?? o['type'] ?? '',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              _buildCustomerRow(context, o),
-                              const SizedBox(height: 6),
-                              Text(
-                                o['description'] ?? '',
-                                style: TextStyle(color: Colors.grey[700]),
-                              ),
-                              const SizedBox(height: 6),
                               Row(
                                 children: [
-                                  const Icon(
-                                    Icons.phone,
-                                    size: 14,
-                                    color: Colors.grey,
+                                  Container(
+                                    width: 46,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: scheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      typeIcon,
+                                      color: scheme.onPrimaryContainer,
+                                      size: 24,
+                                    ),
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    o['phone'] ??
-                                        AppLocalization.get(
-                                          context,
-                                          'hidden_phone',
-                                        ),
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 13,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      typeLabel,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: scheme.onSurface,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              if (o['area'] != null &&
-                                  o['area'].toString().isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.location_on,
-                                      size: 14,
-                                      color: Colors.grey,
+                              const SizedBox(height: 16),
+                              if (description.isNotEmpty) ...[
+                                Text(
+                                  AppLocalization.get(
+                                    context,
+                                    'description',
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: scheme.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    description,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      height: 1.5,
+                                      color: scheme.onSurface,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      o['area'].toString(),
-                                      style: TextStyle(
-                                        color: Colors.grey[500],
-                                        fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                              ],
+                              _buildInfoRow(
+                                context,
+                                icon: Icons.person_outline,
+                                label: AppLocalization.get(
+                                  context,
+                                  'customer',
+                                ),
+                                value: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        customerName.isNotEmpty
+                                            ? customerName
+                                            : AppLocalization.get(
+                                                context,
+                                                'unknown',
+                                              ),
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
+                                    if (customerPublicId.isNotEmpty) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: scheme.secondaryContainer,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          '#$customerPublicId',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: scheme
+                                                .onSecondaryContainer,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
-                              ],
-                              if (o['images'] != null &&
-                                  (o['images'] as List).isNotEmpty) ...[
+                              ),
+                              _buildInfoRow(
+                                context,
+                                icon: Icons.phone_outlined,
+                                label: AppLocalization.get(
+                                  context,
+                                  'phone_number',
+                                ),
+                                value: Text(
+                                  phone.isNotEmpty
+                                      ? phone
+                                      : AppLocalization.get(
+                                          context,
+                                          'hidden_phone',
+                                        ),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (area.isNotEmpty)
+                                _buildInfoRow(
+                                  context,
+                                  icon: Icons.location_on_outlined,
+                                  label: AppLocalization.get(
+                                    context,
+                                    'area_region',
+                                  ),
+                                  value: Text(
+                                    area,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              if (images.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  AppLocalization.get(context, 'images'),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 SizedBox(
-                                  height: 60,
+                                  height: 84,
                                   child: ListView.separated(
                                     scrollDirection: Axis.horizontal,
-                                    itemCount: (o['images'] as List).length,
-                                    separatorBuilder: (_, i) =>
+                                    itemCount: images.length,
+                                    separatorBuilder: (_, _) =>
                                         const SizedBox(width: 8),
                                     itemBuilder: (_, i) {
-                                      final img = (o['images'] as List)[i].toString();
-                                      final imageUrl = img.startsWith('http') ? img : '${ApiConfig.serverUrl}$img';
+                                      final img = images[i].toString();
+                                      final imageUrl =
+                                          img.startsWith('http')
+                                              ? img
+                                              : '${ApiConfig.serverUrl}$img';
                                       return GestureDetector(
-                                        onTap: () => ImagePreview.show(context, imageUrl),
+                                        onTap: () => ImagePreview.show(
+                                          context,
+                                          imageUrl,
+                                        ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
                                           child: Image.network(
                                             imageUrl,
-                                            width: 60,
-                                            height: 60,
+                                            width: 84,
+                                            height: 84,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, e1, e2) =>
+                                            errorBuilder: (_, _, _) =>
                                                 Container(
-                                                  width: 60,
-                                                  height: 60,
-                                                  color: Colors.grey[200],
-                                                  child: const Icon(
-                                                    Icons.image_not_supported,
-                                                    color: Colors.grey,
-                                                  ),
-                                                ),
+                                              width: 84,
+                                              height: 84,
+                                              color: scheme
+                                                  .surfaceContainerHighest,
+                                              child: Icon(
+                                                Icons
+                                                    .image_not_supported,
+                                                color: scheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       );
@@ -445,50 +603,85 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
+                              Divider(color: scheme.outlineVariant),
+                              const SizedBox(height: 8),
                               Row(
                                 children: [
                                   Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () => _openSubmitOffer(
-                                        o['_id']?.toString() ?? '',
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.orange,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                    child: SizedBox(
+                                      height: 50,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _openSubmitOffer(
+                                          o['_id']?.toString() ?? '',
                                         ),
-                                      ),
-                                      child: Text(
-                                        AppLocalization.get(
-                                          context,
-                                          'submit_offer_btn',
+                                        icon: const Icon(
+                                          Icons.local_offer_outlined,
+                                          size: 20,
                                         ),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
+                                        label: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            AppLocalization.get(
+                                              context,
+                                              'submit_offer_btn',
+                                            ),
+                                            maxLines: 1,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.orange[800],
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  OutlinedButton.icon(
-                                    onPressed: () => _rejectOrder(
-                                      o['_id']?.toString() ?? '',
-                                    ),
-                                    icon: const Icon(Icons.close, size: 18),
-                                    label: Text(
-                                      AppLocalization.get(context, 'reject_order'),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red,
-                                      side: const BorderSide(color: Colors.red),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 12,
+                                  const SizedBox(width: 10),
+                                  SizedBox(
+                                    height: 50,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _rejectOrder(
+                                        o['_id']?.toString() ?? '',
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                      icon: const Icon(Icons.close, size: 20),
+                                      label: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          AppLocalization.get(
+                                            context,
+                                            'reject_order',
+                                          ),
+                                          maxLines: 1,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: scheme.error,
+                                        side: BorderSide(
+                                          color: scheme.error,
+                                          width: 1.5,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
                                       ),
                                     ),
                                   ),

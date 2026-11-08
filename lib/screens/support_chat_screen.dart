@@ -1,35 +1,7 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../services/api_config.dart';
-import '../services/mobile_api_client.dart';
+import '../services/support_chat_service.dart';
 import '../services/socket_service.dart';
-
-class ChatService {
-  late final Dio _dio;
-
-  ChatService(String token) {
-    _dio = MobileApiClient.create(
-      baseUrl: ApiConfig.apiUrl,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> getHistory() async {
-    final res = await _dio.get('/chat/history');
-    return List<Map<String, dynamic>>.from(res.data);
-  }
-
-  Future<Map<String, dynamic>> sendMessage(String text) async {
-    final res = await _dio.post('/chat/send', data: {'text': text});
-    return res.data;
-  }
-}
 
 class SupportChatScreen extends StatefulWidget {
   final String token;
@@ -46,16 +18,23 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   late final ChatService _service;
   bool _loading = true;
   StreamSubscription? _replySub;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _service = ChatService(widget.token);
     _loadHistory();
+    _markAdminRead();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _refreshHistory(),
+    );
     _replySub = SocketService.instance.onSupportReply.listen((msg) {
       if (!mounted) return;
       setState(() => _messages.add(msg));
       _scrollToBottom();
+      _markAdminRead();
     });
   }
 
@@ -63,6 +42,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    _refreshTimer?.cancel();
     _replySub?.cancel();
     super.dispose();
   }
@@ -79,6 +59,32 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _refreshHistory() async {
+    try {
+      final list = await _service.getHistory();
+      if (!mounted) return;
+
+      final pending = _messages
+          .where((message) => message['pending'] == true)
+          .toList();
+
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(list)
+          ..addAll(pending);
+      });
+      _scrollToBottom();
+      _markAdminRead();
+    } catch (_) {}
+  }
+
+  Future<void> _markAdminRead() async {
+    try {
+      await _service.markAdminRead();
+    } catch (_) {}
   }
 
   Future<void> _send() async {

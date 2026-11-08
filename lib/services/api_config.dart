@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -8,9 +9,9 @@ class ApiConfig {
     'STARS_SERVER_URL',
   );
 
-  static const String _defaultDevelopmentServerUrl = 'http://192.168.1.6:3000';
+  static const String _defaultDevelopmentServerUrl = 'http://192.168.1.7:3000';
 
-  static String lanIp = '192.168.1.6';
+  static String lanIp = '192.168.1.7';
   static int port = 3000;
   static String? detectedArea;
 
@@ -88,80 +89,189 @@ class ApiConfig {
     _serverUrl = value;
   }
 
-  static Future<bool> _isReachable(String base) async {
+  static Future<Map<String, dynamic>?> _fetchConfig(String base) async {
     try {
       final dio = Dio(
         BaseOptions(
           baseUrl: base,
-          connectTimeout: const Duration(seconds: 3),
-          receiveTimeout: const Duration(seconds: 3),
-        ),
-      );
-
-      final res = await dio.get('/api/health');
-
-      return res.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static Future<void> _discoverAndroidLan() async {
-    try {
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: serverUrl,
-          connectTimeout: const Duration(seconds: 3),
-          receiveTimeout: const Duration(seconds: 3),
+          connectTimeout: const Duration(milliseconds: 800),
+          receiveTimeout: const Duration(milliseconds: 800),
         ),
       );
 
       final res = await dio.get('/api/config');
-
       final data = res.data;
 
-      if (data is! Map) {
-        return;
+      if (data is Map) {
+        return Map<String, dynamic>.from(data);
       }
+    } catch (_) {}
 
-      final advertisedIp = data['lanIp']?.toString().trim();
+    return null;
+  }
 
-      if (advertisedIp == null || advertisedIp.isEmpty) {
-        return;
-      }
+  static String? _candidateFromConfig(
+    Map<String, dynamic> data, {
+    String? fallbackHost,
+    bool preferFallbackHost = false,
+  }) {
+    final advertisedIp = data['lanIp']?.toString().trim();
+    final host = preferFallbackHost
+        ? (fallbackHost ?? advertisedIp)
+        : (advertisedIp == null || advertisedIp.isEmpty
+            ? fallbackHost
+            : advertisedIp);
 
-      final rawPort = data['port'];
+    if (host == null || host.isEmpty) {
+      return null;
+    }
 
-      final advertisedPort = rawPort is int
-          ? rawPort
-          : int.tryParse(rawPort?.toString() ?? '');
+    final rawPort = data['port'];
 
-      final candidatePort =
-          advertisedPort != null &&
-              advertisedPort >= 1 &&
-              advertisedPort <= 65535
-          ? advertisedPort
-          : port;
+    final advertisedPort = rawPort is int
+        ? rawPort
+        : int.tryParse(rawPort?.toString() ?? '');
 
-      final candidateUri = Uri(
-        scheme: 'http',
-        host: advertisedIp,
-        port: candidatePort,
-      );
+    final candidatePort =
+        advertisedPort != null &&
+            advertisedPort >= 1 &&
+            advertisedPort <= 65535
+        ? advertisedPort
+        : port;
 
-      final candidate = _normalizeServerUrl(
-        candidateUri.toString(),
+    try {
+      return _normalizeServerUrl(
+        Uri(scheme: 'http', host: host, port: candidatePort).toString(),
         allowHttp: true,
       );
-
-      if (candidate != serverUrl && await _isReachable(candidate)) {
-        lanIp = advertisedIp;
-        port = candidatePort;
-        _applyServerUrl(candidate);
-      }
     } catch (_) {
-      // Android debug keeps its configured
-      // development fallback.
+      return null;
+    }
+  }
+
+  static Future<void> _discoverAndroidLan() async {
+    final currentConfig = await _fetchConfig(serverUrl);
+
+    if (currentConfig != null) {
+      final candidate = _candidateFromConfig(currentConfig);
+
+      if (candidate != null && candidate != serverUrl) {
+        final candidateConfig = await _fetchConfig(candidate);
+
+        if (candidateConfig != null) {
+          _applyServerUrl(candidate);
+        }
+      }
+
+      return;
+    }
+
+    final scanned = await _scanLocalSubnet();
+
+    if (scanned != null) {
+      _applyServerUrl(scanned);
+    }
+  }
+
+  static Future<String?> _scanLocalSubnet() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLinkLocal: false,
+      );
+
+      final subnets = <String>{};
+
+      for (final interface in interfaces) {
+        for (final address in interface.addresses) {
+          if (address.address.startsWith('127.')) {
+            continue;
+          }
+
+          final parts = address.address.split('.');
+
+          if (parts.length == 4) {
+            subnets.add('${parts[0]}.${parts[1]}.${parts[2]}');
+          }
+        }
+      }
+
+      final probePort = Uri.tryParse(serverUrl)?.port ?? port;
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(milliseconds: 400);
+
+      try {
+        for (final subnet in subnets) {
+          for (var start = 1; start <= 254; start += 32) {
+            final end = start + 31 <= 254 ? start + 31 : 254;
+            final hosts = [
+              for (var i = start; i <= end; i++) '$subnet.$i',
+            ];
+
+            final results = await Future.wait(
+              hosts.map(
+                (host) => _probeHost(client, host, probePort),
+              ),
+            );
+
+            for (final result in results) {
+              if (result != null) {
+                return result;
+              }
+            }
+          }
+        }
+      } finally {
+        client.close(force: true);
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  static Future<String?> _probeHost(
+    HttpClient client,
+    String host,
+    int probePort,
+  ) async {
+    try {
+      final uri = Uri(
+        scheme: 'http',
+        host: host,
+        port: probePort,
+        path: '/api/config',
+      );
+
+      final request = await client
+          .getUrl(uri)
+          .timeout(const Duration(milliseconds: 500));
+
+      final response = await request
+          .close()
+          .timeout(const Duration(milliseconds: 500));
+
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(milliseconds: 500));
+
+      final data = jsonDecode(body);
+
+      if (data is! Map) {
+        return null;
+      }
+
+      return _candidateFromConfig(
+        Map<String, dynamic>.from(data),
+        fallbackHost: host,
+        preferFallbackHost: true,
+      );
+    } catch (_) {
+      return null;
     }
   }
 

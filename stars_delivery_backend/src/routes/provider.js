@@ -96,7 +96,6 @@ router.get('/stats', async (req, res) => {
     // Registered area is authoritative; GPS-detected area is a fallback only
     const qArea = user.area || req.query.area || '';
     const blocked = Boolean(user.blockedUntil && user.blockedUntil > now);
-    const unavailable = user.isAvailable === false;
     const serviceTypes = normalizeServiceTypes(user.serviceTypes);
     const areaFilter = {
       status: { $in: ['pending', 'offered'] },
@@ -147,7 +146,7 @@ router.get('/stats', async (req, res) => {
     const excludedIds = [...offeredIds, ...rejectedIds];
     if (excludedIds.length > 0) areaFilter._id = { $nin: excludedIds };
     const pendingOrdersCount =
-      blocked || unavailable
+      blocked
         ? 0
         : await Order.countDocuments(areaFilter);
     const t3 = Date.now();

@@ -21,16 +21,22 @@ test(
 );
 
 test(
-  'blocked or unavailable providers receive no available orders',
+  'unavailable providers keep the pending counter but cannot receive or offer',
   () => {
     const provider = source('src/routes/provider.js');
+    const lifecycle = source('src/services/orderLifecycle.js');
 
     assert.match(
       provider,
       /user\.blockedUntil > new Date\(\)/,
     );
 
-    assert.match(provider, /blocked \|\| unavailable/);
+    // The paused driver still sees the live counter so they know that orders
+    // are waiting, but the order list itself remains closed.
+    assert.match(
+      provider,
+      /blocked\s*\?\s*0\s*:\s*await Order\.countDocuments\(areaFilter\)/,
+    );
 
     assert.match(provider, /user\.isAvailable === false/);
 
@@ -50,6 +56,13 @@ test(
       provider,
       /isAvailable: user\.isAvailable !== false/,
     );
+
+    // Server-side gate: no price offer can be submitted while paused.
+    assert.match(
+      lifecycle,
+      /isAvailable: \{ \$ne: false \}/,
+    );
+    assert.match(lifecycle, /PROVIDER_UNAVAILABLE/);
 
     const users = source('src/routes/users.js');
 

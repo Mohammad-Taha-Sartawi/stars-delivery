@@ -283,6 +283,15 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
                               ),
                             );
                           }
+                          if (state is OfferProviderUnavailable) {
+                            AppFeedback.error(
+                              context,
+                              AppLocalization.get(
+                                context,
+                                'provider_unavailable_offer',
+                              ),
+                            );
+                          }
                           if (state is OfferAlreadySubmitted) {
                             AppFeedback.warning(
                               context,

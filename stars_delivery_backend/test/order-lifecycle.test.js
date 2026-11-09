@@ -591,6 +591,74 @@ test('submitOffer rejects an unavailable provider before duplicate or order muta
   }
 });
 
+test('submitOffer rejects a provider who paused order reception', async () => {
+  const session = {
+    withTransaction: async (work) => work(session),
+    endSession: async () => {},
+  };
+
+  let duplicateChecks = 0;
+  let orderWrites = 0;
+
+  const original = {
+    startSession: mongoose.startSession,
+    userFindOneAndUpdate: User.findOneAndUpdate,
+    userFindById: User.findById,
+    offerFindOne: Offer.findOne,
+    orderUpdateOne: Order.updateOne,
+  };
+
+  try {
+    mongoose.startSession = async () => session;
+
+    User.findOneAndUpdate = (filter) => {
+      assert.deepEqual(filter.isAvailable, { $ne: false });
+      return { lean: async () => null };
+    };
+
+    User.findById = () => ({
+      select() { return this; },
+      session() { return this; },
+      lean: async () => ({
+        offerCooldownUntil: null,
+        blockedUntil: null,
+        isAvailable: false,
+      }),
+    });
+
+    Offer.findOne = () => {
+      duplicateChecks += 1;
+      throw new Error('duplicate lookup must not run');
+    };
+
+    Order.updateOne = () => {
+      orderWrites += 1;
+      throw new Error('order mutation must not run');
+    };
+
+    await assert.rejects(
+      () => lifecycle.submitOffer({
+        orderId: 'order-submit-paused',
+        providerId: 'provider-paused',
+        price: 30,
+        estimatedTime: 10,
+      }),
+      (error) =>
+        error instanceof lifecycle.LifecycleConflict
+        && error.code === 'PROVIDER_UNAVAILABLE'
+    );
+
+    assert.equal(duplicateChecks, 0);
+    assert.equal(orderWrites, 0);
+  } finally {
+    mongoose.startSession = original.startSession;
+    User.findOneAndUpdate = original.userFindOneAndUpdate;
+    User.findById = original.userFindById;
+    Offer.findOne = original.offerFindOne;
+    Order.updateOne = original.orderUpdateOne;
+  }
+});
+
 test('resetOrder enforces customer ownership and pre-acceptance states in one transaction', async () => {
   const session = {
     withTransaction: async (work) => work(session),

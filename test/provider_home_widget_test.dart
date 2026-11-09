@@ -180,6 +180,79 @@ void main() {
   });
 
   group('UX01-005 availability toggle', () {
+    testWidgets(
+      'paused availability fades actions but keeps support and live count',
+      (tester) async {
+        mockApi.statsJson = <String, dynamic>{
+          'dailyEarnings': 120.5,
+          'monthlyEarnings': 900.0,
+          'totalSuccessful': 12,
+          'dailyOrderCount': 3,
+          'dailyCommission': 6.0,
+          'monthlyCommission': 45.0,
+          'pendingOrdersCount': 4,
+          'offeredOrdersCount': 2,
+          'ordersReportCount': 7,
+          'activeOrdersCount': 1,
+          'isAvailable': false,
+        };
+
+        await tester.pumpWidget(
+          screenHarness(themeMode: ThemeMode.light, locale: const Locale('en')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Order reception is paused'), findsOneWidget);
+        expect(
+          find.textContaining('4 order(s) are waiting for a price offer'),
+          findsOneWidget,
+        );
+
+        final disabledArea = find.byKey(
+          const Key('providerUnavailableDisabledArea'),
+        );
+        expect(disabledArea, findsOneWidget);
+        expect(
+          find.descendant(
+            of: disabledArea,
+            matching: find.text('New Orders Awaiting Your Offer'),
+          ),
+          findsOneWidget,
+        );
+
+        // Support remains outside the faded, non-interactive area.
+        expect(find.text('Contact support'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: disabledArea,
+            matching: find.text('Contact support'),
+          ),
+          findsNothing,
+        );
+        final opacity = tester.widget<AnimatedOpacity>(
+          find
+              .descendant(
+                of: disabledArea,
+                matching: find.byType(AnimatedOpacity),
+              )
+              .first,
+        );
+        expect(opacity.opacity, 0.38);
+
+        // The pending counter keeps updating while the rest is paused.
+        mockApi.statsJson = <String, dynamic>{
+          ...mockApi.statsJson,
+          'pendingOrdersCount': 7,
+        };
+        await tester.pump(const Duration(seconds: 30));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('7 order(s) are waiting for a price offer'),
+          findsOneWidget,
+        );
+      },
+    );
+
     testWidgets('availability card paints its list tile on its own Material', (
       tester,
     ) async {

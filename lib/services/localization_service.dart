@@ -294,6 +294,26 @@ class AppLocalization {
       'ar': 'تم تحديث حالة التوفر',
       'en': 'Availability updated',
     },
+    'orders_paused_title': {
+      'ar': 'استقبال الطلبات متوقف',
+      'en': 'Order reception is paused',
+    },
+    'orders_paused_pending': {
+      'ar':
+          'يوجد %d طلب بانتظار عرض سعر. فعّل استقبال الطلبات لتتمكن من فتحها وتقديم عرض سعر.',
+      'en':
+          '%d order(s) are waiting for a price offer. Enable order reception to open them and submit an offer.',
+    },
+    'orders_paused_empty': {
+      'ar':
+          'لا توجد طلبات بانتظار عرض سعر حالياً. سيظهر العداد هنا فور وصول طلبات جديدة.',
+      'en':
+          'No orders are waiting for a price offer right now. The counter will update here when new orders arrive.',
+    },
+    'orders_paused_support_hint': {
+      'ar': 'التواصل مع الدعم متاح دائماً.',
+      'en': 'Contacting support remains available.',
+    },
     'available_drivers_count': {
       'ar': 'السائقون المتاحون حالياً في منطقتك: %d',
       'en': 'Drivers currently available in your area: %d',
@@ -362,6 +382,12 @@ class AppLocalization {
           'لا يمكنك تقديم عرض الآن لأن لديك طلباً نشطاً. أكمل طلبك الحالي أولاً.',
       'en':
           'You cannot submit an offer while you have an active order. Complete your current order first.',
+    },
+    'provider_unavailable_offer': {
+      'ar':
+          'استقبال الطلبات متوقف. فعّل خيار استقبال الطلبات أولاً لتتمكن من تقديم عرض سعر.',
+      'en':
+          'Order reception is paused. Enable receiving orders before submitting your offer.',
     },
     'offer_cooldown_active': {
       'ar': 'لا يمكن تقديم عرض سعر حاليا',

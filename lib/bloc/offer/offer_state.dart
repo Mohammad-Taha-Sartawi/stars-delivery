@@ -9,6 +9,7 @@ class OfferLoading extends OfferState {}
 class OfferSuccess extends OfferState {}
 class OfferAlreadySubmitted extends OfferState {}
 class OfferProviderBusy extends OfferState {}
+class OfferProviderUnavailable extends OfferState {}
 class OfferCooldown extends OfferState {
   final int seconds;
   OfferCooldown({required this.seconds});

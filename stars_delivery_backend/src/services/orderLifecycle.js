@@ -20,6 +20,7 @@ const CONFLICT_MESSAGES = {
   ORDER_NOT_AVAILABLE: 'The order is no longer available for this action.',
   OFFER_NOT_AVAILABLE: 'The offer is no longer available.',
   PROVIDER_BUSY: 'The provider is not currently available.',
+  PROVIDER_UNAVAILABLE: 'The provider is not receiving orders right now.',
   OFFER_COOLDOWN: 'You cannot submit another offer yet.',
   INVALID_TRANSITION: 'The order cannot move to that status.',
 };
@@ -312,6 +313,7 @@ async function submitOffer({ orderId, providerId, price, estimatedTime }) {
       role: 'provider',
       status: 'active',
       deleted: { $ne: true },
+      isAvailable: { $ne: false },
       $or: [{ blockedUntil: null }, { blockedUntil: { $exists: false } }, { blockedUntil: { $lte: now } }],
       $and: [{
         $or: [
@@ -327,12 +329,16 @@ async function submitOffer({ orderId, providerId, price, estimatedTime }) {
 
     if (!provider) {
       const current = await User.findById(providerId)
-        .select('offerCooldownUntil blockedUntil')
+        .select('offerCooldownUntil blockedUntil isAvailable')
         .session(session)
         .lean();
 
       if (current?.blockedUntil && current.blockedUntil > now) {
         throw new LifecycleConflict('PROVIDER_BUSY', orderId);
+      }
+
+      if (current?.isAvailable === false) {
+        throw new LifecycleConflict('PROVIDER_UNAVAILABLE', orderId);
       }
 
       if (current?.offerCooldownUntil && current.offerCooldownUntil > now) {

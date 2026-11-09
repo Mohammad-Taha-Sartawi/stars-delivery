@@ -24,6 +24,10 @@ class OfferBloc extends Bloc<OfferEvent, OfferState> {
         emit(OfferProviderBusy());
         return;
       }
+      if (ex.code == 'PROVIDER_UNAVAILABLE') {
+        emit(OfferProviderUnavailable());
+        return;
+      }
       if (ex.code == 'OFFER_COOLDOWN') {
         emit(OfferCooldown(seconds: ex.retryAfterSeconds ?? 60));
         return;

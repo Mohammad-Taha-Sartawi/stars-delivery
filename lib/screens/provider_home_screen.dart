@@ -38,6 +38,7 @@ import 'provider_active_orders_screen.dart';
 import 'offered_orders_screen.dart';
 import 'rejected_orders_screen.dart';
 import 'notifications_screen.dart';
+import 'order_detail_screen.dart';
 import 'profile_screen.dart';
 import 'report_screen.dart';
 import 'settings_screen.dart';
@@ -73,6 +74,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   bool _updatingAvailability = false;
   late UserModel _user = widget.user;
   late bool _governorateLevel = _user.governorateLevel;
+  String? _openingAcceptedOrderId;
   int _supportUnreadCount = 0;
   late ChatService _supportChatService;
 
@@ -86,6 +88,35 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
 
       setState(() => _supportUnreadCount = count);
     } catch (_) {}
+  }
+
+  Future<void> _openAcceptedOrder(String orderId) async {
+    if (!mounted || orderId.isEmpty || _openingAcceptedOrderId != null) {
+      return;
+    }
+
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) {
+      return;
+    }
+
+    _openingAcceptedOrderId = orderId;
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              OrderDetailScreen(token: widget.token, orderId: orderId),
+        ),
+      );
+    } finally {
+      _openingAcceptedOrderId = null;
+      if (mounted) {
+        context.read<ProviderBloc>().add(
+          LoadProviderStats(token: widget.token),
+        );
+      }
+    }
   }
 
   Future<void> _setAvailability(bool value) async {
@@ -190,10 +221,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       );
     });
 
-    _offerAcceptedSub = SocketService.instance.onOfferAccepted.listen((_) {
+    _offerAcceptedSub = SocketService.instance.onOfferAccepted.listen((data) {
       if (!mounted) return;
       context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
+      context.read<ProviderBloc>().add(LoadOfferedOrders(token: widget.token));
+
+      final orderId = data['orderId']?.toString();
+      if (orderId != null && orderId.isNotEmpty) {
+        unawaited(_openAcceptedOrder(orderId));
+      }
     });
 
     _broadcastSub = SocketService.instance.onBroadcast.listen((_) {

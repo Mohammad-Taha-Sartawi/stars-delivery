@@ -46,6 +46,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _load();
     for (final stream in [
       SocketService.instance.onNewOffer,
+      SocketService.instance.onOfferAccepted,
       SocketService.instance.onOrderStatusChanged,
     ]) {
       _socketSubs.add(

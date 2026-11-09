@@ -100,4 +100,15 @@ void main() {
     expect(ordersRoute, contains('order.outsideArea'));
     expect(ordersRoute, contains('providerGovernorate'));
   });
+
+  test('driver home opens the accepted order immediately', () {
+    final providerHome = File(
+      'lib/screens/provider_home_screen.dart',
+    ).readAsStringSync();
+
+    expect(providerHome, contains('_openAcceptedOrder'));
+    expect(providerHome, contains("data['orderId']"));
+    expect(providerHome, contains('OrderDetailScreen('));
+    expect(providerHome, contains('onOfferAccepted'));
+  });
 }

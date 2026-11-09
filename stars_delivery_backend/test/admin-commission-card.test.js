@@ -56,3 +56,35 @@ test('top driver card shows the full registered name without truncation', () => 
   assert.match(main, /topDriverEarn/);
   assert.match(main, /toLocaleString\('en-US'\)/);
 });
+
+
+test('pending payout card uses clear wording and real unpaid commissions', () => {
+  const index = source('src/views/admin/index.ejs');
+  const main = source('src/public/js/main.js');
+  const css = source('src/public/css/style.css');
+  const adminApi = source('src/routes/adminApi.js');
+
+  const card = index.match(
+    /<div class="commission-item pending-payout"[\s\S]*?<\/div><\/div>/,
+  );
+  assert.ok(card, 'the pending payout card must exist');
+  assert.match(card[0], /السائقون المستحقون للدفع/);
+  assert.doesNotMatch(card[0], /للصرف/);
+  assert.match(card[0], /id="pendingDrivers"/);
+  assert.match(card[0], /id="pendingAmount"/);
+  assert.match(card[0], /شيكل/);
+  assert.doesNotMatch(card[0], /badge-trend/);
+
+  assert.match(css, /\.commission-item\.pending-payout \.payout-count/);
+  assert.match(css, /\.commission-item\.pending-payout \.payout-amount/);
+
+  assert.match(main, /pendingAmount/);
+  assert.match(main, /toLocaleString\('en-US'\)/);
+
+  // The card now reflects unpaid driver commissions, not blocked users or
+  // pending order prices.
+  assert.match(adminApi, /provider\.commissionPaid': \{ \$ne: true \}/);
+  assert.match(adminApi, /unpaid: \{ \$sum: '\$platformCommission' \}/);
+  assert.match(adminApi, /unpaid: \{ \$gt: 0 \}/);
+  assert.doesNotMatch(adminApi, /pendingDrivers: totalBlocked/);
+});

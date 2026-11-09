@@ -11,7 +11,7 @@ const {
 
 router.get('/stats', async (req, res) => {
   try {
-    const [totalDrivers, activeDrivers, inactiveDrivers, totalUsers, activeUsers, totalBlocked] = await Promise.all([
+    const [totalDrivers, activeDrivers, inactiveDrivers, totalUsers, activeUsers] = await Promise.all([
       User.countDocuments({ role: 'provider' }),
       // Drivers who kept receiving orders enabled.
       User.countDocuments({
@@ -29,7 +29,6 @@ router.get('/stats', async (req, res) => {
       }),
       User.countDocuments({ role: 'customer' }),
       User.countDocuments({ role: 'customer', status: 'active' }),
-      User.countDocuments({ status: 'blocked' }),
     ]);
 
     const commissionAgg = await Order.aggregate([
@@ -38,11 +37,46 @@ router.get('/stats', async (req, res) => {
     ]);
     const totalCommission = commissionAgg[0]?.total || 0;
 
-    const pendingAgg = await Order.aggregate([
-      { $match: { status: 'pending' } },
-      { $group: { _id: null, total: { $sum: '$price' } } }
+    // Drivers who still have unpaid platform commission and the amount due.
+    const unpaidCommissionAgg = await Order.aggregate([
+      {
+        $match: {
+          status: { $in: ['accepted', 'fulfilling', 'completed'] },
+          providerId: { $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: '$providerId',
+          unpaid: { $sum: '$platformCommission' },
+        },
+      },
+      { $match: { unpaid: { $gt: 0 } } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'provider',
+        },
+      },
+      { $unwind: '$provider' },
+      {
+        $match: {
+          'provider.role': 'provider',
+          'provider.commissionPaid': { $ne: true },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          pendingAmount: { $sum: '$unpaid' },
+          pendingDrivers: { $sum: 1 },
+        },
+      },
     ]);
-    const pendingAmount = pendingAgg[0]?.total || 0;
+    const pendingAmount = unpaidCommissionAgg[0]?.pendingAmount || 0;
+    const pendingDrivers = unpaidCommissionAgg[0]?.pendingDrivers || 0;
 
     const inactiveUsers = totalUsers - activeUsers;
 
@@ -83,7 +117,7 @@ router.get('/stats', async (req, res) => {
     res.json({
       totalDrivers, activeDrivers, inactiveDrivers,
       totalUsers, activeUsers, inactiveUsers,
-      totalCommission, pendingAmount, pendingDrivers: totalBlocked,
+      totalCommission, pendingAmount, pendingDrivers,
       driverReportsPending, userReportsPending,
       orderTypeCounts,
     });

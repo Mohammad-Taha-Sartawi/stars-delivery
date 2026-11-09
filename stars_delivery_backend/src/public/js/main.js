@@ -784,7 +784,8 @@ async function loadDashboardStats() {
     document.getElementById('totalCommission').textContent =
       totalCommission.toLocaleString('en-US');
     document.getElementById('pendingDrivers').textContent = data.pendingDrivers;
-    document.getElementById('pendingAmount').textContent = data.pendingAmount;
+    document.getElementById('pendingAmount').textContent =
+      (Number(data.pendingAmount) || 0).toLocaleString('en-US');
 
     const driverBadge = document.getElementById('driverReportsBadge');
     if (data.driverReportsPending > 0) { driverBadge.textContent = data.driverReportsPending; setInlineDisplay(driverBadge, true); }

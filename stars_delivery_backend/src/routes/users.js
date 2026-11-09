@@ -67,15 +67,21 @@ router.put('/location', async (req, res) => {
       return res.status(400).json({ error: 'Latitude and longitude are required' });
     }
 
-    const update = {
-      lastLatitude: latitude,
-      lastLongitude: longitude,
-      lastLocationUpdate: new Date(),
-    };
-    if (area) update.area = area;
-
-    const user = await User.findByIdAndUpdate(req.userId, update, { new: true });
+    const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // The area chosen at registration is authoritative for order matching.
+    // GPS-detected governorate is only a fallback for legacy accounts that
+    // never selected one, so a location sync must never overwrite it.
+    const registeredArea =
+      typeof user.area === 'string' ? user.area.trim() : '';
+    user.lastLatitude = latitude;
+    user.lastLongitude = longitude;
+    user.lastLocationUpdate = new Date();
+    if (!registeredArea && typeof area === 'string') {
+      user.area = area.trim();
+    }
+    await user.save();
 
     res.json({ message: 'Location updated', area: user.area });
   } catch (err) {

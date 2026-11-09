@@ -43,9 +43,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLogin = true;
   String _selectedRole = 'customer';
-  List<String> _areas = [];
-  List<String> _areasAr = []; // Always Arabic for saving
-  static const _areaEnToAr = {
+  List<_Governorate> _governorates = [];
+  final _cityFieldKey = GlobalKey<FormFieldState<String>>();
+
+  // Legacy registration stored the Arabic governorate label as `area`.
+  // Keeping the same values for the "from the governorate itself" option
+  // lets those existing accounts keep matching at governorate level.
+  static const _legacyAreaValues = {
     'Jerusalem (Quds)': 'القدس',
     'Ramallah': 'رام الله والبيرة',
     'Hebron': 'الخليل',
@@ -62,26 +66,30 @@ class _LoginScreenState extends State<LoginScreen> {
     'Rafah': 'رفح',
     'Deir El Balah': 'دير البلح',
     'North Gaza': 'شمال غزة',
-    'Haifa': 'حيفا',
-    'Acre': 'عكا',
-    'Nazareth': 'الناصرة',
-    'Jaffa': 'يافا',
   };
 
-  // Ensure all keys are trimmed for matching
-  static final _areaEnToArTrimmed = {
-    for (var k in _areaEnToAr.keys) k.trim(): _areaEnToAr[k]!,
+  static final _legacyAreaValuesTrimmed = {
+    for (var key in _legacyAreaValues.keys) key.trim(): _legacyAreaValues[key]!,
   };
 
-  String _areaLabel(String enName, bool isAr) {
-    if (isAr) {
-      return _areaEnToArTrimmed[enName.trim()] ??
-          enName.replaceFirst(' (Quds)', '').trim();
+  String? _selectedGovernorate;
+  String? _selectedArea; // City/village value sent as the account area.
+
+  _Governorate? get _currentGovernorate {
+    for (final governorate in _governorates) {
+      if (governorate.name == _selectedGovernorate) {
+        return governorate;
+      }
     }
-    return enName.replaceFirst(' (Quds)', '').trim();
+    return null;
   }
 
-  String? _selectedArea;
+  String _governorateLabel(_Governorate governorate, bool isAr) {
+    if (isAr) {
+      return governorate.nativeName;
+    }
+    return governorate.name.replaceFirst(' (Quds)', '').trim();
+  }
 
   @override
   void initState() {
@@ -99,17 +107,27 @@ class _LoginScreenState extends State<LoginScreen> {
         (c) => c['iso2'] == 'PS',
       );
       final states = palestine['states'] as List;
-      final names = states
-          .cast<Map<String, dynamic>>()
-          .map((s) => s['name'].toString())
-          .toList();
-      // Add interior/cross-area cities not in the JSON
-      final allNames = [...names, 'Haifa', 'Acre', 'Nazareth', 'Jaffa'];
-      setState(() {
-        _areas = allNames;
-        _areasAr = allNames
-            .map((n) => _areaEnToArTrimmed[n.trim()] ?? n.trim())
+
+      final governorates = states.cast<Map<String, dynamic>>().map((state) {
+        final name = state['name'].toString().trim();
+        final native = state['native']?.toString().trim() ?? '';
+        final nativeName = native.isEmpty ? name : native;
+        final cities = ((state['cities'] as List?) ?? const [])
+            .cast<Map<String, dynamic>>()
+            .map((city) => city['name'].toString().trim())
+            .where((city) => city.isNotEmpty)
             .toList();
+
+        return _Governorate(
+          name: name,
+          nativeName: nativeName,
+          areaValue: _legacyAreaValuesTrimmed[name] ?? nativeName,
+          cities: cities,
+        );
+      }).toList();
+
+      setState(() {
+        _governorates = governorates;
       });
     } catch (_) {}
   }
@@ -290,23 +308,67 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedArea,
+                  key: const Key('governorateDropdown'),
+                  initialValue: _selectedGovernorate,
+                  isExpanded: true,
                   decoration: _inputDecoration(
-                    AppLocalization.get(context, 'area_region'),
-                    Icons.location_on_outlined,
+                    AppLocalization.get(context, 'governorate'),
+                    Icons.map_outlined,
                   ),
-                  items: _areas
-                      .asMap()
-                      .entries
+                  items: _governorates
                       .map(
-                        (e) => DropdownMenuItem(
-                          value: _areasAr[e.key],
-                          child: Text(_areaLabel(e.value, isAr)),
+                        (governorate) => DropdownMenuItem(
+                          value: governorate.name,
+                          child: Text(_governorateLabel(governorate, isAr)),
                         ),
                       )
                       .toList(),
-                  onChanged: (v) => setState(() => _selectedArea = v),
-                  validator: (v) => v == null
+                  onChanged: (value) {
+                    // The previous city belongs to another governorate and
+                    // must never remain selected after changing it.
+                    _cityFieldKey.currentState?.didChange(null);
+                    setState(() {
+                      _selectedGovernorate = value;
+                      _selectedArea = null;
+                    });
+                  },
+                  validator: (value) => value == null
+                      ? AppLocalization.get(context, 'required')
+                      : null,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<String>(
+                  key: _cityFieldKey,
+                  initialValue: _selectedArea,
+                  isExpanded: true,
+                  decoration: _inputDecoration(
+                    AppLocalization.get(context, 'city_village'),
+                    Icons.location_city_outlined,
+                  ),
+                  items: _currentGovernorate == null
+                      ? const <DropdownMenuItem<String>>[]
+                      : [
+                          DropdownMenuItem(
+                            value: _currentGovernorate!.areaValue,
+                            child: Text(
+                              isAr
+                                  ? 'من ${_currentGovernorate!.nativeName} نفسها'
+                                  : 'From '
+                                        '${_governorateLabel(_currentGovernorate!, false)}'
+                                        ' itself',
+                            ),
+                          ),
+                          ..._currentGovernorate!.cities.map(
+                            (city) => DropdownMenuItem(
+                              value: city,
+                              child: Text(city),
+                            ),
+                          ),
+                        ],
+                  onChanged: _currentGovernorate == null
+                      ? null
+                      : (value) => setState(() => _selectedArea = value),
+                  validator: (value) => value == null
                       ? AppLocalization.get(context, 'required')
                       : null,
                 ),
@@ -990,6 +1052,27 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     }
   }
+}
+
+class _Governorate {
+  const _Governorate({
+    required this.name,
+    required this.nativeName,
+    required this.areaValue,
+    required this.cities,
+  });
+
+  /// English name from the asset, used as the stable dropdown value.
+  final String name;
+
+  /// Arabic display name from the asset (`native`).
+  final String nativeName;
+
+  /// Value stored in the account `area` for the "governorate itself" option.
+  final String areaValue;
+
+  /// Villages/cities listed under this governorate only.
+  final List<String> cities;
 }
 
 class _RoleCard extends StatelessWidget {

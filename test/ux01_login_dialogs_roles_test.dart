@@ -17,10 +17,10 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,12 +82,12 @@ void main() {
   // the real asset once (plain IO is allowed at suite level, outside any
   // test's fake-async zone).
   const areaAssetKey = 'assets/countries+states+cities.json';
-  final areaFixture = jsonEncode(
+  final areaFixture = jsonEncode(<Map<String, dynamic>>[
     (jsonDecode(File('assets/countries+states+cities.json').readAsStringSync())
             as List)
         .cast<Map<String, dynamic>>()
         .firstWhere((country) => country['iso2'] == 'PS'),
-  );
+  ]);
 
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler('flutter/assets', (ByteData? message) async {
@@ -99,6 +99,39 @@ void main() {
         }
         return null;
       });
+
+  // rootBundle caches the load future. A future created inside one test's
+  // fake-async zone never completes in the next test, so evict it per test.
+  setUp(() {
+    rootBundle.evict(areaAssetKey);
+  });
+
+  Future<void> waitForGovernorateOptions(WidgetTester tester) async {
+    // _loadAreas reads the asset asynchronously. Asset-channel futures complete
+    // on the real event loop, so let them run before pumping the UI.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    final field = find.byKey(const Key('governorateDropdown'));
+    for (var attempt = 0; attempt < 40; attempt++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      if (field.evaluate().isEmpty) {
+        continue;
+      }
+      final button = find.descendant(
+        of: field,
+        matching: find.byType(DropdownButton<String>),
+      );
+      if (button.evaluate().isEmpty) {
+        continue;
+      }
+      final items = tester.widget<DropdownButton<String>>(button).items;
+      if (items != null && items.isNotEmpty) {
+        return;
+      }
+    }
+    fail('The governorate list did not load from the asset fixture.');
+  }
 
   Widget loginHarness({required Locale locale}) {
     return MultiBlocProvider(
@@ -139,22 +172,39 @@ void main() {
     await tester.pumpAndSettle(const Duration(milliseconds: 80));
     await tester.tap(signupToggle);
     await tester.pumpAndSettle(const Duration(milliseconds: 150));
+    await waitForGovernorateOptions(tester);
 
     // Registration fields: name(0), phone(1), area dropdown, email(2),
     // password(3), confirm(4) in customer mode.
     await tester.enterText(find.byType(TextFormField).at(0), 'Test Person');
     await tester.enterText(find.byType(TextFormField).at(1), '0501234');
 
-    // Selecting Jerusalem: opening the dropdown menu route is not possible in
-    // the automated widget-test environment (the pointer route it pushes is
-    // never built by the test view, independent of tap location). We set the
-    // exact value the 'Jerusalem' item carries — item values are the Arabic
-    // area names by design (`value: _areasAr[e.key]`) — through the public
-    // FormFieldState.didChange seam, which runs the same validation and state
-    // update a real selection performs.
+    // Selecting a location: opening the dropdown menu route is not possible
+    // in the automated widget-test environment (the pointer route it pushes is
+    // never built by the test view, independent of tap location). We invoke the
+    // public onChanged callbacks to drive the same state update a real
+    // selection performs, then mirror the values into the FormField states so
+    // validation passes on submit.
+    final governorateDropdown = tester.widget<DropdownButtonFormField<String>>(
+      find.byKey(const Key('governorateDropdown')),
+    );
+    governorateDropdown.onChanged!('Jerusalem (Quds)');
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+    final cityDropdown = tester.widget<DropdownButtonFormField<String>>(
+      find.byType(DropdownButtonFormField<String>).at(1),
+    );
+    cityDropdown.onChanged!('القدس');
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
     tester
         .state<FormFieldState<String>>(
-          find.byType(DropdownButtonFormField<String>),
+          find.byKey(const Key('governorateDropdown')),
+        )
+        .didChange('Jerusalem (Quds)');
+    tester
+        .state<FormFieldState<String>>(
+          find.byType(DropdownButtonFormField<String>).at(1),
         )
         .didChange('القدس');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
@@ -289,5 +339,107 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+  });
+
+  group('registration governorate and city selector', () {
+    Future<void> openRegistration(WidgetTester tester) async {
+      await tester.pumpWidget(loginHarness(locale: const Locale('en')));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final signupToggle = find.textContaining('Sign Up', findRichText: true);
+      await tester.ensureVisible(signupToggle);
+      await tester.pumpAndSettle(const Duration(milliseconds: 80));
+      await tester.tap(signupToggle);
+      await tester.pumpAndSettle(const Duration(milliseconds: 150));
+      await waitForGovernorateOptions(tester);
+    }
+
+    DropdownButtonFormField<String> cityDropdown(WidgetTester tester) {
+      return tester.widget<DropdownButtonFormField<String>>(
+        find.byType(DropdownButtonFormField<String>).at(1),
+      );
+    }
+
+    DropdownButton<String> cityButton(WidgetTester tester) {
+      return tester.widget<DropdownButton<String>>(
+        find.descendant(
+          of: find.byType(DropdownButtonFormField<String>).at(1),
+          matching: find.byType(DropdownButton<String>),
+        ),
+      );
+    }
+
+    DropdownButtonFormField<String> governorateDropdown(WidgetTester tester) {
+      return tester.widget<DropdownButtonFormField<String>>(
+        find.byKey(const Key('governorateDropdown')),
+      );
+    }
+
+    testWidgets('cities are limited to the selected governorate', (
+      tester,
+    ) async {
+      await openRegistration(tester);
+
+      // No governorate selected yet: the city list stays disabled and empty.
+      expect(cityDropdown(tester).onChanged, isNull);
+      expect(cityButton(tester).items, isEmpty);
+
+      governorateDropdown(tester).onChanged!('Ramallah');
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      final values = cityButton(
+        tester,
+      ).items!.map((item) => item.value).toList();
+
+      // 15 Ramallah villages/cities + the "from Ramallah itself" option.
+      expect(values, hasLength(16));
+      expect(values.first, 'رام الله والبيرة');
+      expect(values, containsAll(<String>['Al-Bireh', 'Bir Zeit', 'Beitunia']));
+      expect(values, isNot(contains('ad-Dhahiriya'))); // Hebron
+      expect(values, isNot(contains('Gaza City'))); // Gaza
+
+      final itselfItem = cityButton(tester).items!.first;
+      expect((itselfItem.child as Text).data, 'من رام الله نفسها');
+    });
+
+    testWidgets('changing the governorate clears the previous city', (
+      tester,
+    ) async {
+      await openRegistration(tester);
+
+      governorateDropdown(tester).onChanged!('Ramallah');
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      tester
+          .state<FormFieldState<String>>(
+            find.byType(DropdownButtonFormField<String>).at(1),
+          )
+          .didChange('Al-Bireh');
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      expect(
+        tester
+            .state<FormFieldState<String>>(
+              find.byType(DropdownButtonFormField<String>).at(1),
+            )
+            .value,
+        'Al-Bireh',
+      );
+
+      governorateDropdown(tester).onChanged!('Hebron');
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(
+        tester
+            .state<FormFieldState<String>>(
+              find.byType(DropdownButtonFormField<String>).at(1),
+            )
+            .value,
+        isNull,
+      );
+      final values = cityButton(
+        tester,
+      ).items!.map((item) => item.value).toList();
+      expect(values, contains('ad-Dhahiriya'));
+      expect(values, isNot(contains('Al-Bireh')));
+    });
   });
 }

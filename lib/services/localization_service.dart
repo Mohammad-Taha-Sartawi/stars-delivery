@@ -84,6 +84,8 @@ class AppLocalization {
     'email': {'ar': 'البريد الإلكتروني', 'en': 'Email'},
     'password': {'ar': 'كلمة المرور', 'en': 'Password'},
     'area_region': {'ar': 'المنطقة', 'en': 'Area / Region'},
+    'governorate': {'ar': 'المحافظة', 'en': 'Governorate'},
+    'city_village': {'ar': 'المدينة / القرية', 'en': 'City / Village'},
     'no_account': {'ar': 'ليس لديك حساب؟ ', 'en': "Don't have an account? "},
     'have_account': {
       'ar': 'لديك حساب بالفعل؟ ',

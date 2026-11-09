@@ -18,6 +18,8 @@ void main() {
 
     expect(home, contains("'recommend_driver_share_hint'"));
 
+    expect(home, isNot(contains('if (noDrivers)')));
+
     final service = File('lib/services/order_service.dart').readAsStringSync();
 
     expect(service, contains("'/users/available-providers'"));

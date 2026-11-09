@@ -693,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Semantics(
       container: true,
-      label: noDrivers ? '$message $hint' : message,
+      label: '$message $hint',
       excludeSemantics: true,
       child: Material(
         color: tone.background,
@@ -722,16 +722,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (noDrivers) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        hint,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: tone.foreground.withValues(alpha: 0.86),
-                          height: 1.4,
-                        ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      hint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: tone.foreground.withValues(alpha: 0.86),
+                        height: 1.4,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),

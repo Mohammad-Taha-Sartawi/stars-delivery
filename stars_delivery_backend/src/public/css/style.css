@@ -308,6 +308,7 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .commissions-table td { padding: 12px 12px; border-bottom: 1px solid #1e2733; font-size: 14px; }
 .commissions-table tr:last-child td { border-bottom: none; }
 .commissions-table .status-paid { color: #2ecc71; font-weight: 700; }
+.table-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .commissions-table .status-unpaid { color: #e74c3c; font-weight: 700; }
 
 /* Report Status */

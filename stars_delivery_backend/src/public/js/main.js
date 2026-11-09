@@ -859,9 +859,11 @@ async function loadCommissions() {
           : isPaid
             ? '<span class="status-paid">تم دفع المستحقات</span>'
             : '<span class="status-paid">لا توجد مستحقات</span>';
-      const actionHtml = hasDue ?
-        `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تحديد كمدفوع</button>` :
-        '<span data-presentation="p021">—</span>';
+      const payAction = hasDue
+        ? `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تحديد كمدفوع</button>`
+        : '';
+      const resetAction = `<button class="action-btn reset-commissions" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="resetDriverCommission" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تصفير العداد</button>`;
+      const actionHtml = `<div class="table-actions">${payAction}${resetAction}</div>`;
       rows += `<tr><td><strong>${escapeHtml(driver.name)}</strong><br><small data-presentation="p008">${escapeHtml(driver.driverId)}</small></td><td>${escapeHtml(driver.phone || 'غير متوفر')}</td><td>${escapeHtml(driver.serviceType)}</td><td>${escapeHtml(driver.commission)}</td><td>${statusText}</td><td>${actionHtml}</td></tr>`;
     });
 

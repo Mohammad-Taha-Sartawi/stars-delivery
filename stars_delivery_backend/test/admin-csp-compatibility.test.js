@@ -78,11 +78,11 @@ test('presentation tokens preserve all migrated inline styles externally', () =>
     ),
   ];
 
-  // Three fake trend chips (product/passenger/cargo percentages) were
-  // replaced by real order counters, so their presentation tokens were removed.
+  // Three fake trend chips were replaced by real order counters, and the
+  // commissions dash placeholder was replaced by a reset action.
   assert.equal(
     tokenMatches.length,
-    75,
+    74,
   );
 
   const tokens = new Set(
@@ -124,12 +124,11 @@ test('delegated browser actions replace legacy inline handlers', () => {
     /data-file-name-target="/g,
   ) || [];
 
-  // The pending-payout dashboard card, its pay buttons and the commission
-  // reset actions add delegated actions (dashboard card + driver details +
-  // payout list + reset-all + per-driver reset).
+  // The pending-payout dashboard card, driver details and commissions table
+  // expose pay and reset actions.
   assert.equal(
     clickActions.length,
-    63,
+    64,
   );
 
   assert.equal(
@@ -184,12 +183,12 @@ test('delegated admin actions require the admin session capability', () => {
 
   assert.equal(
     generatedActions.length,
-    40,
+    41,
   );
 
   assert.equal(
     generatedCapabilities.length,
-    40,
+    41,
   );
 
   const generatedActionLines = browserSource

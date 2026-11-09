@@ -165,3 +165,14 @@ test('payment action stays separate from the commission reset action', () => {
   // Paying clears any previous reset marker, so the status is "paid".
   assert.match(commissions, /driver\.commissionResetAt = null;/);
 });
+
+
+test('commissions table keeps pay and reset actions side by side', () => {
+  const main = source('src/public/js/main.js');
+
+  assert.match(main, /const payAction = hasDue/);
+  assert.match(main, /const resetAction = `<button class="action-btn reset-commissions"/);
+  assert.match(main, /data-admin-action="markPaid"/);
+  assert.match(main, /data-admin-action="resetDriverCommission"/);
+  assert.match(main, /class="table-actions"/);
+});

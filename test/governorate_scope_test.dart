@@ -5,6 +5,7 @@ import 'package:stars_delivery/services/theme_service.dart';
 import 'package:stars_delivery/services/user_service.dart';
 import 'package:stars_delivery/services/location_catalog.dart';
 import 'package:stars_delivery/models/user_model.dart';
+import 'package:stars_delivery/models/offer_model.dart';
 import 'package:stars_delivery/screens/create_order_screen.dart';
 import 'package:stars_delivery/widgets/governorate_scope_card.dart';
 import 'package:stars_delivery/widgets/ui/governorate_scope_warning.dart';
@@ -68,6 +69,36 @@ void main() {
     expect(LocationCatalog.cityForUser(bethlehem, 'بيت لحم'), 'بيت لحم');
     expect(LocationCatalog.cityForUser(bethlehem, 'Beit Jala'), 'Beit Jala');
     expect(LocationCatalog.cityForUser(bethlehem, 'Al-Bireh'), isNull);
+  });
+
+  test('offer model exposes outside-area driver metadata', () {
+    final offer = OfferModel.fromJson({
+      '_id': 'offer-1',
+      'price': 20,
+      'estimatedTime': 10,
+      'status': 'pending',
+      'providerId': {
+        '_id': 'provider-1',
+        'fullName': 'Driver One',
+        'area': 'Beit Jala',
+        'governorate': 'بيت لحم',
+        'publicId': 'DRV-1',
+      },
+      'orderId': {
+        'description': 'Test order',
+        'area': 'Bethlehem',
+        'type': 'product',
+      },
+      'outsideArea': true,
+      'providerArea': 'Beit Jala',
+      'providerCity': 'Beit Jala',
+      'providerGovernorate': 'بيت لحم',
+    });
+
+    expect(offer.outsideArea, isTrue);
+    expect(offer.providerCity, 'Beit Jala');
+    expect(offer.providerGovernorate, 'بيت لحم');
+    expect(offer.orderArea, 'Bethlehem');
   });
 
   testWidgets('governorate scope card is visible and persists toggles', (

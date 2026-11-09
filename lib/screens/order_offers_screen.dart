@@ -9,6 +9,7 @@ import '../services/localization_service.dart';
 import '../services/order_service.dart';
 import '../services/socket_service.dart';
 import '../services/theme_service.dart';
+import '../models/offer_model.dart';
 import '../bloc/app/app_bloc.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
@@ -340,12 +341,60 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              o.providerName,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
+                                            Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    o.providerName,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (o.outsideArea) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 2,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: appToneStyle(
+                                                        context,
+                                                        AppTone.warning,
+                                                      ).background,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            999,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: appToneStyle(
+                                                          context,
+                                                          AppTone.warning,
+                                                        ).border,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      AppLocalization.get(
+                                                        context,
+                                                        'provider_outside_area_badge',
+                                                      ),
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: appToneStyle(
+                                                          context,
+                                                          AppTone.warning,
+                                                        ).foreground,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
                                             if (o.providerPublicId.isNotEmpty)
                                               Text(
@@ -375,6 +424,10 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                       ),
                                     ],
                                   ),
+                                  if (o.outsideArea) ...[
+                                    const SizedBox(height: 10),
+                                    _buildOutsideAreaNotice(context, o),
+                                  ],
                                   const SizedBox(height: 12),
                                   if (o.providerPhone.isNotEmpty) ...[
                                     Row(
@@ -609,7 +662,93 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
     );
   }
 
-  Widget _buildOfferAction(BuildContext context, dynamic o) {
+  String _providerPlace(OfferModel offer) {
+    final city = offer.providerCity.trim();
+    final area = offer.providerArea.trim();
+
+    if (city.isNotEmpty && city != 'من المحافظة نفسها') {
+      return city;
+    }
+    if (area.isNotEmpty) {
+      return area;
+    }
+    return AppLocalization.get(context, 'area_region');
+  }
+
+  Widget _buildOutsideAreaNotice(BuildContext context, OfferModel offer) {
+    final tone = appToneStyle(context, AppTone.warning);
+    final place = _providerPlace(offer);
+    final rawGovernorate = offer.providerGovernorate.trim();
+    final governorate = rawGovernorate.isEmpty || rawGovernorate == 'غير محدد'
+        ? '—'
+        : rawGovernorate;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: tone.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: tone.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: tone.foreground),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              AppLocalization.get(
+                context,
+                'provider_outside_area_card',
+              ).replaceFirst('%s', place).replaceFirst('%s', governorate),
+              style: TextStyle(
+                color: tone.foreground,
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmAcceptOffer(OfferModel offer) async {
+    if (offer.outsideArea) {
+      final place = _providerPlace(offer);
+      final rawGovernorate = offer.providerGovernorate.trim();
+      final governorate = rawGovernorate.isEmpty || rawGovernorate == 'غير محدد'
+          ? '—'
+          : rawGovernorate;
+      final confirmed = await showAppConfirmDialog(
+        context,
+        title: AppLocalization.get(context, 'provider_outside_area_title'),
+        message: AppLocalization.get(context, 'provider_outside_area_message')
+            .replaceFirst('%s', place)
+            .replaceFirst('%s', governorate)
+            .replaceFirst('%s', offer.orderArea),
+        confirmLabel: AppLocalization.get(
+          context,
+          'provider_outside_area_confirm',
+        ),
+        cancelLabel: AppLocalization.get(context, 'cancel'),
+      );
+
+      if (!confirmed || !mounted) return;
+    }
+
+    context.read<OfferBloc>().add(
+      AcceptOfferEvent(
+        token: widget.token,
+        offerId: offer.id,
+        orderId: widget.orderId,
+      ),
+    );
+  }
+
+  Widget _buildOfferAction(BuildContext context, OfferModel o) {
     final DateTime? expiresAt = o.expiresAt;
     final expired =
         o.status == 'pending' &&
@@ -669,13 +808,7 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: () => context.read<OfferBloc>().add(
-          AcceptOfferEvent(
-            token: widget.token,
-            offerId: o.id,
-            orderId: widget.orderId,
-          ),
-        ),
+        onPressed: () => _confirmAcceptOffer(o),
         icon: Icon(
           Icons.check_circle,
           size: 20,

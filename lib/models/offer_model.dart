@@ -13,19 +13,36 @@ class OfferModel {
   final String orderDescription;
   final String orderArea;
   final String orderType;
+  final bool outsideArea;
+  final String providerArea;
+  final String providerCity;
+  final String providerGovernorate;
 
   OfferModel({
-    required this.id, required this.orderId, required this.providerId,
-    required this.providerName, required this.providerPhone,
+    required this.id,
+    required this.orderId,
+    required this.providerId,
+    required this.providerName,
+    required this.providerPhone,
     required this.providerPublicId,
-    required this.price, required this.estimatedTime, required this.status, required this.createdAt,
+    required this.price,
+    required this.estimatedTime,
+    required this.status,
+    required this.createdAt,
     this.expiresAt,
-    required this.orderDescription, required this.orderArea, this.orderType = '',
+    required this.orderDescription,
+    required this.orderArea,
+    this.orderType = '',
+    this.outsideArea = false,
+    this.providerArea = '',
+    this.providerCity = '',
+    this.providerGovernorate = '',
   });
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
     final p = json['providerId'];
     final o = json['orderId'];
+    final provider = p is Map ? p : const {};
     return OfferModel(
       id: json['_id']?.toString() ?? '',
       orderId: json['orderId']?.toString() ?? '',
@@ -41,6 +58,12 @@ class OfferModel {
       orderDescription: o is Map ? (o['description'] ?? '') : '',
       orderArea: o is Map ? (o['area'] ?? '') : '',
       orderType: o is Map ? (o['type'] ?? '') : '',
+      outsideArea: json['outsideArea'] == true,
+      providerArea: (json['providerArea'] ?? provider['area'] ?? '').toString(),
+      providerCity: (json['providerCity'] ?? '').toString(),
+      providerGovernorate:
+          (json['providerGovernorate'] ?? provider['governorate'] ?? '')
+              .toString(),
     );
   }
 }

@@ -664,5 +664,25 @@ class AppLocalization {
       'ar': 'يمكنك المتابعة بعد %d ثوانٍ.',
       'en': 'You can continue in %d seconds.',
     },
+    'provider_outside_area_badge': {
+      'ar': 'خارج منطقتك',
+      'en': 'Outside your area',
+    },
+    'provider_outside_area_card': {
+      'ar': 'هذا العرض من سائق خارج منطقتك: %s — محافظة %s.',
+      'en':
+          'This offer is from a driver outside your area: %s in %s governorate.',
+    },
+    'provider_outside_area_title': {
+      'ar': 'السائق من خارج منطقتك',
+      'en': 'Driver outside your area',
+    },
+    'provider_outside_area_message': {
+      'ar':
+          'هذا السائق من %s — محافظة %s، بينما طلبك في %s. هل تريد قبول عرضه؟',
+      'en':
+          'This driver is from %s in %s governorate, while your order is in %s. Accept this offer?',
+    },
+    'provider_outside_area_confirm': {'ar': 'قبول العرض', 'en': 'Accept offer'},
   };
 }

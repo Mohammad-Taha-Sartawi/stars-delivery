@@ -5,6 +5,7 @@ class ProviderStats {
   final int dailyOrderCount;
   final double dailyCommission;
   final double monthlyCommission;
+  final double totalCommissionDue;
   final int pendingOrdersCount;
   final int offeredOrdersCount;
   final int ordersReportCount;
@@ -20,6 +21,7 @@ class ProviderStats {
     required this.dailyOrderCount,
     required this.dailyCommission,
     required this.monthlyCommission,
+    this.totalCommissionDue = 0,
     required this.pendingOrdersCount,
     required this.offeredOrdersCount,
     this.ordersReportCount = 0,
@@ -37,6 +39,7 @@ class ProviderStats {
       dailyOrderCount: (json['dailyOrderCount'] ?? 0).toInt(),
       dailyCommission: (json['dailyCommission'] ?? 0).toDouble(),
       monthlyCommission: (json['monthlyCommission'] ?? 0).toDouble(),
+      totalCommissionDue: (json['totalCommissionDue'] ?? 0).toDouble(),
       pendingOrdersCount: (json['pendingOrdersCount'] ?? 0).toInt(),
       offeredOrdersCount: (json['offeredOrdersCount'] ?? 0).toInt(),
       ordersReportCount: (json['ordersReportCount'] ?? 0).toInt(),

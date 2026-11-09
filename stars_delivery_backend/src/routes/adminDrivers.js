@@ -5,6 +5,8 @@ const {
   deleteProviderDocuments,
   requiredProviderDocumentsPresent,
   findProviderDocument,
+  inspectProviderDocumentFiles,
+  persistProviderDocumentFiles,
   providerDocumentMetadata,
   providerDocumentPath,
   providerDocumentDownloadName,
@@ -15,6 +17,8 @@ const { splitCommission } = require('../services/commissionLedger');
 const { notAcceptedOrderIds } = require('../services/driverOrderStats');
 const {
   resolveRegistrationLocation,
+  canonicalGovernorate,
+  isValidAreaForGovernorate,
 } = require('../services/registrationLocation');
 const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
 const express = require('express');
@@ -303,7 +307,9 @@ router.get('/search', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
+  let providerDocuments = [];
+
   try {
     const {
       driverName,
@@ -311,6 +317,7 @@ router.post('/', async (req, res) => {
       driverPhone,
       driverServiceType,
       driverLicenseType,
+      driverGovernorate,
       driverArea,
       driverPassword,
       driverPasswordConfirm,
@@ -353,6 +360,31 @@ router.post('/', async (req, res) => {
       });
     }
 
+    const requestedGovernorate =
+      typeof driverGovernorate === 'string'
+        ? driverGovernorate.trim()
+        : '';
+    const requestedArea =
+      typeof driverArea === 'string' ? driverArea.trim() : '';
+    const governorate =
+      canonicalGovernorate(requestedGovernorate)
+      || canonicalGovernorate(requestedArea);
+
+    if (
+      !governorate
+      || !requestedArea
+      || !isValidAreaForGovernorate(governorate, requestedArea)
+    ) {
+      return res.json({
+        success: false,
+        message: 'المحافظة أو القرية/المدينة غير صالحة.',
+      });
+    }
+
+    const licenseNotAvailable =
+      req.body.licenseNotAvailable === true
+      || req.body.licenseNotAvailable === 'true';
+
     const exists =
       await User.findOne({
         email: driverEmail.toLowerCase(),
@@ -365,6 +397,35 @@ router.post('/', async (req, res) => {
       });
     }
 
+    if (licenseNotAvailable) {
+      if (req.file) {
+        return res.json({
+          success: false,
+          message: 'لا يمكن إرفاق رخصة عند اختيار عدم امتلاكها.',
+        });
+      }
+    } else {
+      if (!req.file) {
+        return res.json({
+          success: false,
+          message: 'أرفق صورة رخصة القيادة أو اختر خيار عدم امتلاك الرخصة.',
+        });
+      }
+
+      try {
+        const inspected = inspectProviderDocumentFiles({
+          driverLicenseDocument: [req.file],
+        });
+        providerDocuments =
+          await persistProviderDocumentFiles(inspected);
+      } catch (_) {
+        return res.json({
+          success: false,
+          message: 'صورة الرخصة يجب أن تكون JPEG أو PNG وبحد أقصى 5 ميجابايت.',
+        });
+      }
+    }
+
     const hashedPassword =
       await bcrypt.hash(
         password,
@@ -373,11 +434,6 @@ router.post('/', async (req, res) => {
 
     const publicId =
       await generatePublicId();
-
-    const driverLocation =
-      resolveRegistrationLocation({
-        area: driverArea || '',
-      });
 
     const user =
       new User({
@@ -392,12 +448,11 @@ router.post('/', async (req, res) => {
         ],
         password: hashedPassword,
         role: 'provider',
-        area: driverArea || '',
-        governorate:
-          driverLocation.governorate === 'غير محدد'
-            ? ''
-            : driverLocation.governorate,
+        area: requestedArea,
+        governorate,
         governorateLevel: false,
+        licenseNotAvailable,
+        providerDocuments,
         serviceTypes: serviceTypesFromAdminLabel(driverServiceType),
         licenseType: driverLicenseType || '',
         status: 'active',
@@ -411,6 +466,9 @@ router.post('/', async (req, res) => {
       message: `تم إضافة السائق (${driverName}) بنجاح!`,
     });
   } catch (err) {
+    if (providerDocuments.length > 0) {
+      await deleteProviderDocuments(providerDocuments).catch(() => {});
+    }
     sendInternalServerFailure(res);
   }
 });

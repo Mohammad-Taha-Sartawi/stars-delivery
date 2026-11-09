@@ -4,6 +4,17 @@ const router = express.Router();
 const User = require('../models/User');
 const Order = require('../models/Order');
 const { splitCommission, isCommissionDue } = require('../services/commissionLedger');
+const { serviceTypesLabel } = require('../services/providerServiceTypes');
+
+function primaryPhone(user) {
+  const phones = Array.isArray(user.phoneNumbers) ? user.phoneNumbers : [];
+  return (
+    phones.find((phone) => phone.primary)?.number
+    || phones[0]?.number
+    || user.phone
+    || ''
+  );
+}
 
 router.get('/', async (req, res) => {
   try {
@@ -40,10 +51,10 @@ router.get('/', async (req, res) => {
 
       driverRows.push({
         _id: driver._id.toString(),
-        driverId: driver._id.toString().slice(-8),
+        driverId: driver.publicId || driver._id.toString().slice(-8),
         name: driver.fullName || driver.name,
-        phone: driver.phone,
-        serviceType: 'توصيل',
+        phone: primaryPhone(driver),
+        serviceType: serviceTypesLabel(driver.serviceTypes),
         commission: unpaid,
         paidCommission: paid,
         earnings: totalEarnings,

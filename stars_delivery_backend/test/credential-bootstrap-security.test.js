@@ -209,17 +209,17 @@ test(
 
     assert.match(
       browserSource,
-      /'Content-Type': 'application\/json'/,
+      /new FormData\(\)/,
     );
 
     assert.match(
       browserSource,
-      /driverPassword:\s*password/,
+      /payload\.append\('driverPassword', password\)/,
     );
 
     assert.match(
       browserSource,
-      /driverPasswordConfirm:\s*passwordConfirm/,
+      /payload\.append\('driverPasswordConfirm', passwordConfirm\)/,
     );
 
     assert.doesNotMatch(

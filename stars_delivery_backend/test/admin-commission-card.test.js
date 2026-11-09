@@ -13,6 +13,7 @@ test('platform commission card shows a clear shekel amount without percentages',
   const index = source('src/views/admin/index.ejs');
   const main = source('src/public/js/main.js');
   const css = source('src/public/css/style.css');
+  const adminApi = source('src/routes/adminApi.js');
 
   const card = index.match(
     /<div class="commission-item total-commission">[\s\S]*?<\/div><\/div>/,
@@ -28,6 +29,13 @@ test('platform commission card shows a clear shekel amount without percentages',
   assert.match(main, /toLocaleString\('en-US'\)/);
   assert.match(css, /\.commission-item\.total-commission/);
   assert.match(css, /\.commission-item\.total-commission \.currency/);
+
+  // "Today" means today's commission ledger, not every historical order.
+  assert.match(adminApi, /startOfToday/);
+  assert.match(
+    adminApi,
+    /\$ifNull: \['\$acceptedAt', '\$createdAt'\]/,
+  );
 });
 
 
@@ -175,4 +183,15 @@ test('commissions table keeps pay and reset actions side by side', () => {
   assert.match(main, /data-admin-action="markPaid"/);
   assert.match(main, /data-admin-action="resetDriverCommission"/);
   assert.match(main, /class="table-actions"/);
+});
+
+test('commission rows use the registered phone and service specialties', () => {
+  const commissions = source('src/routes/adminCommissions.js');
+
+  assert.match(commissions, /function primaryPhone/);
+  assert.match(commissions, /phone\.primary/);
+  assert.match(commissions, /serviceTypesLabel/);
+  assert.match(commissions, /driver\.publicId \|\|/);
+  assert.doesNotMatch(commissions, /serviceType: 'توصيل'/);
+  assert.doesNotMatch(commissions, /phone: driver\.phone/);
 });

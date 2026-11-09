@@ -1,1 +1,232 @@
-{"states":[{"name":"بيت لحم"},{"name":"دير البلح"},{"name":"غزة"},{"name":"الخليل"},{"name":"جنين"},{"name":"أريحا"},{"name":"القدس"},{"name":"خان يونس"},{"name":"نابلس"},{"name":"شمال غزة"},{"name":"قلقيلية"},{"name":"رفح"},{"name":"رام الله والبيرة"},{"name":"سلفيت"},{"name":"طوباس"},{"name":"طولكرم"},{"name":"حيفا"},{"name":"عكا"},{"name":"الناصرة"},{"name":"يافا"}]}
+{
+  "states": [
+    {
+      "name": "القدس",
+      "cities": [
+        "Abu Dis",
+        "Ar-Ram",
+        "Beit 'Anan",
+        "Biddu",
+        "Bir Nabala",
+        "East Jerusalem",
+        "Hizma",
+        "Kafr Aqab",
+        "Qalandiya",
+        "Qatanna"
+      ]
+    },
+    {
+      "name": "رام الله والبيرة",
+      "cities": [
+        "Al-Bireh",
+        "Bani Zeid al-Sharqiya",
+        "Beit Liqya",
+        "Beitunia",
+        "Bir Zeit",
+        "Deir Dibwan",
+        "Deir Jarir",
+        "Kharbatha al-Misbah",
+        "Ni'lin",
+        "Ramallah",
+        "Rawabi",
+        "Silwad",
+        "Sinjil",
+        "Turmus Ayya",
+        "al-Mazra'a ash-Sharqiya"
+      ]
+    },
+    {
+      "name": "الخليل",
+      "cities": [
+        "Bani Na'im",
+        "Beit 'Awwa",
+        "Beit Ula",
+        "Beit Ummar",
+        "Deir Sammit",
+        "Dura",
+        "Halhul",
+        "Hebron",
+        "Idhna",
+        "Kharas",
+        "Nuba",
+        "Sa'ir",
+        "Surif",
+        "Taffuh",
+        "Tarqumiya",
+        "Yatta",
+        "ad-Dhahiriya",
+        "as-Samu"
+      ]
+    },
+    {
+      "name": "نابلس",
+      "cities": [
+        "Aqraba",
+        "Asira ash-Shamaliya",
+        "Beit Furik",
+        "Beita",
+        "Huwara",
+        "Jammain",
+        "Nablus",
+        "Qabalan",
+        "Sebastia"
+      ]
+    },
+    {
+      "name": "بيت لحم",
+      "cities": [
+        "Al-Dawha",
+        "Battir",
+        "Beit Fajjar",
+        "Beit Jala",
+        "Beit Sahour",
+        "Bethlehem",
+        "Husan",
+        "Nahalin",
+        "Tuqu'",
+        "Za'atara",
+        "al-Khader",
+        "al-Ubeidiya"
+      ]
+    },
+    {
+      "name": "أريحا",
+      "cities": [
+        "Jericho",
+        "al-Auja",
+        "al-Jiftlik"
+      ]
+    },
+    {
+      "name": "سلفيت",
+      "cities": [
+        "Biddya",
+        "Bruqin",
+        "Deir Ballut",
+        "Deir Istiya",
+        "Farkha",
+        "Haris",
+        "Iskaka",
+        "Kafr ad-Dik",
+        "Kifl Hares",
+        "Marda",
+        "Mas-ha",
+        "Qarawat Bani Hassan",
+        "Qira",
+        "Rafat",
+        "Sarta",
+        "Yasuf",
+        "az-Zawiya"
+      ]
+    },
+    {
+      "name": "جنين",
+      "cities": [
+        "Ajjah",
+        "Arrabah",
+        "Burqin",
+        "Deir Abu Da'if",
+        "Jaba",
+        "Jenin",
+        "Kafr Dan",
+        "Kafr Rai",
+        "Meithalun",
+        "Qabatiya",
+        "Silat ad-Dhahr",
+        "Silat al-Harithiya",
+        "Ya'bad",
+        "Zababdeh",
+        "al-Yamun"
+      ]
+    },
+    {
+      "name": "طولكرم",
+      "cities": [
+        "Anabta",
+        "Attil",
+        "Bal'a",
+        "Baqa ash-Sharqiyya",
+        "Beit Lid",
+        "Qaffin",
+        "Tulkarm"
+      ]
+    },
+    {
+      "name": "قلقيلية",
+      "cities": [
+        "Azzun",
+        "Hableh",
+        "Kafr Thulth",
+        "Qalqilya"
+      ]
+    },
+    {
+      "name": "طوباس",
+      "cities": [
+        "Al 'Aqaba",
+        "Tammun",
+        "Tubas"
+      ]
+    },
+    {
+      "name": "غزة",
+      "cities": [
+        "Al-Zahra",
+        "Gaza City"
+      ]
+    },
+    {
+      "name": "خان يونس",
+      "cities": [
+        "Abasan al-Kabira",
+        "Abasan al-Saghira",
+        "Al-Qarara",
+        "Bani Suheila",
+        "Khan Yunis",
+        "Khuzaʽa"
+      ]
+    },
+    {
+      "name": "رفح",
+      "cities": [
+        "Al Qarya as Suwaydiya",
+        "Al-Bayuk",
+        "Al-Mawasi",
+        "Rafah",
+        "Shokat as-Sufi"
+      ]
+    },
+    {
+      "name": "دير البلح",
+      "cities": [
+        "Deir al-Balah",
+        "az-Zawayda"
+      ]
+    },
+    {
+      "name": "شمال غزة",
+      "cities": [
+        "Beit Hanoun",
+        "Beit Lahia",
+        "Izbat Beit Hanoun",
+        "Jabalia"
+      ]
+    },
+    {
+      "name": "حيفا",
+      "cities": []
+    },
+    {
+      "name": "عكا",
+      "cities": []
+    },
+    {
+      "name": "الناصرة",
+      "cities": []
+    },
+    {
+      "name": "يافا",
+      "cities": []
+    }
+  ]
+}

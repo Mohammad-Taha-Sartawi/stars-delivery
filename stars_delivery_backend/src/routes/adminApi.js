@@ -31,8 +31,20 @@ router.get('/stats', async (req, res) => {
       User.countDocuments({ role: 'customer', status: 'active' }),
     ]);
 
+    const { startOfToday, startOfMonth } = orderStatBoundaries();
+
     const commissionAgg = await Order.aggregate([
-      { $match: { status: { $in: ['accepted', 'fulfilling', 'completed'] } } },
+      {
+        $match: {
+          status: { $in: ['accepted', 'fulfilling', 'completed'] },
+          $expr: {
+            $gte: [
+              { $ifNull: ['$acceptedAt', '$createdAt'] },
+              startOfToday,
+            ],
+          },
+        },
+      },
       { $group: { _id: null, total: { $sum: '$platformCommission' } } }
     ]);
     const totalCommission = commissionAgg[0]?.total || 0;
@@ -103,7 +115,6 @@ router.get('/stats', async (req, res) => {
 
     const inactiveUsers = totalUsers - activeUsers;
 
-    const { startOfToday, startOfMonth } = orderStatBoundaries();
     const orderTypeRows = await Order.aggregate([
       { $match: { createdAt: { $gte: startOfMonth } } },
       {

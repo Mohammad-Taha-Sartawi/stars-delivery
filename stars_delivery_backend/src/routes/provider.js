@@ -86,9 +86,12 @@ router.get('/stats', async (req, res) => {
     const match = { providerId: req.userId, status: { $in: ['accepted', 'fulfilling', 'completed'] } };
 
     const t1 = Date.now();
-    const [dailyOrders, monthlyOrders, user] = await Promise.all([
+    const [dailyOrders, monthlyOrders, allCommissionOrders, user] = await Promise.all([
       Order.find({ ...match, createdAt: { $gte: startOfDay } }).lean(),
       Order.find({ ...match, createdAt: { $gte: startOfMonth } }).lean(),
+      Order.find(match)
+        .select('platformCommission acceptedAt completedAt createdAt')
+        .lean(),
       User.findById(req.userId),
     ]);
     const t2 = Date.now();
@@ -177,6 +180,10 @@ router.get('/stats', async (req, res) => {
       monthlyOrders,
       user,
     );
+    const { unpaid: totalCommissionDue } = splitCommission(
+      allCommissionOrders,
+      user,
+    );
 
     res.json({
       dailyEarnings: dailyOrders.reduce((s, o) => s + (o.providerEarning || 0), 0),
@@ -185,6 +192,7 @@ router.get('/stats', async (req, res) => {
       dailyOrderCount,
       dailyCommission: dailyCommissionDue,
       monthlyCommission: monthlyCommissionDue,
+      totalCommissionDue,
       pendingOrdersCount,
       offeredOrdersCount,
       ordersReportCount,

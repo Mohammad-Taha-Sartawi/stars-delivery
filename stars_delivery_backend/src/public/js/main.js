@@ -373,6 +373,19 @@ document.getElementById('addDriverForm').addEventListener('submit', function (e)
   addNewDriver();
 });
 
+const driverNoLicenseCheckbox = document.getElementById('driverLicenseNotAvailable');
+const driverLicenseInput = document.getElementById('driverLicenseDocumentInput');
+if (driverNoLicenseCheckbox && driverLicenseInput) {
+  driverNoLicenseCheckbox.addEventListener('change', () => {
+    driverLicenseInput.disabled = driverNoLicenseCheckbox.checked;
+    if (driverNoLicenseCheckbox.checked) {
+      driverLicenseInput.value = '';
+      const licenseType = document.querySelector('[name="driverLicenseType"]');
+      if (licenseType) licenseType.value = 'بدون رخصة';
+    }
+  });
+}
+
 async function addNewDriver() {
   const form = document.getElementById('addDriverForm');
   const formData = new FormData(form);
@@ -405,6 +418,28 @@ async function addNewDriver() {
       formData.get('driverPasswordConfirm')
       || '',
     );
+
+  const governorate =
+    String(
+      formData.get('driverGovernorate')
+      || '',
+    ).trim();
+
+  const area =
+    String(
+      formData.get('driverArea')
+      || '',
+    ).trim();
+
+  const licenseNotAvailable =
+    formData.get('licenseNotAvailable')
+    === 'on';
+
+  const licenseFile =
+    form.elements.driverLicenseDocument
+    && form.elements.driverLicenseDocument.files
+      ? form.elements.driverLicenseDocument.files[0]
+      : null;
 
   const errorElement =
     document.getElementById('formErrorMsg');
@@ -450,46 +485,53 @@ async function addNewDriver() {
     return;
   }
 
+  if (!governorate || !area) {
+    errorElement.textContent =
+      'اختر المحافظة والقرية أو المدينة.';
+    errorElement.classList.add('show');
+    successElement.classList.remove('show');
+    return;
+  }
+
+  if (!licenseNotAvailable && !licenseFile) {
+    errorElement.textContent =
+      'أرفق صورة رخصة القيادة أو اختر خيار عدم امتلاك الرخصة.';
+    errorElement.classList.add('show');
+    successElement.classList.remove('show');
+    return;
+  }
+
   try {
+    const payload = new FormData();
+    payload.append('driverName', name);
+    payload.append('driverEmail', email);
+    payload.append('driverPhone', phone);
+    payload.append(
+      'driverServiceType',
+      String(formData.get('driverServiceType') || ''),
+    );
+    payload.append(
+      'driverLicenseType',
+      String(formData.get('driverLicenseType') || ''),
+    );
+    payload.append('driverGovernorate', governorate);
+    payload.append('driverArea', area);
+    payload.append(
+      'licenseNotAvailable',
+      licenseNotAvailable ? 'true' : 'false',
+    );
+    payload.append('driverPassword', password);
+    payload.append('driverPasswordConfirm', passwordConfirm);
+    if (!licenseNotAvailable && licenseFile) {
+      payload.append('driverLicenseDocument', licenseFile);
+    }
+
     const res =
       await adminFetch(
         '/admin/drivers',
         {
           method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
-          body: JSON.stringify({
-            driverName: name,
-            driverEmail: email,
-            driverPhone: phone,
-            driverServiceType:
-              String(
-                formData.get(
-                  'driverServiceType',
-                )
-                || '',
-              ),
-            driverLicenseType:
-              String(
-                formData.get(
-                  'driverLicenseType',
-                )
-                || '',
-              ),
-            driverArea:
-              String(
-                formData.get(
-                  'driverArea',
-                )
-                || '',
-              ),
-            driverPassword:
-              password,
-            driverPasswordConfirm:
-              passwordConfirm,
-          }),
+          body: payload,
         },
       );
 
@@ -504,6 +546,16 @@ async function addNewDriver() {
       errorElement.classList.remove('show');
 
       form.reset();
+      const governorateSelect = document.getElementById('driverGovernorateSelect');
+      const areaSelect = document.getElementById('driverAreaSelect');
+      if (governorateSelect) governorateSelect.value = '';
+      if (areaSelect) {
+        areaSelect.innerHTML = '<option value="">اختر القرية أو المدينة...</option>';
+        areaSelect.disabled = true;
+      }
+      if (driverLicenseInput) {
+        driverLicenseInput.disabled = false;
+      }
       loadDashboardStats();
 
       setTimeout(
@@ -3010,31 +3062,73 @@ document.addEventListener('DOMContentLoaded', () => {
   initSupportChat();
 });
 
+let adminAreasByGovernorate = {};
+
 async function loadAreasForDropdown() {
   try {
     const res = await adminFetch('/data/areas.json');
     const data = await res.json();
-    const states = data.states || [];
-    const select = document.getElementById('driverAreaSelect');
-    if (!select) return;
+    const states = Array.isArray(data.states) ? data.states : [];
+    const governorateSelect = document.getElementById('driverGovernorateSelect');
+    const areaSelect = document.getElementById('driverAreaSelect');
+    if (!governorateSelect || !areaSelect) return;
 
-    const westBank = ['القدس','رام الله والبيرة','الخليل','نابلس','بيت لحم','أريحا','سلفيت','جنين','طولكرم','قلقيلية','طوباس'];
-    const gaza = ['غزة','خان يونس','رفح','دير البلح','شمال غزة'];
-    const interior = ['حيفا','عكا','الناصرة','يافا'];
-    const groups = { 'الضفة الغربية': westBank, 'قطاع غزة': gaza, 'الداخل المحتل': interior };
+    adminAreasByGovernorate = Object.fromEntries(
+      states.map((state) => [
+        state.name,
+        Array.isArray(state.cities) ? state.cities : [],
+      ]),
+    );
 
+    const groups = {
+      'الضفة الغربية': ['القدس','رام الله والبيرة','الخليل','نابلس','بيت لحم','أريحا','سلفيت','جنين','طولكرم','قلقيلية','طوباس'],
+      'قطاع غزة': ['غزة','خان يونس','رفح','دير البلح','شمال غزة'],
+      'الداخل المحتل': ['حيفا','عكا','الناصرة','يافا'],
+    };
+
+    governorateSelect.innerHTML = '<option value="">اختر المحافظة...</option>';
     for (const [groupLabel, groupAreas] of Object.entries(groups)) {
       const optgroup = document.createElement('optgroup');
       optgroup.label = groupLabel;
       for (const name of groupAreas) {
-        if (states.find(s => s.name === name)) {
-          const option = document.createElement('option');
-          option.value = name;
-          option.textContent = name;
-          optgroup.appendChild(option);
-        }
+        if (!adminAreasByGovernorate[name]) continue;
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        optgroup.appendChild(option);
       }
-      select.appendChild(optgroup);
+      governorateSelect.appendChild(optgroup);
     }
+
+    const populateCities = () => {
+      const governorate = governorateSelect.value;
+      areaSelect.innerHTML = '<option value="">اختر القرية أو المدينة...</option>';
+
+      if (!governorate) {
+        areaSelect.disabled = true;
+        return;
+      }
+
+      areaSelect.disabled = false;
+      const itself = document.createElement('option');
+      itself.value = governorate;
+      itself.textContent = `من ${governorate} نفسها`;
+      areaSelect.appendChild(itself);
+
+      for (const city of adminAreasByGovernorate[governorate] || []) {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        areaSelect.appendChild(option);
+      }
+    };
+
+    if (governorateSelect.dataset.changeBound !== '1') {
+      governorateSelect.dataset.changeBound = '1';
+      governorateSelect.addEventListener('change', populateCities);
+    }
+
+    governorateSelect.value = '';
+    populateCities();
   } catch (_) {}
 }

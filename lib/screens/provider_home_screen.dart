@@ -1191,14 +1191,14 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              '${s.monthlyCommission.toStringAsFixed(0)}'
+              '${s.totalCommissionDue.toStringAsFixed(0)}'
               '${AppLocalization.get(context, 'commission_body').trim()}',
               style: theme.textTheme.titleLarge?.copyWith(
                 color: tone.foreground,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (s.monthlyCommission > 0) ...[
+            if (s.totalCommissionDue > 0) ...[
               const SizedBox(height: AppSpacing.md),
               SizedBox(
                 width: double.infinity,
@@ -1209,7 +1209,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                       context,
                       MaterialPageRoute(
                         builder: (_) => CommissionPaymentScreen(
-                          dueAmount: s.monthlyCommission,
+                          dueAmount: s.totalCommissionDue,
                         ),
                       ),
                     );

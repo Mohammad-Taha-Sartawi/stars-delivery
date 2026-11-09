@@ -130,6 +130,7 @@
             </div>
             <div class="form-group"><label><span class="required">*</span> نوع السائق</label>
               <select name="driverLicenseType" required>
+                <option value="بدون رخصة">بدون رخصة</option>
                 <option value="سائق عمومي مرخص">سائق عمومي مرخص</option>
                 <option value="سائق نقل ركاب خاص">سائق نقل ركاب خاص</option>
                 <option value="سائق نقل بضائع خاص">سائق نقل بضائع خاص</option>
@@ -137,10 +138,20 @@
                 <option value="سائق متعدد (مرخص لجميع الخدمات)">سائق متعدد (مرخص لجميع الخدمات)</option>
               </select>
             </div>
-            <div class="form-group"><label><span class="required">*</span> المنطقة</label>
-              <select name="driverArea" id="driverAreaSelect" required>
-                <option value="">اختر المنطقة...</option>
+            <div class="form-group"><label><span class="required">*</span> المحافظة</label>
+              <select name="driverGovernorate" id="driverGovernorateSelect" required>
+                <option value="">اختر المحافظة...</option>
               </select>
+            </div>
+            <div class="form-group"><label><span class="required">*</span> القرية / المدينة</label>
+              <select name="driverArea" id="driverAreaSelect" required>
+                <option value="">اختر القرية أو المدينة...</option>
+              </select>
+            </div>
+            <div class="form-group"><label>رخصة القيادة</label>
+              <label class="checkbox-line"><input type="checkbox" name="licenseNotAvailable" id="driverLicenseNotAvailable"> لا يملك رخصة قيادة — متابعة بدون صورة الرخصة</label>
+              <input type="file" name="driverLicenseDocument" id="driverLicenseDocumentInput" accept="image/jpeg,image/png">
+              <small>أرفق صورة JPEG أو PNG بحد أقصى 5 ميجابايت، أو اختر خيار عدم امتلاك الرخصة.</small>
             </div>
             <div id="formSuccessMsg" class="success-msg">✅ تم إضافة السائق بنجاح!</div>
             <div id="formErrorMsg" class="error-msg-form">❌ الرجاء ملء جميع الحقول المطلوبة.</div>

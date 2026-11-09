@@ -32,6 +32,7 @@ const {
   publicMobileUser,
   mobileSessionVersion,
 } = require('../services/mobileSession');
+const { governorateKey } = require('../services/registrationLocation');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
   MAX_MOBILE_PASSWORD_LENGTH,
@@ -265,7 +266,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
 
     res.status(201).json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, phone, role: user.role, area: user.area, governorate: user.governorate || '', publicId: user.publicId },
+      user: { id: user._id, fullName: user.fullName, email: user.email, phone, role: user.role, area: user.area, governorate: user.governorate || '', governorateLevel: user.governorateLevel === true, publicId: user.publicId },
     });
   } catch (err) {
     sendInternalServerError(res);
@@ -346,7 +347,7 @@ router.post('/login', mobileLoginLimiter, async (req, res) => {
 
     res.json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, phone: primaryPhone, role: user.role, area: user.area, governorate: user.governorate || '', publicId: user.publicId || '' },
+      user: { id: user._id, fullName: user.fullName, email: user.email, phone: primaryPhone, role: user.role, area: user.area, governorate: governorateKey(user) || user.governorate || '', governorateLevel: user.governorateLevel === true, publicId: user.publicId || '' },
     });
   } catch (err) {
     sendInternalServerError(res);

@@ -14,6 +14,9 @@ const {
   mobileSessionRotationFilter,
 } = require('../services/mobileSession');
 const {
+  customerProviderVisibilityFilter,
+} = require('../services/orderVisibility');
+const {
   MIN_MOBILE_PASSWORD_LENGTH,
   MAX_MOBILE_PASSWORD_LENGTH,
   isValidMobilePassword,
@@ -49,8 +52,13 @@ router.get('/available-providers', requireRole('customer'), async (req, res) => 
       ],
     };
 
-    if (area) {
-      filter.area = area;
+    const visibility = customerProviderVisibilityFilter({
+      area,
+      governorate: req.authUser.governorate,
+      governorateLevel: req.authUser.governorateLevel === true,
+    });
+    if (visibility) {
+      filter.$or = visibility.$or;
     }
 
     const count = await User.countDocuments(filter);
@@ -95,6 +103,25 @@ router.get('/location', async (req, res) => {
     const user = await User.findById(req.userId, 'area lastLatitude lastLongitude lastLocationUpdate');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.put('/governorate-level', async (req, res) => {
+  try {
+    const enabled = req.body.enabled === true;
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { governorateLevel: enabled },
+      { new: true },
+    );
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({
+      success: true,
+      enabled: user.governorateLevel === true,
+    });
   } catch (err) {
     sendInternalServerError(res);
   }

@@ -24,14 +24,15 @@ test('registration area is matched exactly at village/city level', () => {
   assert.match(auth, /governorate:\s*registrationGovernorate/);
 
   // Orders take the customer's registered area (not GPS) and providers only
-  // see orders from the same exact area value.
+  // see orders from their area or an enabled governorate-wide scope.
   assert.match(orders, /const orderArea = user\.area \|\| area \|\| ''/);
-  assert.match(orders, /order\.area === req\.authUser\.area/);
+  assert.match(orders, /canProviderSeeOrder\(req\.authUser, order\)/);
   assert.match(
     provider,
     /const qArea = user\.area \|\| req\.query\.area \|\| ''/,
   );
-  assert.match(provider, /areaFilter\.area = qArea/);
+  assert.match(provider, /providerVisibilityFilter/);
+  assert.match(provider, /areaFilter\.\$or = visibility\.\$or/);
 });
 
 test('a location sync never overwrites the registered village/city', () => {

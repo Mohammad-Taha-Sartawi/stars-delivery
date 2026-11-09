@@ -5,6 +5,8 @@ class UserModel {
   final String phone;
   final String role;
   final String area;
+  final String governorate;
+  final bool governorateLevel;
   final String publicId;
 
   UserModel({
@@ -14,6 +16,8 @@ class UserModel {
     required this.phone,
     required this.role,
     required this.area,
+    this.governorate = '',
+    this.governorateLevel = false,
     required this.publicId,
   });
 
@@ -25,6 +29,8 @@ class UserModel {
       phone: json['phone'] ?? '',
       role: json['role'] ?? '',
       area: json['area'] ?? '',
+      governorate: json['governorate'] ?? '',
+      governorateLevel: json['governorateLevel'] == true,
       publicId: json['publicId'] ?? '',
     );
   }
@@ -36,6 +42,8 @@ class UserModel {
     'phone': phone,
     'role': role,
     'area': area,
+    'governorate': governorate,
+    'governorateLevel': governorateLevel,
     'publicId': publicId,
   };
 }

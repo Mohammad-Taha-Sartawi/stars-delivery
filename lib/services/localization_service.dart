@@ -282,6 +282,14 @@ class AppLocalization {
       'ar': 'السائقون المتاحون حالياً في منطقتك: %d',
       'en': 'Drivers currently available in your area: %d',
     },
+    'available_drivers_count_governorate': {
+      'ar': 'السائقون المتاحون في محافظتك: %d',
+      'en': 'Drivers currently available in your governorate: %d',
+    },
+    'no_available_drivers_governorate': {
+      'ar': 'لا يوجد سائقون متاحون حالياً في محافظتك',
+      'en': 'No drivers are currently available in your governorate',
+    },
     'no_available_drivers': {
       'ar': 'لا يوجد سائقون متاحون حالياً في منطقتك',
       'en': 'No drivers are currently available in your area',
@@ -567,5 +575,94 @@ class AppLocalization {
     },
     'add_phone': {'ar': 'إضافة رقم هاتف', 'en': 'Add phone number'},
     'delete': {'ar': 'حذف', 'en': 'Delete'},
+
+    // Governorate-level work mode.
+    'governorate_scope_customer_title': {
+      'ar': 'إرسال الطلبات على مستوى المحافظة',
+      'en': 'Send orders across the governorate',
+    },
+    'governorate_scope_customer_subtitle': {
+      'ar':
+          'عند التفعيل تصل طلباتك الجديدة إلى السائقين في كل قرى ومدن محافظة %s الذين فعّلوا هذا الخيار.',
+      'en':
+          'When enabled, your new orders can reach drivers across %s governorate who enabled this option.',
+    },
+    'governorate_scope_provider_title': {
+      'ar': 'استقبال الطلبات من كل المحافظة',
+      'en': 'Receive orders from the whole governorate',
+    },
+    'governorate_scope_provider_subtitle': {
+      'ar':
+          'عند التفعيل تستقبل طلبات كل قرى ومدن محافظة %s التي سمح أصحابها بالعمل على مستوى المحافظة.',
+      'en':
+          'When enabled, you receive orders from across %s governorate when the customer also enabled governorate-level mode.',
+    },
+    'governorate_scope_enabled': {
+      'ar': 'تم تفعيل العمل على مستوى المحافظة.',
+      'en': 'Governorate-level mode enabled.',
+    },
+    'governorate_scope_disabled': {
+      'ar': 'تم إيقاف العمل على مستوى المحافظة.',
+      'en': 'Governorate-level mode disabled.',
+    },
+    'governorate_scope_update_failed': {
+      'ar': 'تعذر تحديث إعداد مستوى المحافظة. حاول مرة أخرى.',
+      'en': 'Could not update the governorate-level setting. Try again.',
+    },
+    'governorate_scope_loading': {'ar': 'جاري الحفظ...', 'en': 'Saving...'},
+    'your_governorate': {'ar': 'محافظتك', 'en': 'your governorate'},
+    'governorate_scope_banner_customer': {
+      'ar': 'وضع المحافظة مفعّل: طلبك سيُرسل إلى كل مدن وقرى محافظة %s.',
+      'en':
+          'Governorate mode is on: your order goes to every city and village in %s.',
+    },
+    'governorate_scope_banner_provider': {
+      'ar': 'وضع المحافظة مفعّل: تستقبل طلبات من كل مدن وقرى محافظة %s.',
+      'en': 'Governorate mode is on: you receive orders from across %s.',
+    },
+    'governorate_order_warning_title': {
+      'ar': 'تنبيه: طلب على مستوى المحافظة',
+      'en': 'Warning: governorate-level order',
+    },
+    'governorate_order_warning_message': {
+      'ar':
+          'سيتم عرض طلبك على السائقين في كل قرى ومدن محافظة %s الذين فعّلوا استقبال طلبات المحافظة، وقد يستلمه سائق من خارج منطقتك (%s).',
+      'en':
+          'Your order will be shown to drivers across %s governorate who enabled governorate-level orders, and may be received by a driver outside your area (%s).',
+    },
+    'governorate_order_warning_note': {
+      'ar':
+          'لا تتابع إلا إذا كنت موافقاً على أن يعمل على طلبك سائق من قرية أو مدينة أخرى داخل محافظتك.',
+      'en':
+          'Continue only if you accept that a driver from another village or city in your governorate may handle your order.',
+    },
+    'governorate_order_warning_confirm': {
+      'ar': 'إرسال الطلب',
+      'en': 'Send order',
+    },
+    'governorate_outside_area_title': {
+      'ar': 'تحذير: هذا الطلب خارج منطقتك',
+      'en': 'Warning: this order is outside your area',
+    },
+    'governorate_outside_area_message': {
+      'ar':
+          'الطلب من %s داخل محافظة %s، بينما منطقتك المسجلة هي %s. يمكنك المتابعة إذا كنت مستعداً للعمل خارج قريتك.',
+      'en':
+          'The order is from %s in %s governorate, while your registered area is %s. Continue only if you are willing to work outside your village.',
+    },
+    'governorate_outside_area_note': {
+      'ar':
+          'يظهر لك هذا الطلب لأنك فعّلت خيار العمل على مستوى المحافظة، وصاحب الطلب فعّله أيضاً.',
+      'en':
+          'You see this order because you enabled governorate-level mode and the customer enabled it too.',
+    },
+    'governorate_outside_area_confirm': {
+      'ar': 'متابعة تقديم العرض',
+      'en': 'Continue to offer',
+    },
+    'governorate_warning_wait': {
+      'ar': 'يمكنك المتابعة بعد %d ثوانٍ.',
+      'en': 'You can continue in %d seconds.',
+    },
   };
 }

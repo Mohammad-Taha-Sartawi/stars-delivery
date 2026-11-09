@@ -6,6 +6,10 @@ const User = require('../models/User');
 const { executeTransaction } = require('./transaction');
 const { ACCEPTABLE_OFFER_ORDER_STATES, canAcceptOfferRecord, nextProviderStatus } = require('./orderState');
 const { normalizeServiceTypes } = require('./providerServiceTypes');
+const {
+  providerVisibilityFilter,
+  orderResponderFilter,
+} = require('./orderVisibility');
 
 const ACCEPTABLE_ORDER_STATUSES = ACCEPTABLE_OFFER_ORDER_STATES;
 const PROVIDER_ACCEPTANCE_BLOCK_MS = 15 * 60 * 1000;
@@ -94,7 +98,10 @@ async function suspendIfUnanswered(order, now = new Date()) {
   };
 
   if (order.area) {
-    responderFilter.area = order.area;
+    const responderVisibility = orderResponderFilter(order);
+    if (responderVisibility) {
+      responderFilter.$or = responderVisibility.$or;
+    }
   }
 
   if (rejectedProviderIds.length > 0) {
@@ -370,11 +377,19 @@ async function submitOffer({ orderId, providerId, price, estimatedTime }) {
     const orderFilter = {
       _id: orderId,
       status: { $in: ACCEPTABLE_ORDER_STATUSES },
-      $or: [
-        { offerSuspendedUntil: null },
-        { offerSuspendedUntil: { $exists: false } },
+      $and: [
+        {
+          $or: [
+            { offerSuspendedUntil: null },
+            { offerSuspendedUntil: { $exists: false } },
+          ],
+        },
       ],
     };
+    const visibility = providerVisibilityFilter(provider);
+    if (visibility) {
+      orderFilter.$and.push(visibility);
+    }
 
     if (providerServiceTypes.length > 0) {
       orderFilter.type = { $in: providerServiceTypes };

@@ -21,6 +21,7 @@ import '../widgets/ui/app_action_tile.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_section_header.dart';
 import '../widgets/ui/app_tone.dart';
+import '../widgets/governorate_scope_card.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'notifications_screen.dart';
@@ -62,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription? _httpSessionRejectedSub;
   StreamSubscription? _supportReplySub;
   bool _sessionExitStarted = false;
+  late bool _governorateLevel = widget.user.governorateLevel;
 
   @override
   void initState() {
@@ -319,6 +321,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: AppSpacing.lg),
+                      GovernorateScopeCard(
+                        token: widget.token,
+                        initialEnabled: _governorateLevel,
+                        isProvider: false,
+                        governorateName:
+                            widget.user.governorate.trim().isNotEmpty
+                            ? widget.user.governorate
+                            : widget.user.area,
+                        onChanged: (enabled) {
+                          setState(() => _governorateLevel = enabled);
+                          _loadAvailableDriversCount();
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
                       AppSectionHeader(
                         title: AppLocalization.get(
                           context,
@@ -340,6 +356,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     child: CreateOrderScreen(
                                       user: widget.user,
                                       token: widget.token,
+                                      governorateLevel: _governorateLevel,
                                     ),
                                   ),
                                 ),
@@ -650,10 +667,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final theme = Theme.of(context);
     final tone = appToneStyle(context, AppTone.info);
     final message = _availableDriversCount == 0
-        ? AppLocalization.get(context, 'no_available_drivers')
+        ? AppLocalization.get(
+            context,
+            _governorateLevel
+                ? 'no_available_drivers_governorate'
+                : 'no_available_drivers',
+          )
         : AppLocalization.get(
             context,
-            'available_drivers_count',
+            _governorateLevel
+                ? 'available_drivers_count_governorate'
+                : 'available_drivers_count',
           ).replaceAll('%d', '${_availableDriversCount!}');
 
     return Semantics(

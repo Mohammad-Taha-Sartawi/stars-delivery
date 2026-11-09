@@ -30,6 +30,7 @@ import '../widgets/ui/app_section_header.dart';
 import '../widgets/ui/app_state_views.dart';
 import '../widgets/ui/app_status_badge.dart';
 import '../widgets/ui/app_tone.dart';
+import '../widgets/governorate_scope_card.dart';
 import 'login_screen.dart';
 import 'pending_orders_screen.dart';
 import 'provider_active_orders_screen.dart';
@@ -68,6 +69,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   StreamSubscription? _supportReplySub;
   bool _sessionExitStarted = false;
   bool _updatingAvailability = false;
+  late bool _governorateLevel = widget.user.governorateLevel;
   int _supportUnreadCount = 0;
   late ChatService _supportChatService;
 
@@ -318,6 +320,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                       builder: (_) => PendingOrdersScreen(
                         orders: state.pendingOrders!,
                         token: widget.token,
+                        user: widget.user,
                         onRefresh: () {
                           context.read<ProviderBloc>().add(
                             LoadPendingOrders(token: widget.token),
@@ -548,6 +551,30 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                     title: AppLocalization.get(context, 'provider_dashboard'),
                   ),
                   _buildAvailabilityCard(context, s),
+                  const SizedBox(height: AppSpacing.md),
+                  GovernorateScopeCard(
+                    token: widget.token,
+                    initialEnabled: _governorateLevel,
+                    isProvider: true,
+                    governorateName: widget.user.governorate.trim().isNotEmpty
+                        ? widget.user.governorate
+                        : widget.user.area,
+                    onChanged: (enabled) {
+                      setState(() => _governorateLevel = enabled);
+                      // The server joins the governorate socket room only
+                      // when the setting is enabled; reconnect to apply it.
+                      SocketService.instance.connect(
+                        token: widget.token,
+                        area: ApiConfig.detectedArea,
+                      );
+                      context.read<ProviderBloc>().add(
+                        LoadPendingOrders(token: widget.token),
+                      );
+                      context.read<ProviderBloc>().add(
+                        LoadProviderStats(token: widget.token),
+                      );
+                    },
+                  ),
                   if (pendingWorkCount > 0) ...[
                     const SizedBox(height: AppSpacing.md),
                     _buildPendingWorkBanner(context, pendingWorkCount),
@@ -579,6 +606,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                                 builder: (_) => PendingOrdersScreen(
                                   orders: state.pendingOrders!,
                                   token: widget.token,
+                                  user: widget.user,
                                   onRefresh: () {
                                     context.read<ProviderBloc>().add(
                                       LoadPendingOrders(token: widget.token),

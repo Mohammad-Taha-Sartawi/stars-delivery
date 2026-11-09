@@ -9,21 +9,25 @@ import '../services/api_config.dart';
 import '../services/provider_service.dart';
 import '../services/theme_service.dart';
 import '../services/socket_service.dart';
+import '../models/user_model.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_tone.dart';
+import '../widgets/ui/governorate_scope_warning.dart';
 import 'submit_offer_screen.dart';
 
 class PendingOrdersScreen extends StatefulWidget {
   final List<Map<String, dynamic>> orders;
   final String token;
+  final UserModel? user;
   final VoidCallback? onRefresh;
   const PendingOrdersScreen({
     super.key,
     required this.orders,
     required this.token,
+    this.user,
     this.onRefresh,
   });
 
@@ -191,10 +195,118 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
     );
   }
 
-  Future<void> _openSubmitOffer(String orderId) async {
+  bool _isOutsideArea(Map<String, dynamic> order) {
+    final user = widget.user;
+    if (user == null) return false;
+
+    final driverArea = user.area.trim();
+    final orderArea = (order['area'] ?? '').toString().trim();
+    if (driverArea.isEmpty || orderArea.isEmpty || driverArea == orderArea) {
+      return false;
+    }
+
+    final driverGovernorate = user.governorate.trim();
+    final orderGovernorate = (order['governorate'] ?? '').toString().trim();
+    if (driverGovernorate.isNotEmpty && orderGovernorate.isNotEmpty) {
+      return driverGovernorate == orderGovernorate;
+    }
+    return true;
+  }
+
+  String _outsideAreaMessage(Map<String, dynamic> order) {
+    final user = widget.user;
+    final orderArea = (order['area'] ?? '').toString().trim();
+    final orderGovernorate = (order['governorate'] ?? '').toString().trim();
+    final governorate = orderGovernorate.isNotEmpty
+        ? orderGovernorate
+        : (user?.governorate.trim().isNotEmpty == true
+              ? user!.governorate.trim()
+              : (user?.area.trim().isNotEmpty == true
+                    ? user!.area.trim()
+                    : AppLocalization.get(context, 'your_governorate')));
+    final driverArea = user?.area.trim().isNotEmpty == true
+        ? user!.area.trim()
+        : AppLocalization.get(context, 'area_region');
+
+    return AppLocalization.get(context, 'governorate_outside_area_message')
+        .replaceFirst('%s', orderArea)
+        .replaceFirst('%s', governorate)
+        .replaceFirst('%s', driverArea);
+  }
+
+  Widget _buildOutsideAreaBanner(
+    BuildContext context,
+    Map<String, dynamic> order,
+  ) {
+    final tone = appToneStyle(context, AppTone.warning);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tone.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tone.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: tone.foreground, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalization.get(
+                    context,
+                    'governorate_outside_area_title',
+                  ),
+                  style: TextStyle(
+                    color: tone.foreground,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _outsideAreaMessage(order),
+                  style: TextStyle(
+                    color: tone.foreground,
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openSubmitOffer(
+    String orderId,
+    Map<String, dynamic> order,
+  ) async {
     if (_cooldownActive) {
       _showCooldownMessage();
       return;
+    }
+
+    if (_isOutsideArea(order)) {
+      final proceed = await showGovernorateScopeWarning(
+        context,
+        title: AppLocalization.get(context, 'governorate_outside_area_title'),
+        message: _outsideAreaMessage(order),
+        note: AppLocalization.get(context, 'governorate_outside_area_note'),
+        confirmLabel: AppLocalization.get(
+          context,
+          'governorate_outside_area_confirm',
+        ),
+      );
+      if (!proceed || !mounted) return;
     }
 
     final submitted = await Navigator.push<bool>(
@@ -358,6 +470,7 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
                           final images = o['images'] is List
                               ? (o['images'] as List)
                               : const [];
+                          final outsideArea = _isOutsideArea(o);
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 16),
@@ -402,6 +515,10 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
                                       ),
                                     ],
                                   ),
+                                  if (outsideArea) ...[
+                                    const SizedBox(height: 12),
+                                    _buildOutsideAreaBanner(context, o),
+                                  ],
                                   const SizedBox(height: 16),
                                   if (description.isNotEmpty) ...[
                                     Text(
@@ -571,6 +688,7 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
                                           child: ElevatedButton.icon(
                                             onPressed: () => _openSubmitOffer(
                                               o['_id']?.toString() ?? '',
+                                              o,
                                             ),
                                             icon: const Icon(
                                               Icons.local_offer_outlined,

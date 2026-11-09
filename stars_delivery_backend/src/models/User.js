@@ -62,6 +62,8 @@ const userSchema = new mongoose.Schema({
   },
   role: { type: String, enum: ['customer', 'provider', 'admin'], required: true },
   area: { type: String, default: '' },
+  governorate: { type: String, default: '' },
+  governorateLevel: { type: Boolean, default: false },
   publicId: { type: String, unique: true, sparse: true },
   status: { type: String, enum: ['active', 'blocked', 'pending', 'inactive'], default: 'active' },
   serviceTypes: [{ type: String, enum: ['product', 'people', 'goods'] }],

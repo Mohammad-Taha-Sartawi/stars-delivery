@@ -1,6 +1,7 @@
 const {
   isMobileRole,
 } = require('../middleware/mobileRole');
+const { governorateKey } = require('./registrationLocation');
 
 function isActiveMobileAccount(
   user,
@@ -44,7 +45,8 @@ function publicMobileUser(user) {
     phone: primaryPhone,
     role: user.role || '',
     area: user.area || '',
-    governorate: user.governorate || '',
+    governorate: governorateKey(user) || user.governorate || '',
+    governorateLevel: user.governorateLevel === true,
     publicId: user.publicId || '',
   };
 }

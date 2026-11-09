@@ -154,7 +154,7 @@ test('registration stores the governorate in users and pending providers', () =>
   assert.match(auth, /governorate:\s*registrationGovernorate/);
   assert.match(pendingModel, /governorate:\s*\{ type: String/);
   assert.match(userModel, /governorate:\s*\{ type: String/);
-  assert.match(mobileSession, /governorate:\s*user\.governorate/);
+  assert.match(mobileSession, /governorate:\s*governorateKey\(user\)/);
 });
 
 test('drivers and users APIs expose governorate and city', () => {

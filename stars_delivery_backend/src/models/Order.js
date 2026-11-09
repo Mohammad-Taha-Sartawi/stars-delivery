@@ -8,6 +8,8 @@ const orderSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   images: [{ type: String }],
   area: { type: String, default: '' },
+  governorate: { type: String, default: '' },
+  governorateLevel: { type: Boolean, default: false },
   location: { type: String, default: '' },
   status: {
     type: String,
@@ -28,6 +30,7 @@ const orderSchema = new mongoose.Schema({
 
 orderSchema.index({ providerId: 1, status: 1, createdAt: -1 });
 orderSchema.index({ area: 1, status: 1 });
+orderSchema.index({ governorate: 1, status: 1, governorateLevel: 1 });
 orderSchema.index({ customerId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

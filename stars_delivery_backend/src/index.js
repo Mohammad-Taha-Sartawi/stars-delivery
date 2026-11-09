@@ -23,6 +23,7 @@ const {
   isActiveMobileAccount,
   mobileSessionVersionMatches,
 } = require('./services/mobileSession');
+const { governorateKey } = require('./services/registrationLocation');
 const { createOriginGuard, corsOptionsForRequest, socketOriginAllowed } = require('./security/originPolicy');
 const authRoutes = require('./routes/auth');
 const orderRoutes = require('./routes/orders');
@@ -347,14 +348,24 @@ io.on('connection', async (socket) => {
   } else if (socket.userRole === 'provider') {
     // Registered area is authoritative; GPS-detected query param is a fallback
     let area = '';
+    let governorate = '';
+    let governorateLevel = false;
     try {
-      const u = await User.findById(socket.userId, 'area');
+      const u = await User.findById(
+        socket.userId,
+        'area governorate governorateLevel',
+      );
       area = u?.area || socket.handshake.query?.area || '';
+      governorate = governorateKey(u || {});
+      governorateLevel = u?.governorateLevel === true;
     } catch {
       area = socket.handshake.query?.area || '';
     }
     socket.join(`area:${area}`);
-    console.log(`Socket connected: ${socket.userId} (provider) area="${area}"`);
+    if (governorate && governorateLevel) {
+      socket.join(`governorate:${governorate}`);
+    }
+    console.log(`Socket connected: ${socket.userId} (provider) area="${area}" governorate="${governorate}" governorateLevel=${governorateLevel}`);
   } else {
     console.log(`Socket connected: ${socket.userId} (${socket.userRole})`);
   }

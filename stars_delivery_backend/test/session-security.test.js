@@ -236,6 +236,7 @@ test(
         role: 'customer',
         area: 'Ramallah',
         governorate: 'رام الله والبيرة',
+        governorateLevel: false,
         publicId: 'USR-001',
       },
     );

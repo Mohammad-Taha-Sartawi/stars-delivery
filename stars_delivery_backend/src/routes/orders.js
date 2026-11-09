@@ -11,6 +11,12 @@ const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
 const { uploadImagesToCloud } = require('../services/upload');
+const {
+  governorateKey,
+} = require('../services/registrationLocation');
+const {
+  canProviderSeeOrder,
+} = require('../services/orderVisibility');
 
 const router = express.Router();
 
@@ -47,7 +53,9 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
 
     // Registered area is authoritative; GPS-detected area is a fallback only
     const orderArea = user.area || area || '';
-    console.log(`[CREATE] data received — area="${orderArea}" (reqBody="${area}" userArea="${user.area}")`);
+    const orderGovernorate = governorateKey(user);
+    const orderGovernorateLevel = user.governorateLevel === true;
+    console.log(`[CREATE] data received — area="${orderArea}" (reqBody="${area}" userArea="${user.area}") governorate="${orderGovernorate}" governorateLevel=${orderGovernorateLevel}`);
 
     // Upload to cloud (ImgBB), fall back to local URLs
     const cloudUrls = await uploadImagesToCloud(localPaths);
@@ -57,18 +65,52 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
 
     const order = await Order.create({
       customerId: req.userId, type, description, phone, images,
-      area: orderArea, location: location || '',
+      area: orderArea,
+      governorate: orderGovernorate,
+      governorateLevel: orderGovernorateLevel,
+      location: location || '',
     });
     console.log(`[CREATE] saved order=${order._id} status=${order.status}`);
 
-    // Emit real-time event to providers in the same area room
+    // Emit a real-time event to providers who can see this order. A
+    // governorate-level order also reaches providers across the governorate.
     const io = req.app.get('io');
     if (io) {
-      const { _id, type, description, phone, images, area: oArea, location: oLocation, status, createdAt } = order.toObject();
-      io.to(`area:${orderArea || ''}`).emit('new_order', {
-        _id, type, description, phone, images, area: oArea, location: oLocation, status, createdAt,
-        phoneMasked: phone.slice(0, -3) + '***',
-      });
+      const {
+        _id,
+        type: orderType,
+        description: orderDescription,
+        phone: orderPhone,
+        images: orderImages,
+        area: oArea,
+        governorate: oGovernorate,
+        governorateLevel: oGovernorateLevel,
+        location: oLocation,
+        status,
+        createdAt,
+      } = order.toObject();
+      const payload = {
+        _id,
+        type: orderType,
+        description: orderDescription,
+        phone: orderPhone,
+        images: orderImages,
+        area: oArea,
+        governorate: oGovernorate,
+        governorateLevel: oGovernorateLevel,
+        location: oLocation,
+        status,
+        createdAt,
+        phoneMasked: orderPhone.slice(0, -3) + '***',
+      };
+      const areaRoom = `area:${orderArea || ''}`;
+      if (orderGovernorateLevel && orderGovernorate) {
+        const governorateRoom = `governorate:${orderGovernorate}`;
+        io.to(areaRoom).except(governorateRoom).emit('new_order', payload);
+        io.to(governorateRoom).emit('new_order', payload);
+      } else {
+        io.to(areaRoom).emit('new_order', payload);
+      }
     }
 
     // Include image URLs in response
@@ -133,7 +175,7 @@ router.get('/:id', auth, async (req, res) => {
       && order.providerId?.toString() === req.userId;
     const isAvailableProvider = req.userRole === 'provider'
       && ['pending', 'offered'].includes(order.status)
-      && (!order.area || !req.authUser.area || order.area === req.authUser.area);
+      && canProviderSeeOrder(req.authUser, order);
 
     if (!isCustomer && !isAssignedProvider && !isAvailableProvider) {
       return res.status(403).json({ error: 'Order not available' });

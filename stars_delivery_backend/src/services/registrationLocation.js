@@ -73,6 +73,15 @@ function canonicalGovernorate(value) {
   return aliasToGovernorate.get(normalized.toLowerCase()) || '';
 }
 
+function governorateKey(record = {}) {
+  return (
+    canonicalGovernorate(record.governorate)
+    || canonicalGovernorate(record.area)
+    || normalizeValue(record.governorate)
+    || ''
+  );
+}
+
 /**
  * Resolves the governorate and the village/city for a registered account.
  * New accounts store both; legacy accounts stored only one `area` value, so
@@ -207,6 +216,7 @@ function buildGovernorateStats(drivers = [], users = []) {
 module.exports = {
   PRIMARY_GOVERNORATES,
   canonicalGovernorate,
+  governorateKey,
   resolveRegistrationLocation,
   buildGovernorateStats,
 };

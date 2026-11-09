@@ -10,6 +10,10 @@ const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
 const { normalizeServiceTypes } = require('../services/providerServiceTypes');
 const { splitCommission } = require('../services/commissionLedger');
+const {
+  providerVisibilityFilter,
+  canProviderSeeOrder,
+} = require('../services/orderVisibility');
 
 const router = express.Router();
 router.use(auth, requireRole('provider'));
@@ -98,7 +102,14 @@ router.get('/stats', async (req, res) => {
       status: { $in: ['pending', 'offered'] },
       offerSuspendedUntil: null,
     };
-    if (qArea) areaFilter.area = qArea;
+    const visibility = providerVisibilityFilter({
+      area: qArea,
+      governorate: user.governorate,
+      governorateLevel: user.governorateLevel === true,
+    });
+    if (visibility) {
+      areaFilter.$or = visibility.$or;
+    }
     if (serviceTypes.length > 0) {
       areaFilter.type = { $in: serviceTypes };
     }
@@ -208,7 +219,14 @@ router.get('/pending-orders', async (req, res) => {
       status: { $in: ['pending', 'offered'] },
       offerSuspendedUntil: null,
     };
-    if (qArea) areaFilter.area = qArea;
+    const visibility = providerVisibilityFilter({
+      area: qArea,
+      governorate: user.governorate,
+      governorateLevel: user.governorateLevel === true,
+    });
+    if (visibility) {
+      areaFilter.$or = visibility.$or;
+    }
     if (serviceTypes.length > 0) {
       areaFilter.type = { $in: serviceTypes };
     }
@@ -265,10 +283,18 @@ router.post('/orders/:orderId/reject', async (req, res) => {
     const order = await Order.findOne({
       _id: req.params.orderId,
       status: { $in: ['pending', 'offered'] },
-    }).select('_id area').lean();
+    }).select('_id area governorate governorateLevel').lean();
 
     if (!order) {
       return res.status(409).json({ error: 'Order is no longer available' });
+    }
+
+    const provider = await User.findById(
+      req.userId,
+      'area governorate governorateLevel',
+    ).lean();
+    if (!provider || !canProviderSeeOrder(provider, order)) {
+      return res.status(403).json({ error: 'Order is outside your area' });
     }
 
     const hasOffer = await Offer.exists({

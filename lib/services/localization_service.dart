@@ -294,6 +294,10 @@ class AppLocalization {
       'ar': 'لا يوجد سائقون متاحون حالياً في منطقتك',
       'en': 'No drivers are currently available in your area',
     },
+    'recommend_driver_share_hint': {
+      'ar': 'يمكنك أن تشارك التطبيق مع سائق توصي به.',
+      'en': 'You can share the app with a driver you recommend.',
+    },
     'commission_body': {
       'ar': ' شيكل بناء على الطلبات الناجحة',
       'en': ' ILS based on successful orders',

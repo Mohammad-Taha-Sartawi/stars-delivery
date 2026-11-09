@@ -16,14 +16,20 @@ void main() {
 
     expect(home, contains("'no_available_drivers'"));
 
+    expect(home, contains("'recommend_driver_share_hint'"));
+
     final service = File('lib/services/order_service.dart').readAsStringSync();
 
     expect(service, contains("'/users/available-providers'"));
 
-    final localization = File('lib/services/localization_service.dart').readAsStringSync();
+    final localization = File(
+      'lib/services/localization_service.dart',
+    ).readAsStringSync();
 
     expect(localization, contains("'available_drivers_count'"));
 
     expect(localization, contains("'no_available_drivers'"));
+
+    expect(localization, contains("'recommend_driver_share_hint'"));
   });
 }

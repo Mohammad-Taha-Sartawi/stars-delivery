@@ -675,7 +675,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildAvailableDriversBanner(BuildContext context) {
     final theme = Theme.of(context);
     final tone = appToneStyle(context, AppTone.info);
-    final message = _availableDriversCount == 0
+    final noDrivers = _availableDriversCount == 0;
+    final hint = AppLocalization.get(context, 'recommend_driver_share_hint');
+    final message = noDrivers
         ? AppLocalization.get(
             context,
             _governorateLevel
@@ -691,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Semantics(
       container: true,
-      label: message,
+      label: noDrivers ? '$message $hint' : message,
       excludeSemantics: true,
       child: Material(
         color: tone.background,
@@ -705,16 +707,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             vertical: AppSpacing.md,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.delivery_dining_outlined, color: tone.foreground),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text(
-                  message,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: tone.foreground,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      message,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: tone.foreground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (noDrivers) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        hint,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: tone.foreground.withValues(alpha: 0.86),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],

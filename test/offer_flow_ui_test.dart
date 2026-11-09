@@ -77,4 +77,13 @@ void main() {
       expect(source, contains('LoadOffersEvent'));
     },
   );
+
+  test('customer home opens the offers screen for an incoming offer', () {
+    final home = File('lib/screens/home_screen.dart').readAsStringSync();
+
+    expect(home, contains('OrderOffersScreen('));
+    expect(home, contains('OfferBloc()'));
+    expect(home, contains('_openOffersForIncomingOffer'));
+    expect(home, contains('data[\'orderId\']'));
+  });
 }

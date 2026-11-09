@@ -7,6 +7,7 @@ import '../bloc/app/app_state.dart';
 import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_event.dart';
 import '../bloc/order/order_bloc.dart';
+import '../bloc/offer/offer_bloc.dart';
 import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
 import '../bloc/notification/notification_state.dart';
@@ -25,6 +26,7 @@ import '../widgets/governorate_scope_card.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'notifications_screen.dart';
+import 'order_offers_screen.dart';
 import 'login_screen.dart';
 import 'report_screen.dart';
 import 'profile_screen.dart';
@@ -65,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _sessionExitStarted = false;
   late UserModel _user = widget.user;
   late bool _governorateLevel = _user.governorateLevel;
+  String? _openingOffersOrderId;
 
   @override
   void initState() {
@@ -109,6 +112,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _newOfferSub = SocketService.instance.onNewOffer.listen((data) {
       if (!mounted) return;
       _loadOrderCounts();
+
+      final orderId = data['orderId']?.toString();
+      if (orderId != null && orderId.isNotEmpty) {
+        unawaited(_openOffersForIncomingOffer(orderId));
+      }
     });
 
     _orderStatusSub = SocketService.instance.onOrderStatusChanged.listen((
@@ -139,6 +147,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _sessionRevokedSub = SocketService.instance.onSessionRevoked.listen((_) {
       _endSession();
     });
+  }
+
+  Future<void> _openOffersForIncomingOffer(String orderId) async {
+    if (!mounted || orderId.isEmpty || _openingOffersOrderId != null) {
+      return;
+    }
+
+    // Only auto-open while the customer is actually on the home screen; the
+    // offers screen itself live-refreshes when it is already open.
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) {
+      return;
+    }
+
+    _openingOffersOrderId = orderId;
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => OfferBloc(),
+            child: OrderOffersScreen(token: widget.token, orderId: orderId),
+          ),
+        ),
+      );
+    } finally {
+      _openingOffersOrderId = null;
+      if (mounted) {
+        _loadOrderCounts();
+      }
+    }
   }
 
   Future<void> _loadOrderCounts() async {

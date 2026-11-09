@@ -553,7 +553,14 @@ async function searchDriver() {
 }
 
 function renderDriverResultFromDB(data) {
-  const { driver, commission, netProfit, last30Profit } = data;
+  const {
+    driver,
+    commission,
+    netProfit,
+    last30Profit,
+    acceptedOrdersCount,
+    notAcceptedOrdersCount,
+  } = data;
   const container = document.getElementById('driverResult');
   const paymentStatus = driver.financial.paymentStatus;
   const hasDue = Number(commission) > 0;
@@ -575,6 +582,9 @@ function renderDriverResultFromDB(data) {
     <div class="row"><span class="label">حالة التوفر</span><span class="value">${driver.isAvailable ? '<span class="order-status-badge completed">متاح الآن</span>' : '<span class="order-status-badge cancelled">غير متاح</span>'}${driver.blockedUntil && new Date(driver.blockedUntil) > new Date() ? ' <span class="order-status-badge pending">مشغول بطلب</span>' : ''}</span></div>
     <div class="row"><span class="label">المنطقة</span><span class="value">${escapeHtml(driver.area)}</span></div>
     <div class="row"><span class="label">الحالة</span><span class="value">${getStatusBadge(driver.status)}</span></div>
+    <div class="row"><span class="label">إجمالي الطلبات المقبولة</span><span class="value">${escapeHtml(acceptedOrdersCount ?? 0)}</span></div>
+    <div class="row"><span class="label">إجمالي الطلبات غير المقبولة</span><span class="value">${escapeHtml(notAcceptedOrdersCount ?? 0)}</span></div>
+    <div class="driver-orders-note">المقبولة: الطلبات التي قبلها الزبون وأُسندت للسائق. غير المقبولة: الطلبات التي رفضها السائق، أو لم يقبل الزبون عرضه، أو انتهت مهلة قبول عرض السعر.</div>
     <div class="row"><span class="label">حالة الدفع</span><span class="value">${paymentLabel}</span></div>
     <div class="row"><span class="label">إجمالي الأرباح (صافي)</span><span class="value" data-presentation="p002">${escapeHtml(netProfit)} </div>
     <div class="row"><span class="label">أرباح آخر 30 يوم (صافي)</span><span class="value" data-presentation="p018">${escapeHtml(last30Profit)} </div>

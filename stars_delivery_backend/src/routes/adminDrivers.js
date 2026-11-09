@@ -12,6 +12,7 @@ const {
 const { executeTransaction } = require('../services/transaction');
 const { serviceTypesFromAdminLabel, serviceTypesLabel } = require('../services/providerServiceTypes');
 const { splitCommission } = require('../services/commissionLedger');
+const { notAcceptedOrderIds } = require('../services/driverOrderStats');
 const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
 const express = require('express');
 const router = express.Router();
@@ -20,6 +21,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const RejectedOrder = require('../models/RejectedOrder');
 const Order = require('../models/Order');
+const Offer = require('../models/Offer');
 const Notification = require('../models/Notification');
 const PendingProvider = require('../models/PendingProvider');
 const { generatePublicId } = require('../utils/publicId');
@@ -200,6 +202,24 @@ router.get('/search', async (req, res) => {
       status: { $in: ['accepted', 'fulfilling', 'completed'] },
     }).lean();
     const orderCount = orders.length;
+    const acceptedOrdersCount = orders.length;
+    const [rejectedOrderIds, driverOffers] = await Promise.all([
+      RejectedOrder.find({ providerId: match._id }).distinct('orderId'),
+      Offer.find({ providerId: match._id })
+        .select('orderId status expiresAt')
+        .lean(),
+    ]);
+    const candidateNotAcceptedIds = notAcceptedOrderIds({
+      acceptedOrderIds: orders.map((order) => order._id),
+      offers: driverOffers,
+      rejectedOrderIds,
+    });
+    const notAcceptedOrdersCount =
+      candidateNotAcceptedIds.length > 0
+        ? await Order.countDocuments({
+            _id: { $in: candidateNotAcceptedIds },
+          })
+        : 0;
     const netProfit = orders.reduce((s, o) => s + (o.providerEarning || 0), 0);
     const { unpaid: unpaidCommission, paid: paidCommission } = splitCommission(
       orders,
@@ -257,6 +277,8 @@ router.get('/search', async (req, res) => {
     res.json({
       driver,
       orderCount,
+      acceptedOrdersCount,
+      notAcceptedOrdersCount,
       commission: unpaidCommission,
       paidCommission,
       netProfit,

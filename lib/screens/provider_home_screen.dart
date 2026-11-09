@@ -1020,6 +1020,29 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: AppSpacing.sm),
+            Divider(height: 1, color: tone.border),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.share_outlined,
+                  size: 16,
+                  color: tone.foreground.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    AppLocalization.get(context, 'recommend_driver_share_hint'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: tone.foreground.withValues(alpha: 0.86),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

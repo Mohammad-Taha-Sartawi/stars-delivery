@@ -34,4 +34,13 @@ void main() {
 
     expect(localization, contains("'recommend_driver_share_hint'"));
   });
+
+  test('provider commission card keeps the recommendation hint', () {
+    final provider = File(
+      'lib/screens/provider_home_screen.dart',
+    ).readAsStringSync();
+
+    expect(provider, contains("'recommend_driver_share_hint'"));
+    expect(provider, contains("'platform_commission'"));
+  });
 }

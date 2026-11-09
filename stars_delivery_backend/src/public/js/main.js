@@ -98,6 +98,14 @@ function updateClocks() {
 setInterval(updateClocks, 1000);
 updateClocks();
 
+// Keep the dashboard order counters current while it is the visible page.
+setInterval(() => {
+  const dashboard = document.getElementById('page-dashboard');
+  if (dashboard && dashboard.classList.contains('active-page')) {
+    loadDashboardStats();
+  }
+}, 30000);
+
 // ================================================
 // 2. التنقل بين الصفحات
 // ================================================

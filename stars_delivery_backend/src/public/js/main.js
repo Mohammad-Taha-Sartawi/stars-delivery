@@ -575,6 +575,11 @@ function renderDriverResultFromDB(data) {
       <button class="action-btn orders-report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openDriverReports" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تقرير رفض وتسليم الطلبات</button>
       <button class="action-btn ${driver.isAvailable ? 'freeze' : 'activate'}" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="toggleDriverAvailability" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${driver.isAvailable ? 'true' : 'false'}">${driver.isAvailable ? 'إيقاف التوفر' : 'جعله متاحاً'}</button>
       <button class="action-btn change-password" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="changeDriverPassword" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تغيير كلمة المرور</button>
+      ${isPaid
+        ? '<button class="action-btn paid" disabled>تم دفع المستحقات</button>'
+        : Number(commission) > 0
+          ? `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تم دفع المستحقات</button>`
+          : '<button class="action-btn paid" disabled>لا توجد مستحقات</button>'}
       <button class="action-btn docs" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="viewDocuments" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${escapeHtml(String(driver.name || ''))}">الوثائق</button>
       <button class="action-btn freeze" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="freezeDriver" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تجميد</button>
       <button class="action-btn activate" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="activateDriver" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تفعيل</button>
@@ -860,6 +865,21 @@ async function markPaid(driverId) {
       alert(data.message);
       loadCommissions();
       loadDashboardStats();
+
+      const driversPage = document.getElementById('page-drivers');
+      if (driversPage && driversPage.classList.contains('active-page')) {
+        searchDriverById(driverId);
+      }
+
+      const listModal = document.getElementById('listModal');
+      if (
+        listModal &&
+        listModal.classList.contains('show') &&
+        document.getElementById('listModalTitle')?.textContent ===
+          'السائقون المستحقون للدفع'
+      ) {
+        openListModal('payouts', 'unpaid', 'السائقون المستحقون للدفع');
+      }
     } else {
       alert(data.message);
     }
@@ -1962,6 +1982,58 @@ async function openListModal(type, filter, title) {
   if (!modal || !titleEl || !subEl || !content) return;
 
   titleEl.textContent = title || 'القائمة';
+
+  if (type === 'payouts') {
+    modal.classList.add('show');
+    content.innerHTML = '<p>جاري التحميل...</p>';
+
+    try {
+      const res = await adminFetch('/admin/commissions');
+      const data = await res.json();
+      const drivers = (data.driverRows || []).filter(
+        (driver) =>
+          driver.paymentStatus !== 'paid' && Number(driver.commission) > 0,
+      );
+
+      subEl.textContent =
+        'إجمالي المستحقات: ' +
+        (Number(data.totalUnpaid) || 0).toLocaleString('en-US') +
+        ' شيكل';
+
+      if (drivers.length === 0) {
+        content.innerHTML = '<p>لا يوجد سائقون مستحقون للدفع حالياً.</p>';
+        return;
+      }
+
+      const rows = drivers
+        .map(
+          (driver) => `
+        <tr>
+          <td><strong>${escapeHtml(driver.name || 'غير محدد')}</strong><br><small>${escapeHtml(driver.driverId || '')}</small></td>
+          <td>${escapeHtml(driver.phone || 'غير متوفر')}</td>
+          <td>${escapeHtml(String(driver.commission))} شيكل</td>
+          <td><button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تم دفع المستحقات</button></td>
+        </tr>`,
+        )
+        .join('');
+
+      content.innerHTML = `
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>السائق</th>
+              <th>الجوال</th>
+              <th>المستحق</th>
+              <th>الإجراء</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    } catch (err) {
+      content.innerHTML = '<p>حدث خطأ في تحميل المستحقات.</p>';
+    }
+    return;
+  }
 
   if (type !== 'drivers') {
     subEl.textContent = 'تفاصيل الأعضاء';

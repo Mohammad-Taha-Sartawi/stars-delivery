@@ -88,3 +88,35 @@ test('pending payout card uses clear wording and real unpaid commissions', () =>
   assert.match(adminApi, /unpaid: \{ \$gt: 0 \}/);
   assert.doesNotMatch(adminApi, /pendingDrivers: totalBlocked/);
 });
+
+
+test('paying dues is available from the dashboard card and driver details', () => {
+  const index = source('src/views/admin/index.ejs');
+  const main = source('src/public/js/main.js');
+  const adminDrivers = source('src/routes/adminDrivers.js');
+
+  const card = index.match(
+    /<div class="commission-item pending-payout"[\s\S]*?<\/div><\/div>/,
+  );
+  assert.ok(card, 'the pending payout card must exist');
+  assert.match(card[0], /data-admin-action="openListModal"/);
+  assert.match(card[0], /data-admin-arg-1="payouts"/);
+
+  // Clicking the card lists every driver with unpaid dues and a pay action.
+  assert.match(main, /type === 'payouts'/);
+  assert.match(main, /adminFetch\('\/admin\/commissions'\)/);
+  assert.match(main, /driver\.paymentStatus !== 'paid'/);
+  assert.match(main, /Number\(driver\.commission\) > 0/);
+  assert.match(main, /تم دفع المستحقات/);
+  assert.match(main, /loadDashboardStats\(\)/);
+
+  // The same action is present in the driver details panel.
+  assert.match(main, /isPaid[\s\S]*تم دفع المستحقات/);
+  assert.match(main, /action="markPaid"/);
+
+  // Driver search reports the real payment status.
+  assert.match(
+    adminDrivers,
+    /paymentStatus: match\.commissionPaid === true \? 'paid' : 'unpaid'/,
+  );
+});

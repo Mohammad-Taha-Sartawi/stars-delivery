@@ -225,7 +225,7 @@ router.get('/search', async (req, res) => {
       area: match.area || 'غير محدد',
       status: match.status === 'blocked' ? 'inactive' : match.status,
       financial: {
-        paymentStatus: 'unpaid',
+        paymentStatus: match.commissionPaid === true ? 'paid' : 'unpaid',
         transactions: orders.map(o => ({
           id: o._id.toString(),
           desc: `طلب #${o._id.toString().slice(-8)}`,

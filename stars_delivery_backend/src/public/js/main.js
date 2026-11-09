@@ -780,7 +780,9 @@ async function loadDashboardStats() {
     document.getElementById('cargoAccepted').textContent = goodsOrders.accepted || 0;
     document.getElementById('cargoNotAccepted').textContent =
       goodsOrders.notAccepted || 0;
-    document.getElementById('totalCommission').textContent = data.totalCommission;
+    const totalCommission = Number(data.totalCommission) || 0;
+    document.getElementById('totalCommission').textContent =
+      totalCommission.toLocaleString('en-US');
     document.getElementById('pendingDrivers').textContent = data.pendingDrivers;
     document.getElementById('pendingAmount').textContent = data.pendingAmount;
 

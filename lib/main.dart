@@ -6,6 +6,7 @@ import 'bloc/app/app_bloc.dart';
 import 'bloc/app/app_state.dart';
 import 'bloc/notification/notification_bloc.dart';
 import 'services/theme_service.dart';
+import 'services/theme_preferences.dart';
 import 'package:stars_delivery/services/api_config.dart';
 import 'services/location_service.dart';
 import 'screens/login_screen.dart';
@@ -14,15 +15,18 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiConfig.init();
   await LocationService.initialize();
-  runApp(const StarsDeliveryApp());
+  final initialTheme = await ThemePreferences.load();
+  runApp(StarsDeliveryApp(initialTheme: initialTheme));
 }
 
 class StarsDeliveryApp extends StatelessWidget {
   final AuthBloc Function()? authBlocFactory;
+  final ThemeMode initialTheme;
 
   const StarsDeliveryApp({
     super.key,
     this.authBlocFactory,
+    this.initialTheme = ThemeMode.light,
   });
 
   @override
@@ -32,7 +36,7 @@ class StarsDeliveryApp extends StatelessWidget {
         BlocProvider<AuthBloc>(
           create: (_) => authBlocFactory?.call() ?? AuthBloc(),
         ),
-        BlocProvider(create: (_) => AppBloc()),
+        BlocProvider(create: (_) => AppBloc(initialTheme: initialTheme)),
         BlocProvider(create: (_) => NotificationBloc()),
       ],
       child: BlocBuilder<AppBloc, AppState>(

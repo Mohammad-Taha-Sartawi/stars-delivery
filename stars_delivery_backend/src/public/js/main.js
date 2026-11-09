@@ -1033,10 +1033,24 @@ async function loadAreas() {
 }
 
 function buildGovernorateDetail(gov, stats) {
+  const renderAccounts = (label, accounts, roleClass) => {
+    if (!Array.isArray(accounts) || accounts.length === 0) return '';
+    const chips = accounts.map((account) => {
+      const publicId = account.publicId
+        ? `<small>#${escapeHtml(String(account.publicId))}</small>`
+        : '';
+      return `<span class="account-chip">${escapeHtml(account.fullName || 'غير محدد')}${publicId}</span>`;
+    }).join('');
+    return `<div class="account-row ${roleClass}"><span class="account-label">${escapeHtml(label)}</span>${chips}</div>`;
+  };
+
   let citiesHtml = '', totalDrivers = 0, totalUsers = 0;
   stats.cities.forEach(city => {
     totalDrivers += city.drivers; totalUsers += city.users;
-    citiesHtml += `<div class="city-item"><span class="city-name">${escapeHtml(city.name)}</span><span class="city-counts"><span class="drivers" title="السائقون"><i class="fas fa-car"></i> ${escapeHtml(city.drivers)}</span><span class="users" title="المستخدمون"><i class="fas fa-user"></i> ${escapeHtml(city.users)}</span></span></div>`;
+    const accountsHtml =
+      renderAccounts('السائقون', city.driverAccounts, 'drivers')
+      + renderAccounts('المستخدمون', city.userAccounts, 'users');
+    citiesHtml += `<div class="city-item"><div class="city-head"><span class="city-name">${escapeHtml(city.name)}</span><span class="city-counts"><span class="drivers" title="السائقون"><i class="fas fa-car"></i> ${escapeHtml(city.drivers)}</span><span class="users" title="المستخدمون"><i class="fas fa-user"></i> ${escapeHtml(city.users)}</span></span></div>${accountsHtml ? `<div class="city-accounts">${accountsHtml}</div>` : ''}</div>`;
   });
   if (!citiesHtml) {
     citiesHtml = '<div class="no-city">لا توجد بيانات مسجلة في هذه المحافظة.</div>';

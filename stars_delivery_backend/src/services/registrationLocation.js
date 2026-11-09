@@ -103,6 +103,17 @@ function resolveRegistrationLocation(record = {}) {
   };
 }
 
+function accountEntry(record) {
+  return {
+    id:
+      record?._id?.toString?.()
+      || record?.id?.toString?.()
+      || '',
+    fullName: record?.fullName || record?.name || 'غير محدد',
+    publicId: record?.publicId || '',
+  };
+}
+
 function emptyGroup() {
   return {
     totalDrivers: 0,
@@ -125,23 +136,30 @@ function buildGovernorateStats(drivers = [], users = []) {
     return groups.get(name);
   };
 
-  const addRecord = (record, countKey, cityKey) => {
+  const addRecord = (record, countKey, cityKey, accountsKey) => {
     const location = resolveRegistrationLocation(record);
     const group = ensureGroup(location.governorate);
     group[countKey] += 1;
 
     const cityName = location.city || 'غير محدد';
     if (!group.cities.has(cityName)) {
-      group.cities.set(cityName, { drivers: 0, users: 0 });
+      group.cities.set(cityName, {
+        drivers: 0,
+        users: 0,
+        driverAccounts: [],
+        userAccounts: [],
+      });
     }
-    group.cities.get(cityName)[cityKey] += 1;
+    const city = group.cities.get(cityName);
+    city[cityKey] += 1;
+    city[accountsKey].push(accountEntry(record));
   };
 
   for (const driver of drivers) {
-    addRecord(driver, 'totalDrivers', 'drivers');
+    addRecord(driver, 'totalDrivers', 'drivers', 'driverAccounts');
   }
   for (const user of users) {
-    addRecord(user, 'totalUsers', 'users');
+    addRecord(user, 'totalUsers', 'users', 'userAccounts');
   }
 
   const stats = {};
@@ -152,6 +170,8 @@ function buildGovernorateStats(drivers = [], users = []) {
         drivers: counts.drivers,
         users: counts.users,
         total: counts.drivers + counts.users,
+        driverAccounts: counts.driverAccounts,
+        userAccounts: counts.userAccounts,
       }))
       .sort(
         (a, b) =>

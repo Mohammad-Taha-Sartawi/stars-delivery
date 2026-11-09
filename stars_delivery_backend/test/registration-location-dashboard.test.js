@@ -81,14 +81,66 @@ test('areas stats group by governorate and sort by totals', () => {
     totalUsers: 1,
     total: 3,
     cities: [
-      { name: 'Al-Bireh', drivers: 1, users: 1, total: 2 },
-      { name: 'من المحافظة نفسها', drivers: 1, users: 0, total: 1 },
+      {
+        name: 'Al-Bireh',
+        drivers: 1,
+        users: 1,
+        total: 2,
+        driverAccounts: [
+          { id: '', fullName: 'غير محدد', publicId: '' },
+        ],
+        userAccounts: [
+          { id: '', fullName: 'غير محدد', publicId: '' },
+        ],
+      },
+      {
+        name: 'من المحافظة نفسها',
+        drivers: 1,
+        users: 0,
+        total: 1,
+        driverAccounts: [
+          { id: '', fullName: 'غير محدد', publicId: '' },
+        ],
+        userAccounts: [],
+      },
     ],
   });
 
   assert.equal(stats['بيت لحم'].totalUsers, 1);
   assert.equal(stats['الخليل'].totalDrivers, 1);
   assert.ok(governorateOrder.includes('غزة'));
+});
+
+test('area details list user and driver names under each village', () => {
+  const { stats } = buildGovernorateStats(
+    [
+      {
+        _id: { toString: () => 'driver-1' },
+        fullName: 'Driver One',
+        publicId: 'DRV-1',
+        governorate: 'رام الله والبيرة',
+        area: 'Al-Bireh',
+      },
+    ],
+    [
+      {
+        _id: { toString: () => 'user-1' },
+        fullName: 'User One',
+        publicId: 'USR-1',
+        governorate: 'رام الله والبيرة',
+        area: 'Al-Bireh',
+      },
+    ],
+  );
+
+  const city = stats['رام الله والبيرة'].cities[0];
+  assert.equal(city.name, 'Al-Bireh');
+  assert.deepEqual(city.driverAccounts, [
+    { id: 'driver-1', fullName: 'Driver One', publicId: 'DRV-1' },
+  ]);
+  assert.deepEqual(city.userAccounts, [
+    { id: 'user-1', fullName: 'User One', publicId: 'USR-1' },
+  ]);
 });
 
 test('registration stores the governorate in users and pending providers', () => {
@@ -133,6 +185,10 @@ test('areas report and admin screens display governorate totals', () => {
   assert.match(main, /user\.city/);
   assert.match(main, /provider\.governorate/);
   assert.match(main, /provider\.city/);
+  assert.match(main, /city\.driverAccounts/);
+  assert.match(main, /city\.userAccounts/);
+  assert.match(main, /account-chip/);
+  assert.match(main, /escapeHtml\(account\.fullName/);
   assert.match(view, /areas-legend/);
   assert.match(view, /مرتبة حسب الإجمالي تنازلياً/);
 });

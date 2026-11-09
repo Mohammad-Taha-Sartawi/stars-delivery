@@ -268,7 +268,7 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
     ],
     [
       'src/routes/adminBroadcast.js',
-      { error: 0, failure: 1 },
+      { error: 0, failure: 2 },
     ],
     [
       'src/routes/adminChat.js',
@@ -338,10 +338,10 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
   }
 
   assert.equal(errorTotal, 19);
-  assert.equal(failureTotal, 22);
+  assert.equal(failureTotal, 23);
   assert.equal(
     errorTotal + failureTotal,
-    41,
+    42,
   );
 });
 

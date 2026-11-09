@@ -95,6 +95,15 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .broadcast-form .broadcast-result { margin-top: 20px; padding: 15px; border-radius: 12px; text-align: center; font-weight: 700; display: none; }
 .broadcast-form .broadcast-result.success { background: #2ecc7133; color: #2ecc71; border: 1px solid #2ecc71; display: block; }
 .broadcast-form .broadcast-result.error { background: #e74c3c33; color: #e74c3c; border: 1px solid #e74c3c; display: block; }
+.broadcast-archive { margin-top: 20px; background: #141a24; border-radius: 16px; padding: 20px 24px; border: 1px solid #1e2733; }
+.archive-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid #1e2733; padding-bottom: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.archive-header h3 { font-size: 16px; color: #b0c0d4; display: flex; align-items: center; gap: 8px; }
+.archive-header span { font-size: 12px; color: #8892a8; }
+.archive-list { display: flex; flex-direction: column; gap: 10px; max-height: 360px; overflow-y: auto; }
+.archive-item { background: #0f141c; border: 1px solid #1e2733; border-radius: 12px; padding: 12px 14px; }
+.archive-title { font-weight: 700; color: #e5e9f0; font-size: 14px; }
+.archive-body { color: #b0c0d4; font-size: 13px; line-height: 1.6; margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.archive-meta { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; color: #8892a8; font-size: 12px; flex-wrap: wrap; }
 
 /* Areas */
 .areas-container { display: flex; gap: 30px; margin-top: 10px; height: calc(100vh - 180px); min-height: 400px; }

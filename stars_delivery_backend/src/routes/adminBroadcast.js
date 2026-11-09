@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const BroadcastMessage = require('../models/BroadcastMessage');
 
 router.post('/:target', async (req, res) => {
   try {
@@ -15,6 +16,13 @@ router.post('/:target', async (req, res) => {
     const label = req.params.target === 'drivers' ? 'سائق' : 'مستخدم';
 
     const users = await User.find({ role }).lean();
+
+    const archiveEntry = await BroadcastMessage.create({
+      target: req.params.target,
+      title,
+      body,
+      recipientCount: users.length,
+    });
 
     const notifications = users.map(u => ({
       userId: u._id,
@@ -50,7 +58,38 @@ router.post('/:target', async (req, res) => {
       title,
       count: users.length,
       sentAt: new Date().toLocaleString('ar-EG'),
+      archiveId: archiveEntry._id.toString(),
     });
+  } catch (err) {
+    sendInternalServerFailure(res);
+  }
+});
+
+router.get('/archive/:target', async (req, res) => {
+  try {
+    const target = req.params.target;
+    if (target !== 'drivers' && target !== 'users') {
+      return res.status(400).json({ error: 'Invalid broadcast target' });
+    }
+
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const messages = await BroadcastMessage.find({
+      target,
+      sentAt: { $gte: since },
+    })
+      .sort({ sentAt: -1 })
+      .limit(100)
+      .lean();
+
+    res.json(
+      messages.map((message) => ({
+        _id: message._id.toString(),
+        title: message.title,
+        body: message.body,
+        recipientCount: message.recipientCount || 0,
+        sentAt: message.sentAt,
+      })),
+    );
   } catch (err) {
     sendInternalServerFailure(res);
   }

@@ -155,6 +155,7 @@ document.querySelectorAll('.sidebar ul li[data-page]').forEach(item => {
       const el = document.getElementById(page === 'broadcast-drivers' ? 'driverBroadcastResult' : 'userBroadcastResult');
       el.className = 'broadcast-result';
       el.textContent = '';
+      loadBroadcastArchive(page === 'broadcast-drivers' ? 'drivers' : 'users');
     }
   });
 });
@@ -1187,6 +1188,7 @@ async function sendBroadcast(target) {
     if (data.success) {
       resultDiv.className = 'broadcast-result success';
       resultDiv.innerHTML = `تم إرسال الرسالة بنجاح إلى <strong>${escapeHtml(data.count)}</strong> ${target === 'drivers' ? 'سائق' : 'مستخدم'}.<br><span data-presentation="p028">العنوان: ${escapeHtml(title)}</span><br><span data-presentation="p028">تم الإرسال في: ${escapeHtml(data.sentAt)}</span>`;
+      loadBroadcastArchive(target);
     } else {
       resultDiv.className = 'broadcast-result error';
       resultDiv.textContent = data.message;
@@ -1194,6 +1196,43 @@ async function sendBroadcast(target) {
   } catch (err) {
     resultDiv.className = 'broadcast-result error';
     resultDiv.textContent = 'حدث خطأ في الإرسال';
+  }
+}
+
+async function loadBroadcastArchive(target) {
+  const container = document.getElementById(
+    target === 'drivers' ? 'driverBroadcastArchive' : 'userBroadcastArchive',
+  );
+  if (!container) return;
+
+  try {
+    const res = await adminFetch(`/admin/broadcast/archive/${target}`);
+    const messages = await res.json();
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      container.innerHTML =
+        '<p>لا توجد رسائل مرسلة خلال آخر 30 يوماً.</p>';
+      return;
+    }
+
+    container.innerHTML = messages
+      .map((message) => {
+        const sentAt = message.sentAt
+          ? new Date(message.sentAt).toLocaleString('ar-EG')
+          : '';
+
+        return `<div class="archive-item">
+          <div class="archive-title">${escapeHtml(message.title)}</div>
+          <div class="archive-body">${escapeHtml(message.body)}</div>
+          <div class="archive-meta">
+            <span>${escapeHtml(message.recipientCount)} ${target === 'drivers' ? 'سائق' : 'مستخدم'}</span>
+            <span>${escapeHtml(sentAt)}</span>
+          </div>
+        </div>`;
+      })
+      .join('');
+  } catch (err) {
+    container.innerHTML = '<p>تعذر تحميل أرشيف الرسائل.</p>';
   }
 }
 

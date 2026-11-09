@@ -35,6 +35,7 @@ import 'package:stars_delivery/services/session_storage.dart';
 import 'package:stars_delivery/services/socket_service.dart';
 import 'package:stars_delivery/services/theme_service.dart';
 import 'package:stars_delivery/widgets/ui/app_action_tile.dart';
+import 'package:stars_delivery/widgets/ui/app_tone.dart';
 
 import 'mock_api_server.dart';
 
@@ -179,6 +180,65 @@ void main() {
   });
 
   group('UX01-005 availability toggle', () {
+    testWidgets('availability card paints its list tile on its own Material', (
+      tester,
+    ) async {
+      mockApi.statsJson = <String, dynamic>{
+        'dailyEarnings': 0.0,
+        'monthlyEarnings': 0.0,
+        'totalSuccessful': 0,
+        'dailyOrderCount': 0,
+        'dailyCommission': 0.0,
+        'monthlyCommission': 0.0,
+        'pendingOrdersCount': 0,
+        'offeredOrdersCount': 0,
+        'ordersReportCount': 0,
+        'activeOrdersCount': 0,
+        'isAvailable': true,
+      };
+
+      await tester.pumpWidget(
+        screenHarness(themeMode: ThemeMode.light, locale: const Locale('en')),
+      );
+      await tester.pumpAndSettle();
+
+      final switchTile = find.byType(SwitchListTile);
+      expect(switchTile, findsOneWidget);
+
+      // Regression guard for:
+      // "ListTile background color or ink splashes may be invisible."
+      // The nearest structural surface must be a Material that owns the
+      // availability background, never a decorated Container. SwitchListTile
+      // builds an internal ListTile which paints its ink on that Material.
+      Element? surface;
+      tester.element(switchTile).visitAncestorElements((element) {
+        if (element.widget is Material || element.widget is DecoratedBox) {
+          surface = element;
+          return false;
+        }
+        return true;
+      });
+
+      expect(surface, isNotNull);
+      expect(
+        surface!.widget,
+        isA<Material>(),
+        reason:
+            'the availability card must be a Material, not a DecoratedBox '
+            'with a background color',
+      );
+      expect(
+        (surface!.widget as Material).color,
+        appToneStyle(tester.element(switchTile), AppTone.success).background,
+      );
+
+      await tester.ensureVisible(switchTile);
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      await tester.tap(switchTile);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('dispatches the service call, refreshes stats and snackbar', (
       tester,
     ) async {

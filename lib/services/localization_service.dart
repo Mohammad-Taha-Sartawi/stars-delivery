@@ -508,6 +508,32 @@ class AppLocalization {
       'en': 'Price offer acceptance period expired',
     },
     'offer_window_expired_short': {'ar': 'انتهت المدة', 'en': 'Expired'},
+    'driver_taken_notification_title': {
+      'ar': 'السائق لم يعد متاحاً',
+      'en': 'Driver no longer available',
+    },
+    'driver_taken_notification_body': {
+      'ar':
+          'قام السائق بقبول طلب آخر، لذلك تم إلغاء عرض سعره. يمكنك إعادة إرسال الطلب أو الموافقة على عرض سائق آخر.',
+      'en':
+          'The driver accepted another order, so their offer was cancelled. You can resend the order or accept another driver offer.',
+    },
+    'another_driver_selected_title': {
+      'ar': 'تم اختيار سائق آخر',
+      'en': 'Another driver was selected',
+    },
+    'another_driver_selected_body': {
+      'ar': 'تم قبول عرض سائق آخر لهذا الطلب بقيمة %d شيكل.',
+      'en': 'Another driver offer was accepted for this order at %d shekels.',
+    },
+    'continue_viewing_offers': {
+      'ar': 'متابعة العروض',
+      'en': 'Continue viewing offers',
+    },
+    'driver_taken_short': {
+      'ar': 'السائق لم يعد متاحاً',
+      'en': 'Driver no longer available',
+    },
     'order_suspended': {'ar': 'الطلب معلق', 'en': 'Order suspended'},
     'order_suspended_report_in': {
       'ar': 'سيُنقل الطلب إلى التقارير خلال %d ثانية',

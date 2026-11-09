@@ -40,6 +40,7 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
 
   late final List<Map<String, dynamic>> _orders = List.of(widget.orders);
   StreamSubscription? _offerAcceptedSub;
+  StreamSubscription? _offerNotSelectedSub;
   Timer? _cooldownTimer;
   DateTime? _cooldownUntil;
 
@@ -78,12 +79,32 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
       setState(() => _orders.clear());
       widget.onRefresh?.call();
     });
+
+    _offerNotSelectedSub = SocketService.instance.onOfferNotSelected.listen((
+      data,
+    ) {
+      if (!mounted) {
+        return;
+      }
+
+      final orderId = data['orderId']?.toString();
+      if (orderId == null || orderId.isEmpty) {
+        return;
+      }
+
+      setState(
+        () =>
+            _orders.removeWhere((order) => order['_id']?.toString() == orderId),
+      );
+      widget.onRefresh?.call();
+    });
   }
 
   @override
   void dispose() {
     _cooldownTimer?.cancel();
     _offerAcceptedSub?.cancel();
+    _offerNotSelectedSub?.cancel();
     super.dispose();
   }
 

@@ -228,6 +228,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.monetization_on;
       case 'offer_accepted':
         return Icons.check_circle;
+      case 'offer_not_selected':
+        return Icons.block_outlined;
+      case 'driver_taken':
+        return Icons.person_off_outlined;
       case 'new_order':
         return Icons.add_shopping_cart;
       case 'order_pending':
@@ -261,7 +265,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'delivery_confirmed',
       'delivery_rejected',
     };
-    const customerTypes = {'new_offer', 'order_pending', 'order_completed'};
+    const customerTypes = {
+      'new_offer',
+      'order_pending',
+      'order_completed',
+      'driver_taken',
+    };
 
     if (n.type == 'delivery_confirmation') {
       Navigator.push(

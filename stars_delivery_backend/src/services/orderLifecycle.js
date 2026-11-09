@@ -20,6 +20,7 @@ const CONFLICT_MESSAGES = {
   ORDER_NOT_AVAILABLE: 'The order is no longer available for this action.',
   OFFER_NOT_AVAILABLE: 'The offer is no longer available.',
   PROVIDER_BUSY: 'The provider is not currently available.',
+  PROVIDER_TAKEN: 'The provider accepted another order and is no longer available. The offer has been cancelled.',
   PROVIDER_UNAVAILABLE: 'The provider is not receiving orders right now.',
   OFFER_COOLDOWN: 'You cannot submit another offer yet.',
   INVALID_TRANSITION: 'The order cannot move to that status.',
@@ -239,68 +240,185 @@ async function finalizeExpiredOrders({ orderId } = {}) {
 }
 
 async function acceptOffer({ offerId, customerId }) {
-  return inTransaction(async (session) => {
-    const offer = await Offer.findOne({ _id: offerId, status: 'pending' })
-      .populate('orderId')
-      .session(session)
-      .lean();
-    if (!offer) throw new LifecycleConflict('OFFER_NOT_AVAILABLE');
+  try {
+    return await inTransaction(async (session) => {
+      const offer = await Offer.findOne({ _id: offerId })
+        .populate('orderId')
+        .session(session)
+        .lean();
+      if (!offer) throw new LifecycleConflict('OFFER_NOT_AVAILABLE');
 
-    if (offer.expiresAt && offer.expiresAt <= new Date()) {
-      await Offer.deleteOne({ _id: offer._id, status: 'pending' }, { session });
-      throw new LifecycleConflict(
-        'OFFER_NOT_AVAILABLE',
-        offer.orderId?._id || offer.orderId,
-      );
-    }
+      const order = offer.orderId;
+      if (!order || order.customerId?.toString() !== customerId.toString()) {
+        throw new LifecycleConflict('ORDER_NOT_AVAILABLE', order?._id);
+      }
 
-    const order = offer.orderId;
-    if (!order || !canAcceptOfferRecord(offer.status, order.status) || order.customerId.toString() !== customerId.toString()) {
-      throw new LifecycleConflict('ORDER_NOT_AVAILABLE', order?._id);
-    }
+      if (
+        offer.status === 'rejected'
+        && offer.rejectionReason === 'provider_unavailable'
+        && ACCEPTABLE_ORDER_STATUSES.includes(order.status)
+      ) {
+        throw new LifecycleConflict('PROVIDER_TAKEN', order._id);
+      }
 
-    const blockUntil = new Date(Date.now() + PROVIDER_ACCEPTANCE_BLOCK_MS);
-    const provider = await User.findOneAndUpdate({
-      _id: offer.providerId,
-      role: 'provider',
-      status: 'active',
-      deleted: { $ne: true },
-      $or: [{ blockedUntil: null }, { blockedUntil: { $exists: false } }, { blockedUntil: { $lte: new Date() } }],
-    }, { $set: { blockedUntil: blockUntil } }, { new: true, session }).lean();
-    if (!provider) throw new LifecycleConflict('PROVIDER_BUSY', order._id);
+      if (offer.expiresAt && offer.expiresAt <= new Date()) {
+        if (offer.status === 'pending') {
+          await Offer.deleteOne({ _id: offer._id, status: 'pending' }, { session });
+        }
+        throw new LifecycleConflict('OFFER_NOT_AVAILABLE', order._id);
+      }
 
-    const orderUpdate = await Order.updateOne({
-      _id: order._id,
-      customerId,
-      status: { $in: ACCEPTABLE_ORDER_STATUSES },
-    }, {
-      $set: {
-        status: 'accepted',
+      if (!canAcceptOfferRecord(offer.status, order.status)) {
+        throw new LifecycleConflict('ORDER_NOT_AVAILABLE', order._id);
+      }
+
+      const blockUntil = new Date(Date.now() + PROVIDER_ACCEPTANCE_BLOCK_MS);
+      const provider = await User.findOneAndUpdate({
+        _id: offer.providerId,
+        role: 'provider',
+        status: 'active',
+        deleted: { $ne: true },
+        $or: [{ blockedUntil: null }, { blockedUntil: { $exists: false } }, { blockedUntil: { $lte: new Date() } }],
+      }, { $set: { blockedUntil: blockUntil } }, { new: true, session }).lean();
+      if (!provider) throw new LifecycleConflict('PROVIDER_BUSY', order._id);
+
+      const competingOffers = await Offer.find({
+        orderId: order._id,
+        _id: { $ne: offer._id },
+        status: 'pending',
+      })
+        .select('_id providerId')
+        .session(session)
+        .lean();
+
+      const providerOtherOffers = await Offer.find({
         providerId: offer.providerId,
+        _id: { $ne: offer._id },
+        orderId: { $ne: order._id },
+        status: 'pending',
+      })
+        .populate('orderId', 'customerId status')
+        .session(session)
+        .lean();
+
+      const orderUpdate = await Order.updateOne({
+        _id: order._id,
+        customerId,
+        status: { $in: ACCEPTABLE_ORDER_STATUSES },
+      }, {
+        $set: {
+          status: 'accepted',
+          providerId: offer.providerId,
+          price: offer.price,
+          providerEarning: offer.price - 1,
+          platformCommission: 1,
+          estimatedTime: offer.estimatedTime || 0,
+          acceptedAt: new Date(),
+          offerWindowExpiredAt: null,
+          offerSuspendedUntil: null,
+        },
+      }, { session });
+      if (orderUpdate.modifiedCount !== 1) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', order._id);
+
+      const offerUpdate = await Offer.updateOne(
+        { _id: offer._id, status: 'pending' },
+        { $set: { status: 'accepted', rejectionReason: '' } },
+        { session },
+      );
+      if (offerUpdate.modifiedCount !== 1) throw new LifecycleConflict('OFFER_NOT_AVAILABLE', order._id);
+
+      await Offer.updateMany(
+        { orderId: order._id, _id: { $ne: offer._id }, status: 'pending' },
+        { $set: { status: 'rejected', rejectionReason: 'another_driver_selected' } },
+        { session },
+      );
+      await Offer.updateMany(
+        {
+          providerId: offer.providerId,
+          status: 'pending',
+          _id: { $ne: offer._id },
+          orderId: { $ne: order._id },
+        },
+        { $set: { status: 'rejected', rejectionReason: 'provider_unavailable' } },
+        { session },
+      );
+
+      const unavailableOffers = [];
+      const seenOrderIds = new Set();
+
+      for (const otherOffer of providerOtherOffers) {
+        const otherOrder = otherOffer.orderId;
+        if (!otherOrder?._id || !otherOrder.customerId) continue;
+        if (!ACCEPTABLE_ORDER_STATUSES.includes(otherOrder.status)) continue;
+
+        const otherOrderId = otherOrder._id.toString();
+        if (seenOrderIds.has(otherOrderId)) continue;
+        seenOrderIds.add(otherOrderId);
+
+        unavailableOffers.push({
+          orderId: otherOrder._id,
+          customerId: otherOrder.customerId,
+          offerId: otherOffer._id,
+        });
+      }
+
+      return {
+        orderId: order._id,
+        providerId: offer.providerId,
+        customerId: order.customerId,
         price: offer.price,
-        providerEarning: offer.price - 1,
-        platformCommission: 1,
-        estimatedTime: offer.estimatedTime || 0,
-        acceptedAt: new Date(),
-        offerWindowExpiredAt: null,
-        offerSuspendedUntil: null,
-      },
-    }, { session });
-    if (orderUpdate.modifiedCount !== 1) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', order._id);
+        event: { orderId: order._id, price: offer.price },
+        competingProviderIds: [
+          ...new Set(
+            competingOffers.map((competing) => competing.providerId.toString()),
+          ),
+        ],
+        unavailableOffers,
+      };
+    });
+  } catch (error) {
+    if (error instanceof LifecycleConflict && error.code === 'PROVIDER_BUSY') {
+      const currentOffer = await Offer.findOne({ _id: offerId }).lean();
 
-    const offerUpdate = await Offer.updateOne({ _id: offer._id, status: 'pending' }, { $set: { status: 'accepted' } }, { session });
-    if (offerUpdate.modifiedCount !== 1) throw new LifecycleConflict('OFFER_NOT_AVAILABLE', order._id);
+      if (
+        currentOffer?.status === 'rejected'
+        && currentOffer.rejectionReason === 'provider_unavailable'
+      ) {
+        throw new LifecycleConflict('PROVIDER_TAKEN', currentOffer.orderId);
+      }
 
-    await Offer.updateMany({ orderId: order._id, _id: { $ne: offer._id } }, { $set: { status: 'rejected' } }, { session });
-    await Offer.updateMany({ providerId: offer.providerId, status: 'pending', _id: { $ne: offer._id } }, { $set: { status: 'rejected' } }, { session });
+      if (currentOffer?.status === 'pending') {
+        const provider = await User.findById(currentOffer.providerId)
+          .select('blockedUntil')
+          .lean();
 
-    return {
-      orderId: order._id,
-      providerId: offer.providerId,
-      price: offer.price,
-      event: { orderId: order._id, price: offer.price },
-    };
-  });
+        if (provider?.blockedUntil && provider.blockedUntil > new Date()) {
+          const rejection = await Offer.updateOne(
+            { _id: offerId, status: 'pending' },
+            {
+              $set: {
+                status: 'rejected',
+                rejectionReason: 'provider_unavailable',
+              },
+            },
+          );
+
+          if (rejection.modifiedCount === 1) {
+            const conflict = new LifecycleConflict(
+              'PROVIDER_TAKEN',
+              currentOffer.orderId,
+            );
+            conflict.offerJustCancelled = true;
+            conflict.offerId = currentOffer._id;
+            conflict.providerId = currentOffer.providerId;
+            throw conflict;
+          }
+        }
+      }
+    }
+
+    throw error;
+  }
 }
 
 async function submitOffer({ orderId, providerId, price, estimatedTime }) {
@@ -445,7 +563,11 @@ async function resetOrder({ orderId, customerId }) {
       },
     }, { new: true, session }).lean();
     if (!updated) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', orderId);
-    await Offer.updateMany({ orderId }, { $set: { status: 'rejected' } }, { session });
+    await Offer.updateMany(
+      { orderId },
+      { $set: { status: 'rejected', rejectionReason: 'order_reset' } },
+      { session },
+    );
     return updated;
   });
 }
@@ -454,7 +576,11 @@ async function cancelOrder({ orderId, customerId }) {
   return inTransaction(async (session) => {
     const updated = await Order.findOneAndUpdate({ _id: orderId, customerId, status: { $in: ACCEPTABLE_ORDER_STATUSES } }, { $set: { status: 'cancelled' } }, { new: true, session }).lean();
     if (!updated) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', orderId);
-    await Offer.updateMany({ orderId, status: 'pending' }, { $set: { status: 'rejected' } }, { session });
+    await Offer.updateMany(
+      { orderId, status: 'pending' },
+      { $set: { status: 'rejected', rejectionReason: 'order_cancelled' } },
+      { session },
+    );
     return updated;
   });
 }

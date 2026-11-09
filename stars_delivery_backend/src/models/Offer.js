@@ -6,6 +6,7 @@ const offerSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   estimatedTime: { type: Number, default: 0 },
   status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
+  rejectionReason: { type: String, default: '' },
   expiresAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
 });

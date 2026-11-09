@@ -8,6 +8,7 @@ class OfferModel {
   final double price;
   final int estimatedTime;
   final String status;
+  final String rejectionReason;
   final String createdAt;
   final DateTime? expiresAt;
   final String orderDescription;
@@ -28,6 +29,7 @@ class OfferModel {
     required this.price,
     required this.estimatedTime,
     required this.status,
+    this.rejectionReason = '',
     required this.createdAt,
     this.expiresAt,
     required this.orderDescription,
@@ -53,6 +55,7 @@ class OfferModel {
       price: (json['price'] ?? 0).toDouble(),
       estimatedTime: (json['estimatedTime'] ?? 0).toInt(),
       status: json['status'] ?? 'pending',
+      rejectionReason: json['rejectionReason']?.toString() ?? '',
       createdAt: json['createdAt']?.toString() ?? '',
       expiresAt: DateTime.tryParse(json['expiresAt']?.toString() ?? ''),
       orderDescription: o is Map ? (o['description'] ?? '') : '',

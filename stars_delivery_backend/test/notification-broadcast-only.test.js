@@ -33,6 +33,14 @@ test('admin broadcasts remain notification-only and do not touch support chat', 
   assert.match(broadcast, /BroadcastMessage\.create/);
 });
 
+test('resending an order broadcasts it to drivers again', () => {
+  const offers = source('src/routes/offers.js');
+
+  assert.match(offers, /router\.post\('\/:orderId\/resend'/);
+  assert.match(offers, /emit\('new_order'/);
+  assert.match(offers, /governorate:\$\{order\.governorate\}/);
+});
+
 test('order, offer and report activity creates persisted notifications', () => {
   const offers = source('src/routes/offers.js');
   const orders = source('src/routes/orders.js');
@@ -41,6 +49,10 @@ test('order, offer and report activity creates persisted notifications', () => {
   assert.match(offers, /createUserNotification/);
   assert.match(offers, /type: 'new_offer'/);
   assert.match(offers, /type: 'offer_accepted'/);
+  assert.match(offers, /type: 'offer_not_selected'/);
+  assert.match(offers, /type: 'driver_taken'/);
+  assert.match(offers, /emit\('offer_not_selected'/);
+  assert.match(offers, /emit\('offer_cancelled'/);
   assert.match(orders, /type: 'order_pending'/);
   assert.match(orders, /type: 'delivery_confirmation'/);
   assert.match(orders, /type: 'delivery_confirmed'/);

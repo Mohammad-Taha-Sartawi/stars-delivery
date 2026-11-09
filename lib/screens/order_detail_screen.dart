@@ -73,6 +73,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         }
       }),
     );
+    _socketSubs.add(
+      SocketService.instance.onOfferNotSelected.listen((data) {
+        if (!mounted) return;
+        if (data['orderId']?.toString() != widget.orderId) return;
+
+        _load();
+        final price = (data['price'] as num?)?.toInt() ?? 0;
+        AppFeedback.warning(
+          context,
+          AppLocalization.get(
+            context,
+            'another_driver_selected_body',
+          ).replaceAll('%d', '$price'),
+        );
+      }),
+    );
   }
 
   @override

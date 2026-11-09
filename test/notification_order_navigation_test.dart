@@ -24,7 +24,13 @@ void main() {
 
     expect(source, contains("'delivery_confirmation'"));
 
-    expect(source, contains("'new_offer', 'order_pending', 'order_completed'"));
+    expect(source, contains("'new_offer'"));
+
+    expect(source, contains("'order_pending'"));
+
+    expect(source, contains("'order_completed'"));
+
+    expect(source, contains("'driver_taken'"));
   });
 
   test(

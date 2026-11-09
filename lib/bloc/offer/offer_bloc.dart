@@ -13,8 +13,10 @@ class OfferBloc extends Bloc<OfferEvent, OfferState> {
     on<CancelOrderEvent>(_onCancelOrder);
   }
   Future<void> _onSubmit(SubmitOfferEvent e, Emitter<OfferState> emit) async {
-    emit(OfferLoading()); try {
-      await _s.submitOffer(e.token, e.orderId, e.price, e.estimatedTime); emit(OfferSuccess());
+    emit(OfferLoading());
+    try {
+      await _s.submitOffer(e.token, e.orderId, e.price, e.estimatedTime);
+      emit(OfferSuccess());
     } on OfferSubmitException catch (ex) {
       if (ex.code == 'OFFER_NOT_AVAILABLE') {
         emit(OfferAlreadySubmitted());
@@ -33,38 +35,67 @@ class OfferBloc extends Bloc<OfferEvent, OfferState> {
         return;
       }
       emit(OfferError(message: ex.message));
-    } catch (ex) { emit(OfferError(message: ex.toString().replaceFirst('Exception: ', ''))); }
+    } catch (ex) {
+      emit(OfferError(message: ex.toString().replaceFirst('Exception: ', '')));
+    }
   }
+
   Future<void> _onLoad(LoadOffersEvent e, Emitter<OfferState> emit) async {
-    emit(OfferLoading()); try {
-      final o = await _s.getOffers(e.token, e.orderId); emit(OffersLoaded(offers: o));
-    } catch (ex) { emit(OfferError(message: ex.toString().replaceFirst('Exception: ', ''))); }
+    emit(OfferLoading());
+    try {
+      final o = await _s.getOffers(e.token, e.orderId);
+      emit(OffersLoaded(offers: o));
+    } catch (ex) {
+      emit(OfferError(message: ex.toString().replaceFirst('Exception: ', '')));
+    }
   }
+
   Future<void> _onAccept(AcceptOfferEvent e, Emitter<OfferState> emit) async {
-    emit(OfferLoading()); try {
+    emit(OfferLoading());
+    try {
       final result = await _s.acceptOffer(e.token, e.offerId);
       if (result['conflict'] == true) {
-        emit(OfferConflict(message: result['message'] ?? '', orderId: e.orderId));
+        emit(
+          OfferConflict(
+            message: result['message'] ?? '',
+            orderId: e.orderId,
+            code: result['code']?.toString() ?? '',
+          ),
+        );
         return;
       }
       final offers = await _s.getOffers(e.token, e.orderId);
       emit(OffersLoaded(offers: offers));
-    } catch (ex) { emit(OfferError(message: ex.toString().replaceFirst('Exception: ', ''))); }
+    } catch (ex) {
+      emit(OfferError(message: ex.toString().replaceFirst('Exception: ', '')));
+    }
   }
 
-  Future<void> _onResendOrder(ResendOrderEvent e, Emitter<OfferState> emit) async {
-    emit(OfferLoading()); try {
+  Future<void> _onResendOrder(
+    ResendOrderEvent e,
+    Emitter<OfferState> emit,
+  ) async {
+    emit(OfferLoading());
+    try {
       await _s.resendOrder(e.token, e.orderId);
       final offers = await _s.getOffers(e.token, e.orderId);
       emit(OffersLoaded(offers: offers));
-    } catch (ex) { emit(OfferError(message: ex.toString().replaceFirst('Exception: ', ''))); }
+    } catch (ex) {
+      emit(OfferError(message: ex.toString().replaceFirst('Exception: ', '')));
+    }
   }
 
-  Future<void> _onCancelOrder(CancelOrderEvent e, Emitter<OfferState> emit) async {
-    emit(OfferLoading()); try {
+  Future<void> _onCancelOrder(
+    CancelOrderEvent e,
+    Emitter<OfferState> emit,
+  ) async {
+    emit(OfferLoading());
+    try {
       await _s.cancelOrder(e.token, e.orderId);
       final offers = await _s.getOffers(e.token, e.orderId);
       emit(OffersLoaded(offers: offers));
-    } catch (ex) { emit(OfferError(message: ex.toString().replaceFirst('Exception: ', ''))); }
+    } catch (ex) {
+      emit(OfferError(message: ex.toString().replaceFirst('Exception: ', '')));
+    }
   }
 }

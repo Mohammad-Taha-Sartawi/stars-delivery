@@ -65,6 +65,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   StreamSubscription? _newOrderSub;
   StreamSubscription? _notifCountSub;
   StreamSubscription? _offerAcceptedSub;
+  StreamSubscription? _offerNotSelectedSub;
   StreamSubscription? _deliveryResultSub;
   StreamSubscription? _broadcastSub;
   StreamSubscription? _accountDeletedSub;
@@ -234,6 +235,27 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       }
     });
 
+    _offerNotSelectedSub = SocketService.instance.onOfferNotSelected.listen((
+      data,
+    ) {
+      if (!mounted) return;
+      context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
+      context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
+      context.read<ProviderBloc>().add(LoadOfferedOrders(token: widget.token));
+      context.read<NotificationBloc>().add(
+        LoadNotifications(token: widget.token),
+      );
+
+      final price = (data['price'] as num?)?.toInt() ?? 0;
+      AppFeedback.info(
+        context,
+        AppLocalization.get(
+          context,
+          'another_driver_selected_body',
+        ).replaceAll('%d', '$price'),
+      );
+    });
+
     _deliveryResultSub = SocketService.instance.onDeliveryConfirmationResult
         .listen((data) {
           if (!mounted) return;
@@ -340,6 +362,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     _newOrderSub?.cancel();
     _notifCountSub?.cancel();
     _offerAcceptedSub?.cancel();
+    _offerNotSelectedSub?.cancel();
     _deliveryResultSub?.cancel();
     _broadcastSub?.cancel();
     _accountDeletedSub?.cancel();

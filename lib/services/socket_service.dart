@@ -13,6 +13,10 @@ class SocketService {
       StreamController<Map<String, dynamic>>.broadcast();
   final _offerAcceptedController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final _offerNotSelectedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _offerCancelledController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _orderStatusController =
       StreamController<Map<String, dynamic>>.broadcast();
   final _deliveryConfirmationRequestedController =
@@ -31,6 +35,10 @@ class SocketService {
   Stream<Map<String, dynamic>> get onNewOffer => _newOfferController.stream;
   Stream<Map<String, dynamic>> get onOfferAccepted =>
       _offerAcceptedController.stream;
+  Stream<Map<String, dynamic>> get onOfferNotSelected =>
+      _offerNotSelectedController.stream;
+  Stream<Map<String, dynamic>> get onOfferCancelled =>
+      _offerCancelledController.stream;
   Stream<Map<String, dynamic>> get onOrderStatusChanged =>
       _orderStatusController.stream;
   Stream<Map<String, dynamic>> get onDeliveryConfirmationRequested =>
@@ -123,6 +131,18 @@ class SocketService {
       }
     });
 
+    _socket!.on('offer_not_selected', (data) {
+      if (data is Map) {
+        _offerNotSelectedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    _socket!.on('offer_cancelled', (data) {
+      if (data is Map) {
+        _offerCancelledController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     _socket!.on('order_status_changed', (data) {
       if (data is Map) {
         _orderStatusController.add(Map<String, dynamic>.from(data));
@@ -181,6 +201,8 @@ class SocketService {
     _newOrderController.close();
     _newOfferController.close();
     _offerAcceptedController.close();
+    _offerNotSelectedController.close();
+    _offerCancelledController.close();
     _orderStatusController.close();
     _deliveryConfirmationRequestedController.close();
     _deliveryConfirmationResultController.close();

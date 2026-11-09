@@ -305,6 +305,7 @@ test('acceptance passes the transaction session to every database mutation', asy
   });
   const original = {
     startSession: mongoose.startSession,
+    offerFind: Offer.find,
     offerFindOne: Offer.findOne,
     offerUpdate: Offer.updateOne,
     offerUpdateMany: Offer.updateMany,
@@ -316,6 +317,25 @@ test('acceptance passes the transaction session to every database mutation', asy
 
   try {
     mongoose.startSession = async () => session;
+    let offerFindCalls = 0;
+    Offer.find = () => {
+      offerFindCalls += 1;
+      if (offerFindCalls === 1) {
+        return query([
+          { _id: 'offer-competing', providerId: 'provider-2' },
+        ]);
+      }
+      return query([
+        {
+          _id: 'offer-other-order',
+          orderId: {
+            _id: 'order-2',
+            customerId: 'customer-2',
+            status: 'offered',
+          },
+        },
+      ]);
+    };
     Offer.findOne = () => query({
       _id: 'offer-1',
       status: 'pending',
@@ -338,8 +358,10 @@ test('acceptance passes the transaction session to every database mutation', asy
       writes.push(options.session);
       return Promise.resolve({ modifiedCount: 1 });
     };
+    const rejectionReasons = [];
     Offer.updateMany = (filter, update, options) => {
       writes.push(options.session);
+      rejectionReasons.push(update.$set.rejectionReason);
       return Promise.resolve({});
     };
     User.findById = () => query({ fullName: 'Customer' });
@@ -348,11 +370,22 @@ test('acceptance passes the transaction session to every database mutation', asy
       return Promise.resolve(documents);
     };
 
-    await lifecycle.acceptOffer({ offerId: 'offer-1', customerId: 'customer-1' });
-    assert.equal(writes.length, 6);
+    const result = await lifecycle.acceptOffer({
+      offerId: 'offer-1',
+      customerId: 'customer-1',
+    });
+    assert.equal(writes.length, 8);
     assert.ok(writes.every((activeSession) => activeSession === session));
+    assert.deepEqual(result.competingProviderIds, ['provider-2']);
+    assert.equal(result.unavailableOffers.length, 1);
+    assert.equal(result.unavailableOffers[0].customerId, 'customer-2');
+    assert.deepEqual(rejectionReasons, [
+      'another_driver_selected',
+      'provider_unavailable',
+    ]);
   } finally {
     mongoose.startSession = original.startSession;
+    Offer.find = original.offerFind;
     Offer.findOne = original.offerFindOne;
     Offer.updateOne = original.offerUpdate;
     Offer.updateMany = original.offerUpdateMany;
@@ -433,18 +466,21 @@ test('acceptOffer rejects a customer ownership mismatch before provider reservat
   }
 });
 
-test('acceptOffer rejects a busy provider before changing the order', async () => {
+test('acceptOffer cancels a stale offer when the provider accepted another order', async () => {
   const session = {
     withTransaction: async (work) => work(session),
     endSession: async () => {},
   };
 
   let orderWrites = 0;
+  let offerWrites = 0;
 
   const original = {
     startSession: mongoose.startSession,
     offerFindOne: Offer.findOne,
+    offerUpdateOne: Offer.updateOne,
     userFindOneAndUpdate: User.findOneAndUpdate,
+    userFindById: User.findById,
     orderUpdateOne: Order.updateOne,
   };
 
@@ -485,6 +521,26 @@ test('acceptOffer rejects a busy provider before changing the order', async () =
       };
     };
 
+    User.findById = () => ({
+      select() {
+        return this;
+      },
+      lean: async () => ({
+        blockedUntil: new Date(Date.now() + 60 * 1000),
+      }),
+    });
+
+    Offer.updateOne = (filter, update) => {
+      offerWrites += 1;
+      assert.deepEqual(filter, {
+        _id: 'offer-busy',
+        status: 'pending',
+      });
+      assert.equal(update.$set.status, 'rejected');
+      assert.equal(update.$set.rejectionReason, 'provider_unavailable');
+      return Promise.resolve({ modifiedCount: 1 });
+    };
+
     Order.updateOne = () => {
       orderWrites += 1;
       return Promise.resolve({ modifiedCount: 1 });
@@ -497,15 +553,82 @@ test('acceptOffer rejects a busy provider before changing the order', async () =
       }),
       (error) =>
         error instanceof lifecycle.LifecycleConflict
-        && error.code === 'PROVIDER_BUSY'
+        && error.code === 'PROVIDER_TAKEN'
+        && error.offerJustCancelled === true
     );
 
     assert.equal(orderWrites, 0);
+    assert.equal(offerWrites, 1);
+  } finally {
+    mongoose.startSession = original.startSession;
+    Offer.findOne = original.offerFindOne;
+    Offer.updateOne = original.offerUpdateOne;
+    User.findOneAndUpdate = original.userFindOneAndUpdate;
+    User.findById = original.userFindById;
+    Order.updateOne = original.orderUpdateOne;
+  }
+});
+
+test('acceptOffer reports a taken driver for an already cancelled offer without re-reserving', async () => {
+  const session = {
+    withTransaction: async (work) => work(session),
+    endSession: async () => {},
+  };
+
+  let providerWrites = 0;
+
+  const original = {
+    startSession: mongoose.startSession,
+    offerFindOne: Offer.findOne,
+    userFindOneAndUpdate: User.findOneAndUpdate,
+  };
+
+  const offerQuery = {
+    populate() {
+      return this;
+    },
+    session(activeSession) {
+      assert.equal(activeSession, session);
+      return this;
+    },
+    lean: async () => ({
+      _id: 'offer-taken',
+      status: 'rejected',
+      rejectionReason: 'provider_unavailable',
+      providerId: 'provider-taken',
+      price: 30,
+      orderId: {
+        _id: 'order-taken',
+        customerId: 'customer-1',
+        status: 'offered',
+      },
+    }),
+  };
+
+  try {
+    mongoose.startSession = async () => session;
+    Offer.findOne = () => offerQuery;
+    User.findOneAndUpdate = () => {
+      providerWrites += 1;
+      throw new Error('provider reservation must not occur');
+    };
+
+    await assert.rejects(
+      () => lifecycle.acceptOffer({
+        offerId: 'offer-taken',
+        customerId: 'customer-1',
+      }),
+      (error) =>
+        error instanceof lifecycle.LifecycleConflict
+        && error.code === 'PROVIDER_TAKEN'
+        && error.offerJustCancelled !== true
+    );
+
+    assert.equal(providerWrites, 0);
   } finally {
     mongoose.startSession = original.startSession;
     Offer.findOne = original.offerFindOne;
     User.findOneAndUpdate = original.userFindOneAndUpdate;
-    Order.updateOne = original.orderUpdateOne;
   }
 });
 

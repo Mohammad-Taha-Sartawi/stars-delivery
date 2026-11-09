@@ -20,6 +20,7 @@ import '../services/order_service.dart';
 import '../services/support_chat_service.dart';
 import '../widgets/ui/app_action_tile.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
+import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_section_header.dart';
 import '../widgets/ui/app_tone.dart';
 import '../widgets/governorate_scope_card.dart';
@@ -59,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late ChatService _supportChatService;
   StreamSubscription? _newOfferSub;
   StreamSubscription? _deliveryConfirmationSub;
+  StreamSubscription? _offerCancelledSub;
   StreamSubscription? _orderStatusSub;
   StreamSubscription? _offerAcceptedSub;
   StreamSubscription? _broadcastSub;
@@ -133,6 +135,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
           unawaited(_openDeliveryConfirmation());
         });
+
+    _offerCancelledSub = SocketService.instance.onOfferCancelled.listen((_) {
+      if (!mounted) return;
+      _loadOrderCounts();
+      context.read<NotificationBloc>().add(
+        LoadNotifications(token: widget.token),
+      );
+      AppFeedback.warning(
+        context,
+        AppLocalization.get(context, 'driver_taken_notification_body'),
+      );
+    });
 
     _orderStatusSub = SocketService.instance.onOrderStatusChanged.listen((
       data,
@@ -346,6 +360,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _notifTimer?.cancel();
     _newOfferSub?.cancel();
     _deliveryConfirmationSub?.cancel();
+    _offerCancelledSub?.cancel();
     _orderStatusSub?.cancel();
     _offerAcceptedSub?.cancel();
     _broadcastSub?.cancel();

@@ -31,9 +31,12 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
   final OrderService _orderService = OrderService();
   Timer? _offerTimer;
   StreamSubscription? _newOfferSub;
+  StreamSubscription? _offerCancelledSub;
   bool _cancelRequested = false;
   bool _resendRequested = false;
   bool _orderWindowExpired = false;
+  bool _driverUnavailable = false;
+  bool _driverTakenDialogOpen = false;
   String _orderType = '';
   int _rejectedByDriversCount = 0;
 
@@ -56,6 +59,19 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
           LoadOffersEvent(token: widget.token, orderId: widget.orderId),
         );
       }
+    });
+    _offerCancelledSub = SocketService.instance.onOfferCancelled.listen((data) {
+      if (!mounted) return;
+
+      final incomingOrderId = data['orderId']?.toString();
+      if (incomingOrderId == null || incomingOrderId != widget.orderId) return;
+
+      setState(() => _driverUnavailable = true);
+      context.read<OfferBloc>().add(
+        LoadOffersEvent(token: widget.token, orderId: widget.orderId),
+      );
+      _loadOrderWindowState();
+      _showDriverTakenDialog();
     });
     _offerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) {
@@ -94,6 +110,7 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
   void dispose() {
     _offerTimer?.cancel();
     _newOfferSub?.cancel();
+    _offerCancelledSub?.cancel();
     super.dispose();
   }
 
@@ -114,6 +131,13 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
             (order['rejectedByDriversCount'] as num?)?.toInt() ?? 0;
       });
     } catch (_) {}
+  }
+
+  void _resendOrder() {
+    setState(() => _resendRequested = true);
+    context.read<OfferBloc>().add(
+      ResendOrderEvent(token: widget.token, orderId: widget.orderId),
+    );
   }
 
   String _typeLabel(String type) {
@@ -152,7 +176,23 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
               child: BlocConsumer<OfferBloc, OfferState>(
                 listener: (context, state) {
                   if (state is OfferConflict) {
-                    _showConflictDialog(context, state.message, state.orderId);
+                    if (state.code == 'PROVIDER_TAKEN') {
+                      setState(() => _driverUnavailable = true);
+                      context.read<OfferBloc>().add(
+                        LoadOffersEvent(
+                          token: widget.token,
+                          orderId: widget.orderId,
+                        ),
+                      );
+                      _loadOrderWindowState();
+                      _showDriverTakenDialog();
+                    } else {
+                      _showConflictDialog(
+                        context,
+                        state.message,
+                        state.orderId,
+                      );
+                    }
                   }
                   if (state is OffersLoaded && _cancelRequested) {
                     _cancelRequested = false;
@@ -165,7 +205,10 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                   }
                   if (state is OffersLoaded && _resendRequested) {
                     _resendRequested = false;
-                    setState(() => _orderWindowExpired = false);
+                    setState(() {
+                      _orderWindowExpired = false;
+                      _driverUnavailable = false;
+                    });
                     AppFeedback.success(
                       context,
                       AppLocalization.get(context, 'order_resent'),
@@ -217,19 +260,12 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              if (_orderWindowExpired) ...[
+                              if (_orderWindowExpired ||
+                                  _driverUnavailable) ...[
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      setState(() => _resendRequested = true);
-                                      context.read<OfferBloc>().add(
-                                        ResendOrderEvent(
-                                          token: widget.token,
-                                          orderId: widget.orderId,
-                                        ),
-                                      );
-                                    },
+                                    onPressed: _resendOrder,
                                     icon: const Icon(Icons.refresh),
                                     label: Text(
                                       AppLocalization.get(
@@ -290,286 +326,392 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                           ),
                         ),
                       );
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        final bloc = context.read<OfferBloc>();
-                        bloc.add(
-                          LoadOffersEvent(
-                            token: widget.token,
-                            orderId: widget.orderId,
-                          ),
+                    final hasDriverTakenOffer =
+                        state.offers.any(
+                          (offer) =>
+                              offer.rejectionReason == 'provider_unavailable',
+                        ) &&
+                        !state.offers.any(
+                          (offer) => offer.status == 'accepted',
                         );
-                        await bloc.stream.firstWhere((s) => s is! OfferLoading);
-                      },
-                      child: ListView.builder(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Responsive.paddingHorizontal(context),
-                          vertical: Responsive.paddingVertical(context),
-                        ),
-                        itemCount: state.offers.length,
-                        itemBuilder: (_, i) {
-                          final o = state.offers[i];
-                          final expiresAt = o.expiresAt;
-                          final remainingSeconds = expiresAt == null
-                              ? 0
-                              : expiresAt.difference(DateTime.now()).inSeconds;
-                          final expired =
-                              o.status == 'pending' &&
-                              expiresAt != null &&
-                              remainingSeconds <= 0;
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                    final showDriverTakenNotice =
+                        _driverUnavailable || hasDriverTakenOffer;
+                    return Column(
+                      children: [
+                        if (showDriverTakenNotice)
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              Responsive.paddingHorizontal(context),
+                              Responsive.paddingVertical(context),
+                              Responsive.paddingHorizontal(context),
+                              0,
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: appToneStyle(
+                                  context,
+                                  AppTone.warning,
+                                ).background,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: appToneStyle(
+                                    context,
+                                    AppTone.warning,
+                                  ).border,
+                                ),
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.person,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Flexible(
-                                                  child: Text(
-                                                    o.providerName,
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                ),
-                                                if (o.outsideArea) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 2,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: appToneStyle(
-                                                        context,
-                                                        AppTone.warning,
-                                                      ).background,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            999,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: appToneStyle(
-                                                          context,
-                                                          AppTone.warning,
-                                                        ).border,
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      AppLocalization.get(
-                                                        context,
-                                                        'provider_outside_area_badge',
-                                                      ),
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: appToneStyle(
-                                                          context,
-                                                          AppTone.warning,
-                                                        ).foreground,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                            if (o.providerPublicId.isNotEmpty)
-                                              Text(
-                                                '#${o.providerPublicId}',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${o.price} ${AppLocalization.get(context, 'shekel')}',
-                                        style: TextStyle(
-                                          color: appToneStyle(
-                                            context,
-                                            AppTone.success,
-                                          ).foreground,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    AppLocalization.get(
+                                      context,
+                                      'driver_taken_notification_title',
+                                    ),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: appToneStyle(
+                                        context,
+                                        AppTone.warning,
+                                      ).foreground,
+                                    ),
                                   ),
-                                  if (o.outsideArea) ...[
-                                    const SizedBox(height: 10),
-                                    _buildOutsideAreaNotice(context, o),
-                                  ],
-                                  const SizedBox(height: 12),
-                                  if (o.providerPhone.isNotEmpty) ...[
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.phone,
-                                          size: 14,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          o.status == 'accepted'
-                                              ? o.providerPhone
-                                              : _maskPhone(o.providerPhone),
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    AppLocalization.get(
+                                      context,
+                                      'driver_taken_notification_body',
                                     ),
-                                  ],
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: appToneStyle(
+                                        context,
+                                        AppTone.warning,
+                                      ).foreground,
+                                    ),
+                                  ),
                                   const SizedBox(height: 8),
-                                  if (o.orderDescription.isNotEmpty)
-                                    Text(
-                                      o.orderDescription,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                  TextButton.icon(
+                                    onPressed: _resendOrder,
+                                    icon: const Icon(Icons.refresh, size: 18),
+                                    label: Text(
+                                      AppLocalization.get(
+                                        context,
+                                        'resend_order',
                                       ),
                                     ),
-                                  if (o.estimatedTime > 0) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.timer_outlined,
-                                          size: 14,
-                                          color: appToneStyle(
-                                            context,
-                                            AppTone.info,
-                                          ).solid,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          AppLocalization.get(
-                                            context,
-                                            'est_time',
-                                          ).replaceAll(
-                                            '%d',
-                                            '${o.estimatedTime}',
-                                          ),
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (o.status == 'pending' &&
-                                      expiresAt != null) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          expired
-                                              ? Icons.timer_off_outlined
-                                              : Icons.timer_outlined,
-                                          size: 14,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.error,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          expired
-                                              ? AppLocalization.get(
-                                                  context,
-                                                  'offer_expired',
-                                                )
-                                              : AppLocalization.get(
-                                                  context,
-                                                  'offer_expires_in',
-                                                ).replaceAll(
-                                                  '%d',
-                                                  '${remainingSeconds > 0 ? remainingSeconds : 0}',
-                                                ),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.error,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (o.orderArea.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 14,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          o.orderArea,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  const SizedBox(height: 12),
-                                  _buildOfferAction(context, o),
+                                  ),
                                 ],
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: () async {
+                              final bloc = context.read<OfferBloc>();
+                              bloc.add(
+                                LoadOffersEvent(
+                                  token: widget.token,
+                                  orderId: widget.orderId,
+                                ),
+                              );
+                              await bloc.stream.firstWhere(
+                                (s) => s is! OfferLoading,
+                              );
+                            },
+                            child: ListView.builder(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Responsive.paddingHorizontal(
+                                  context,
+                                ),
+                                vertical: Responsive.paddingVertical(context),
+                              ),
+                              itemCount: state.offers.length,
+                              itemBuilder: (_, i) {
+                                final o = state.offers[i];
+                                final expiresAt = o.expiresAt;
+                                final remainingSeconds = expiresAt == null
+                                    ? 0
+                                    : expiresAt
+                                          .difference(DateTime.now())
+                                          .inSeconds;
+                                final expired =
+                                    o.status == 'pending' &&
+                                    expiresAt != null &&
+                                    remainingSeconds <= 0;
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.person,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Flexible(
+                                                        child: Text(
+                                                          o.providerName,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize: 16,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      if (o.outsideArea) ...[
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 8,
+                                                                vertical: 2,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: appToneStyle(
+                                                              context,
+                                                              AppTone.warning,
+                                                            ).background,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  999,
+                                                                ),
+                                                            border: Border.all(
+                                                              color:
+                                                                  appToneStyle(
+                                                                    context,
+                                                                    AppTone
+                                                                        .warning,
+                                                                  ).border,
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            AppLocalization.get(
+                                                              context,
+                                                              'provider_outside_area_badge',
+                                                            ),
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color:
+                                                                  appToneStyle(
+                                                                    context,
+                                                                    AppTone
+                                                                        .warning,
+                                                                  ).foreground,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                  if (o
+                                                      .providerPublicId
+                                                      .isNotEmpty)
+                                                    Text(
+                                                      '#${o.providerPublicId}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurfaceVariant,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '${o.price} ${AppLocalization.get(context, 'shekel')}',
+                                              style: TextStyle(
+                                                color: appToneStyle(
+                                                  context,
+                                                  AppTone.success,
+                                                ).foreground,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (o.outsideArea) ...[
+                                          const SizedBox(height: 10),
+                                          _buildOutsideAreaNotice(context, o),
+                                        ],
+                                        const SizedBox(height: 12),
+                                        if (o.providerPhone.isNotEmpty) ...[
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.phone,
+                                                size: 14,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                o.status == 'accepted'
+                                                    ? o.providerPhone
+                                                    : _maskPhone(
+                                                        o.providerPhone,
+                                                      ),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                        const SizedBox(height: 8),
+                                        if (o.orderDescription.isNotEmpty)
+                                          Text(
+                                            o.orderDescription,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        if (o.estimatedTime > 0) ...[
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.timer_outlined,
+                                                size: 14,
+                                                color: appToneStyle(
+                                                  context,
+                                                  AppTone.info,
+                                                ).solid,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                AppLocalization.get(
+                                                  context,
+                                                  'est_time',
+                                                ).replaceAll(
+                                                  '%d',
+                                                  '${o.estimatedTime}',
+                                                ),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                        if (o.status == 'pending' &&
+                                            expiresAt != null) ...[
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                expired
+                                                    ? Icons.timer_off_outlined
+                                                    : Icons.timer_outlined,
+                                                size: 14,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.error,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                expired
+                                                    ? AppLocalization.get(
+                                                        context,
+                                                        'offer_expired',
+                                                      )
+                                                    : AppLocalization.get(
+                                                        context,
+                                                        'offer_expires_in',
+                                                      ).replaceAll(
+                                                        '%d',
+                                                        '${remainingSeconds > 0 ? remainingSeconds : 0}',
+                                                      ),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.error,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                        if (o.orderArea.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.location_on,
+                                                size: 14,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                o.orderArea,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                        const SizedBox(height: 12),
+                                        _buildOfferAction(context, o),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   }
                   if (state is OfferError)
@@ -614,6 +756,46 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
     context.read<OfferBloc>().add(
       CancelOrderEvent(token: widget.token, orderId: widget.orderId),
     );
+  }
+
+  Future<void> _showDriverTakenDialog() async {
+    if (_driverTakenDialogOpen || !mounted) return;
+
+    _driverTakenDialogOpen = true;
+    final shouldResend = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          AppLocalization.get(dialogContext, 'driver_taken_notification_title'),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          AppLocalization.get(dialogContext, 'driver_taken_notification_body'),
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              AppLocalization.get(dialogContext, 'continue_viewing_offers'),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: appToneStyle(context, AppTone.accent).solid,
+              foregroundColor: appToneStyle(context, AppTone.accent).onSolid,
+            ),
+            child: Text(AppLocalization.get(dialogContext, 'resend_order')),
+          ),
+        ],
+      ),
+    );
+    _driverTakenDialogOpen = false;
+
+    if (!mounted || shouldResend != true) return;
+
+    _resendOrder();
   }
 
   void _showConflictDialog(
@@ -790,7 +972,11 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
       );
     }
     if (o.status == 'rejected') {
-      final tone = appToneStyle(context, AppTone.danger);
+      final driverTaken = o.rejectionReason == 'provider_unavailable';
+      final tone = appToneStyle(
+        context,
+        driverTaken ? AppTone.warning : AppTone.danger,
+      );
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -799,7 +985,10 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
           borderRadius: BorderRadiusDirectional.circular(AppRadius.pill),
         ),
         child: Text(
-          AppLocalization.get(context, 'rejected'),
+          AppLocalization.get(
+            context,
+            driverTaken ? 'driver_taken_short' : 'rejected',
+          ),
           textAlign: TextAlign.center,
           style: TextStyle(color: tone.onSolid, fontWeight: FontWeight.bold),
         ),

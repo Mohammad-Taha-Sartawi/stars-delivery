@@ -63,6 +63,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       SocketService.instance.onOrderStatusChanged,
       SocketService.instance.onDeliveryConfirmationRequested,
       SocketService.instance.onDeliveryConfirmationResult,
+      SocketService.instance.onOfferCancelled,
     ]) {
       _socketSubs.add(
         stream.listen((_) {

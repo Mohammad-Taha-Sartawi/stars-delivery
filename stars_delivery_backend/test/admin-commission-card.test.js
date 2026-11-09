@@ -29,3 +29,30 @@ test('platform commission card shows a clear shekel amount without percentages',
   assert.match(css, /\.commission-item\.total-commission/);
   assert.match(css, /\.commission-item\.total-commission \.currency/);
 });
+
+
+test('top driver card shows the full registered name without truncation', () => {
+  const index = source('src/views/admin/index.ejs');
+  const main = source('src/public/js/main.js');
+  const css = source('src/public/css/style.css');
+
+  const card = index.match(
+    /<div class="commission-item top-driver"[\s\S]*?<\/div><\/div>/,
+  );
+  assert.ok(card, 'the top driver card must exist');
+  assert.match(card[0], /class="driver-name" id="topDriver"/);
+  assert.match(card[0], /id="topDriverEarn"/);
+  assert.match(card[0], /شيكل/);
+  assert.doesNotMatch(card[0], /badge-trend/);
+
+  const nameRule = css.match(
+    /\.commission-item\.top-driver \.driver-name \{[^}]+\}/,
+  );
+  assert.ok(nameRule, 'the top driver name rule must exist');
+  assert.match(nameRule[0], /white-space: normal/);
+  assert.match(nameRule[0], /overflow-wrap: anywhere/);
+  assert.doesNotMatch(nameRule[0], /ellipsis/);
+
+  assert.match(main, /topDriverEarn/);
+  assert.match(main, /toLocaleString\('en-US'\)/);
+});

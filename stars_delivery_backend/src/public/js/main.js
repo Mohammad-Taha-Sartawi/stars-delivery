@@ -806,7 +806,8 @@ async function loadDashboardStats() {
     const topRes = await adminFetch('/admin/api/top-driver');
     const topData = await topRes.json();
     document.getElementById('topDriver').textContent = topData.name;
-    document.getElementById('topDriverEarn').textContent = topData.earnings + ' ';
+    document.getElementById('topDriverEarn').textContent =
+      (Number(topData.earnings) || 0).toLocaleString('en-US');
   } catch (err) {
     console.error('Error loading stats:', err);
   }

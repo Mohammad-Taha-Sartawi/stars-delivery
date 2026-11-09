@@ -12,21 +12,18 @@ function read(relative) {
   );
 }
 
-test('admin broadcasts are delivered into the contact_support chat', () => {
+test('admin broadcasts are notification-only', () => {
   const broadcast = read('src/routes/adminBroadcast.js');
 
-  assert.match(
-    broadcast,
-    /const ChatMessage = require\('\.\.\/models\/ChatMessage'\);/,
-  );
+  // No support-chat message is created and no support reply is emitted.
+  assert.doesNotMatch(broadcast, /ChatMessage/);
+  assert.doesNotMatch(broadcast, /support_reply/);
 
-  assert.match(broadcast, /ChatMessage\.insertMany\(/);
-
-  assert.match(broadcast, /sender: 'admin'/);
-
-  assert.match(broadcast, /support_reply/);
-
-  assert.match(broadcast, /io\.to\(`user:\$\{u\._id\}`\)\.emit\('support_reply'/);
+  // The notification itself is still created and pushed in real time.
+  assert.match(broadcast, /Notification\.insertMany\(/);
+  assert.match(broadcast, /type: 'broadcast'/);
+  assert.match(broadcast, /io\.to\(`user:\$\{u\._id\}`\)\.emit\('notification_count'/);
+  assert.match(broadcast, /io\.to\(`user:\$\{u\._id\}`\)\.emit\('broadcast'/);
 });
 
 test('support chat exposes unread count and read acknowledgement endpoints', () => {

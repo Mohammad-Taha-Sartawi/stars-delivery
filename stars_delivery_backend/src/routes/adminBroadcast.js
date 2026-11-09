@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Notification = require('../models/Notification');
-const ChatMessage = require('../models/ChatMessage');
 
 router.post('/:target', async (req, res) => {
   try {
@@ -30,36 +29,18 @@ router.post('/:target', async (req, res) => {
       await Notification.insertMany(notifications);
     }
 
-    const chatText = `${title}\n${body}`;
-    const chatMessages = users.length > 0
-      ? await ChatMessage.insertMany(
-          users.map((u) => ({
-            userId: u._id,
-            sender: 'admin',
-            text: chatText,
-            read: false,
-          })),
-        )
-      : [];
-
-    // Emit real-time notification and support message to all target users
+    // Broadcasts are notification-only: no support-chat message is created and
+    // no support-chat reply event is emitted, so users cannot reply to them
+    // through the support chat.
     const io = req.app.get('io');
     if (io) {
-      for (let index = 0; index < users.length; index += 1) {
-        const u = users[index];
-        const unreadCount = await Notification.countDocuments({ userId: u._id, read: false });
+      for (const u of users) {
+        const unreadCount = await Notification.countDocuments({
+          userId: u._id,
+          read: false,
+        });
         io.to(`user:${u._id}`).emit('notification_count', { unreadCount });
         io.to(`user:${u._id}`).emit('broadcast', { title, body });
-        const chatMessage = chatMessages[index];
-        if (chatMessage) {
-          io.to(`user:${u._id}`).emit('support_reply', {
-            _id: chatMessage._id,
-            userId: u._id,
-            sender: 'admin',
-            text: chatText,
-            createdAt: chatMessage.createdAt,
-          });
-        }
       }
     }
 

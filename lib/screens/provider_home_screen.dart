@@ -191,20 +191,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
     });
 
-    _broadcastSub = SocketService.instance.onBroadcast.listen((data) {
+    _broadcastSub = SocketService.instance.onBroadcast.listen((_) {
       if (!mounted) return;
+      // Admin broadcasts are notification-only; do not show a home snackbar
+      // and do not touch the support-chat unread counter.
       context.read<NotificationBloc>().add(
         LoadNotifications(token: widget.token),
       );
-      _loadSupportUnreadCount();
-      final title = data['title']?.toString() ?? '';
-      final body = data['body']?.toString() ?? '';
-      if (title.isNotEmpty || body.isNotEmpty) {
-        AppFeedback.warning(
-          context,
-          title.isNotEmpty ? '$title - $body' : body,
-        );
-      }
     });
 
     _accountDeletedSub = SocketService.instance.onAccountDeleted.listen((_) {

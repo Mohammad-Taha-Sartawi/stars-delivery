@@ -11,7 +11,6 @@ import '../bloc/app/app_bloc.dart';
 import '../bloc/offer/offer_bloc.dart';
 import 'order_detail_screen.dart';
 import 'order_offers_screen.dart';
-import 'support_chat_screen.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_status_badge.dart';
@@ -283,9 +282,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showDetail(BuildContext context, dynamic n) {
-    final hasContactAction =
-        n.type == 'broadcast' &&
-        (n.body.contains('الدعم') || n.body.contains('contact'));
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -311,23 +307,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ),
         actions: [
-          if (hasContactAction)
-            TextButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SupportChatScreen(token: widget.token),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.headset_mic, size: 18),
-              label: const Text('التواصل مع الدعم'),
-            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('حسناً'),
+            child: Text(AppLocalization.get(context, 'ok')),
           ),
         ],
       ),

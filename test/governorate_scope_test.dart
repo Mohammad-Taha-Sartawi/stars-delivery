@@ -35,6 +35,21 @@ Widget _app(Widget home) {
 }
 
 void main() {
+  test('new users default to governorate-level mode off', () {
+    final user = UserModel.fromJson({
+      'id': 'user-1',
+      'fullName': 'Customer',
+      'email': 'customer@example.com',
+      'phone': '111',
+      'role': 'customer',
+      'area': 'Bethlehem',
+      'governorate': 'بيت لحم',
+      'publicId': 'CUS-1',
+    });
+
+    expect(user.governorateLevel, isFalse);
+  });
+
   test('location catalog resolves legacy and city accounts', () {
     const bethlehem = GovernorateOption(
       name: 'Bethlehem',

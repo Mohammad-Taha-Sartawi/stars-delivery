@@ -395,6 +395,7 @@ router.post('/', async (req, res) => {
           driverLocation.governorate === 'غير محدد'
             ? ''
             : driverLocation.governorate,
+        governorateLevel: false,
         serviceTypes: serviceTypesFromAdminLabel(driverServiceType),
         licenseType: driverLicenseType || '',
         status: 'active',
@@ -970,6 +971,8 @@ router.post('/pending/:id/approve', async (req, res) => {
                   pending.area,
                 governorate:
                   pending.governorate || '',
+                governorateLevel:
+                  false,
                 serviceTypes:
                   pending.serviceTypes || [],
                 licenseType:

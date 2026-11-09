@@ -144,6 +144,16 @@ test('orders store governorate scope and socket rooms follow the setting', () =>
   assert.match(usersRoute, /router\.put\('\/governorate-level'/);
   assert.match(authMiddleware, /governorate governorateLevel/);
   assert.match(index, /socket\.join\(`governorate:\$\{governorate\}`\)/);
+
+  const auth = source('src/routes/auth.js');
+  const adminDrivers = source('src/routes/adminDrivers.js');
+  const userModelSource = source('src/models/User.js');
+  assert.match(userModelSource, /governorateLevel:[^\n]*default:\s*false/);
+  assert.match(auth, /governorateLevel:\s*false/);
+  assert.equal(
+    (adminDrivers.match(/governorateLevel:\s*false/g) || []).length,
+    2,
+  );
 });
 
 test('mobile screens expose the option and warnings on both sides', () => {

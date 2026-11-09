@@ -238,6 +238,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
       role,
       area: registrationArea,
       governorate: registrationGovernorate,
+      governorateLevel: false,
       publicId,
       phoneNumbers: [{ number: phone, primary: true }],
       privacyPolicy: privacyPolicy || false,

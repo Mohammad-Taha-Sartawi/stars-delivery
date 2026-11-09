@@ -151,3 +151,17 @@ test('commission counters can be reset for all drivers or one driver', () => {
   assert.match(userModel, /commissionResetAt/);
   assert.match(orderModel, /commissionWaivedAt/);
 });
+
+
+test('payment action stays separate from the commission reset action', () => {
+  const main = source('src/public/js/main.js');
+  const commissions = source('src/routes/adminCommissions.js');
+
+  // Paying shows the original payment wording, not the reset wording.
+  assert.match(main, /paymentStatus === 'paid'[\s\S]*?تم دفع المستحقات/);
+  assert.match(main, /resetDriverCommission/);
+  assert.match(main, /تصفير عداد العمولة/);
+
+  // Paying clears any previous reset marker, so the status is "paid".
+  assert.match(commissions, /driver\.commissionResetAt = null;/);
+});

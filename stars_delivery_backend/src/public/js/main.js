@@ -562,7 +562,7 @@ function renderDriverResultFromDB(data) {
     : paymentStatus === 'reset'
       ? '<span class="reset-badge">تم تصفير العداد</span>'
       : paymentStatus === 'paid'
-        ? '<span class="paid-badge">مدفوع</span>'
+        ? '<span class="paid-badge">تم دفع المستحقات</span>'
         : '<span class="paid-badge">لا توجد مستحقات</span>';
   container.innerHTML = `
     <h4 data-presentation="p017">بيانات السائق</h4>
@@ -585,13 +585,11 @@ function renderDriverResultFromDB(data) {
       <button class="action-btn orders-report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openDriverReports" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تقرير رفض وتسليم الطلبات</button>
       <button class="action-btn ${driver.isAvailable ? 'freeze' : 'activate'}" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="toggleDriverAvailability" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${driver.isAvailable ? 'true' : 'false'}">${driver.isAvailable ? 'إيقاف التوفر' : 'جعله متاحاً'}</button>
       <button class="action-btn change-password" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="changeDriverPassword" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تغيير كلمة المرور</button>
-      ${hasDue
-        ? `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تم دفع المستحقات</button>`
-        : paymentStatus === 'reset'
-          ? '<button class="action-btn paid" disabled>تم تصفير العداد</button>'
-          : paymentStatus === 'paid'
-            ? '<button class="action-btn paid" disabled>تم دفع المستحقات</button>'
-            : '<button class="action-btn paid" disabled>لا توجد مستحقات</button>'}
+      ${paymentStatus === 'paid'
+        ? '<button class="action-btn paid" disabled>تم دفع المستحقات</button>'
+        : hasDue
+          ? `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تم دفع المستحقات</button>`
+          : '<button class="action-btn paid" disabled>لا توجد مستحقات</button>'}
       <button class="action-btn reset-commissions" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="resetDriverCommission" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تصفير عداد العمولة</button>
       <button class="action-btn docs" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="viewDocuments" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${escapeHtml(String(driver.name || ''))}">الوثائق</button>
       <button class="action-btn freeze" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="freezeDriver" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تجميد</button>
@@ -849,7 +847,7 @@ async function loadCommissions() {
         : isReset
           ? '<span class="status-reset">تم تصفير العداد</span>'
           : isPaid
-            ? '<span class="status-paid">مدفوع</span>'
+            ? '<span class="status-paid">تم دفع المستحقات</span>'
             : '<span class="status-paid">لا توجد مستحقات</span>';
       const actionHtml = hasDue ?
         `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تحديد كمدفوع</button>` :

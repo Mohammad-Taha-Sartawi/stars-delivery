@@ -157,6 +157,7 @@ router.put('/pay/:id', async (req, res) => {
     if (!driver || driver.role !== 'provider') return res.json({ success: false, message: 'السائق غير موجود' });
     driver.commissionPaid = true;
     driver.commissionPaidAt = new Date();
+    driver.commissionResetAt = null;
     await driver.save();
     res.json({ success: true, message: `تم تحديث حالة السائق (${driver.fullName}) إلى مدفوع` });
   } catch (err) {

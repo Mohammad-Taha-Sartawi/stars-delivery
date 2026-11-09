@@ -581,7 +581,8 @@ function renderDriverResultFromDB(data) {
     <div class="row"><span class="label">نوع الخدمة</span><span class="value">${escapeHtml(driver.serviceType || 'غير محدد')}</span></div>
     <div class="row"><span class="label">نوع السائق</span><span class="value">${escapeHtml(driver.licenseType || 'غير محدد')}</span></div>
     <div class="row"><span class="label">حالة التوفر</span><span class="value">${driver.isAvailable ? '<span class="order-status-badge completed">متاح الآن</span>' : '<span class="order-status-badge cancelled">غير متاح</span>'}${driver.blockedUntil && new Date(driver.blockedUntil) > new Date() ? ' <span class="order-status-badge pending">مشغول بطلب</span>' : ''}</span></div>
-    <div class="row"><span class="label">المنطقة</span><span class="value">${escapeHtml(driver.area)}</span></div>
+    <div class="row"><span class="label">المحافظة</span><span class="value">${escapeHtml(driver.governorate || 'غير محدد')}</span></div>
+    <div class="row"><span class="label">المدينة / القرية</span><span class="value">${escapeHtml(driver.city || driver.area || 'غير محدد')}</span></div>
     <div class="row"><span class="label">الحالة</span><span class="value">${getStatusBadge(driver.status)}</span></div>
     <div class="row"><span class="label">إجمالي الطلبات المقبولة</span><span class="value">${escapeHtml(acceptedOrdersCount ?? 0)}</span></div>
     <div class="row"><span class="label">إجمالي الطلبات غير المقبولة</span><span class="value">${escapeHtml(notAcceptedOrdersCount ?? 0)}</span></div>
@@ -647,7 +648,8 @@ function renderUserResultFromDB(user) {
     <div class="row"><span class="label">البريد الإلكتروني</span><span class="value">${escapeHtml(user.email)}</span></div>
     <div class="row"><span class="label">رقم الجوال</span><span class="value">${escapeHtml(user.phone)}</span></div>
     <div class="row"><span class="label">تاريخ التسجيل</span><span class="value">${escapeHtml(user.joinDate)}</span></div>
-    <div class="row"><span class="label">المنطقة</span><span class="value">${escapeHtml(user.area)}</span></div>
+    <div class="row"><span class="label">المحافظة</span><span class="value">${escapeHtml(user.governorate || 'غير محدد')}</span></div>
+    <div class="row"><span class="label">المدينة / القرية</span><span class="value">${escapeHtml(user.city || user.area || 'غير محدد')}</span></div>
     <div class="row"><span class="label">الحالة</span><span class="value">${getStatusBadge(user.status)}</span></div>
     <div class="row"><span class="label">عدد الطلبات</span><span class="value">${escapeHtml(orderCount)}</span></div>
     <div class="action-buttons">
@@ -1016,7 +1018,7 @@ async function loadAreas() {
     for (const gov of data.governorateOrder) {
       if (governorateStats[gov]) {
         const s = governorateStats[gov];
-        listHtml += `<div class="area-item" data-gov="${escapeHtml(String(gov))}" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="selectGovernorate" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(gov))}"><span class="name">${escapeHtml(gov)}</span><span class="counts"><span class="drivers">${escapeHtml(s.totalDrivers)}</span><span class="users">${escapeHtml(s.totalUsers)}</span></span></div>`;
+        listHtml += `<div class="area-item" data-gov="${escapeHtml(String(gov))}" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="selectGovernorate" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(gov))}"><span class="name">${escapeHtml(gov)}</span><span class="counts" title="عدد السائقين وعدد المستخدمين"><span class="drivers"><i class="fas fa-car"></i> ${escapeHtml(s.totalDrivers)}</span><span class="users"><i class="fas fa-user"></i> ${escapeHtml(s.totalUsers)}</span></span></div>`;
         if (!firstGov) firstGov = gov;
       }
     }
@@ -1034,9 +1036,12 @@ function buildGovernorateDetail(gov, stats) {
   let citiesHtml = '', totalDrivers = 0, totalUsers = 0;
   stats.cities.forEach(city => {
     totalDrivers += city.drivers; totalUsers += city.users;
-    citiesHtml += `<div class="city-item"><span class="city-name">${escapeHtml(city.name)}</span><span class="city-counts"><span class="drivers">${escapeHtml(city.drivers)}</span><span class="users">${escapeHtml(city.users)}</span></span></div>`;
+    citiesHtml += `<div class="city-item"><span class="city-name">${escapeHtml(city.name)}</span><span class="city-counts"><span class="drivers" title="السائقون"><i class="fas fa-car"></i> ${escapeHtml(city.drivers)}</span><span class="users" title="المستخدمون"><i class="fas fa-user"></i> ${escapeHtml(city.users)}</span></span></div>`;
   });
-  return `<h3>${escapeHtml(gov)}</h3>${citiesHtml}<div class="total-badge"><span class="label">إجمالي المحافظة</span><span><span class="value drivers">${escapeHtml(totalDrivers)}</span><span class="value users" data-presentation="p022">${escapeHtml(totalUsers)}</span></span></div>`;
+  if (!citiesHtml) {
+    citiesHtml = '<div class="no-city">لا توجد بيانات مسجلة في هذه المحافظة.</div>';
+  }
+  return `<h3>${escapeHtml(gov)}</h3>${citiesHtml}<div class="total-badge"><span class="label">إجمالي المحافظة</span><span class="total-counts"><span class="drivers" title="السائقون"><i class="fas fa-car"></i> ${escapeHtml(totalDrivers)}</span><span class="users" title="المستخدمون" data-presentation="p022"><i class="fas fa-user"></i> ${escapeHtml(totalUsers)}</span></span></div>`;
 }
 
 function selectGovernorate(gov) {
@@ -2036,7 +2041,8 @@ async function loadDriversList() {
       return `<tr>
         <td><strong>${escapeHtml(driver.fullName || 'غير محدد')}</strong>${driver.publicId ? `<br><small>#${escapeHtml(driver.publicId)}</small>` : ''}</td>
         <td>${escapeHtml(driver.phone || '')}</td>
-        <td>${escapeHtml(driver.area || 'غير محدد')}</td>
+        <td>${escapeHtml(driver.governorate || 'غير محدد')}</td>
+        <td>${escapeHtml(driver.city || driver.area || 'غير محدد')}</td>
         <td>${escapeHtml(providerServiceTypesLabel(driver.serviceTypes))}</td>
         <td>${adminAccountStatusBadge(driver.status)}</td>
         <td>${availability}${busy ? ' <span class="order-status-badge pending">مشغول</span>' : ''}</td>
@@ -2045,7 +2051,7 @@ async function loadDriversList() {
     }).join('');
 
     container.innerHTML = `<h4 data-presentation="p017">قائمة السائقين</h4>
-      <table class="orders-table"><thead><tr><th>السائق</th><th>الجوال</th><th>المنطقة</th><th>نوع الخدمة</th><th>الحالة</th><th>التوفر</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <table class="orders-table"><thead><tr><th>السائق</th><th>الجوال</th><th>المحافظة</th><th>المدينة / القرية</th><th>نوع الخدمة</th><th>الحالة</th><th>التوفر</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table>`;
     container.classList.add('show');
   } catch (err) {
     container.innerHTML = '<p data-presentation="p030">حدث خطأ في تحميل السائقين.</p>';
@@ -2079,14 +2085,15 @@ async function loadUsersList() {
         <td><strong>${escapeHtml(user.fullName || 'غير محدد')}</strong>${user.publicId ? `<br><small>#${escapeHtml(user.publicId)}</small>` : ''}</td>
         <td>${escapeHtml(user.email || '')}</td>
         <td>${escapeHtml(user.phone || '')}</td>
-        <td>${escapeHtml(user.area || 'غير محدد')}</td>
+        <td>${escapeHtml(user.governorate || 'غير محدد')}</td>
+        <td>${escapeHtml(user.city || user.area || 'غير محدد')}</td>
         <td>${adminAccountStatusBadge(user.status)}</td>
         <td><button class="order-action-btn details" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="selectUserFromList" data-admin-arg-count="1" data-admin-arg-1="${id}"><i class="fas fa-eye"></i> عرض</button></td>
       </tr>`;
     }).join('');
 
     container.innerHTML = `<h4 data-presentation="p017">قائمة المستخدمين</h4>
-      <table class="orders-table"><thead><tr><th>المستخدم</th><th>البريد</th><th>الجوال</th><th>المنطقة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <table class="orders-table"><thead><tr><th>المستخدم</th><th>البريد</th><th>الجوال</th><th>المحافظة</th><th>المدينة / القرية</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table>`;
     container.classList.add('show');
   } catch (err) {
     container.innerHTML = '<p data-presentation="p030">حدث خطأ في تحميل المستخدمين.</p>';
@@ -2833,7 +2840,8 @@ async function loadPendingProviders() {
           + `<td>${escapeHtml(provider.email)}</td>`
           + `<td>${escapeHtml(provider.phone)}</td>`
           + `<td>${escapeHtml(providerServiceTypesLabel(provider.serviceTypes))}</td>`
-          + `<td>${escapeHtml(provider.area || 'غير محدد')}</td>`
+          + `<td>${escapeHtml(provider.governorate || 'غير محدد')}</td>`
+          + `<td>${escapeHtml(provider.city || provider.area || 'غير محدد')}</td>`
           + `<td>${escapeHtml(new Date(provider.createdAt).toLocaleDateString('ar-EG'))}</td>`
           + `<td><span class="${statusClass}">${escapeHtml(documentStatusText)}</span></td>`
           + `<td>`
@@ -2871,7 +2879,8 @@ async function loadPendingProviders() {
         + `<th>البريد</th>`
         + `<th>الجوال</th>`
         + `<th>نوع الخدمة</th>`
-        + `<th>المنطقة</th>`
+        + `<th>المحافظة</th>`
+        + `<th>المدينة / القرية</th>`
         + `<th>تاريخ التسجيل</th>`
         + `<th>الوثائق</th>`
         + `<th>الإجراءات</th>`

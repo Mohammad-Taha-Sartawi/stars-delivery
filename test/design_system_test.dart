@@ -48,6 +48,7 @@ class _TestAuthGateway implements AuthGateway {
     String password,
     String role,
     String area, {
+    String governorate = '',
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,

@@ -44,6 +44,7 @@ function publicMobileUser(user) {
     phone: primaryPhone,
     role: user.role || '',
     area: user.area || '',
+    governorate: user.governorate || '',
     publicId: user.publicId || '',
   };
 }

@@ -425,6 +425,7 @@ class _RecordingSessionGateway implements AuthGateway {
     String d,
     String e,
     String f, {
+    String governorate = '',
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,

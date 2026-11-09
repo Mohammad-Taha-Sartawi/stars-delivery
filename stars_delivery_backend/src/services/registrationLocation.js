@@ -1,0 +1,192 @@
+const PRIMARY_GOVERNORATES = [
+  'القدس',
+  'رام الله والبيرة',
+  'الخليل',
+  'نابلس',
+  'بيت لحم',
+  'أريحا',
+  'سلفيت',
+  'جنين',
+  'طولكرم',
+  'قلقيلية',
+  'طوباس',
+  'غزة',
+  'خان يونس',
+  'رفح',
+  'دير البلح',
+  'شمال غزة',
+];
+
+// Canonical governorates plus aliases used by older accounts. The four
+// interior governorates are only shown in the areas report when data exists.
+const GOVERNORATE_DEFINITIONS = [
+  {
+    name: 'القدس',
+    aliases: ['Jerusalem (Quds)', 'Jerusalem'],
+  },
+  {
+    name: 'رام الله والبيرة',
+    aliases: ['رام الله', 'Ramallah'],
+  },
+  { name: 'الخليل', aliases: ['Hebron'] },
+  { name: 'نابلس', aliases: ['Nablus'] },
+  { name: 'بيت لحم', aliases: ['Bethlehem'] },
+  { name: 'أريحا', aliases: ['Jericho'] },
+  { name: 'سلفيت', aliases: ['Salfit'] },
+  { name: 'جنين', aliases: ['Jenin'] },
+  { name: 'طولكرم', aliases: ['Tulkarm'] },
+  { name: 'قلقيلية', aliases: ['Qalqilya'] },
+  { name: 'طوباس', aliases: ['Tubas'] },
+  { name: 'غزة', aliases: ['Gaza'] },
+  { name: 'خان يونس', aliases: ['Khan Yunis'] },
+  { name: 'رفح', aliases: ['Rafah'] },
+  { name: 'دير البلح', aliases: ['Deir El Balah', 'Deir al-Balah'] },
+  { name: 'شمال غزة', aliases: ['North Gaza'] },
+  { name: 'حيفا', aliases: ['Haifa'] },
+  { name: 'عكا', aliases: ['Acre'] },
+  { name: 'الناصرة', aliases: ['Nazareth'] },
+  { name: 'يافا', aliases: ['Jaffa'] },
+];
+
+const aliasToGovernorate = new Map();
+
+for (const definition of GOVERNORATE_DEFINITIONS) {
+  aliasToGovernorate.set(
+    definition.name.toLowerCase(),
+    definition.name,
+  );
+  for (const alias of definition.aliases) {
+    aliasToGovernorate.set(
+      alias.trim().toLowerCase(),
+      definition.name,
+    );
+  }
+}
+
+function normalizeValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function canonicalGovernorate(value) {
+  const normalized = normalizeValue(value);
+  if (!normalized) return '';
+  return aliasToGovernorate.get(normalized.toLowerCase()) || '';
+}
+
+/**
+ * Resolves the governorate and the village/city for a registered account.
+ * New accounts store both; legacy accounts stored only one `area` value, so
+ * a governorate-looking area is treated as the governorate itself.
+ */
+function resolveRegistrationLocation(record = {}) {
+  const rawGovernorate = normalizeValue(record.governorate);
+  const rawArea = normalizeValue(record.area);
+  const governorateFromField = canonicalGovernorate(rawGovernorate);
+  const governorateFromArea = canonicalGovernorate(rawArea);
+  const governorate =
+    governorateFromField
+    || governorateFromArea
+    || rawGovernorate
+    || 'غير محدد';
+
+  const areaIsGovernorate = Boolean(rawArea)
+    && (
+      governorateFromArea
+        ? governorateFromArea === (governorateFromField || governorate)
+        : rawArea === governorate || rawArea === rawGovernorate
+    );
+
+  return {
+    governorate,
+    city: areaIsGovernorate ? 'من المحافظة نفسها' : (rawArea || 'غير محدد'),
+    area: rawArea,
+  };
+}
+
+function emptyGroup() {
+  return {
+    totalDrivers: 0,
+    totalUsers: 0,
+    cities: new Map(),
+  };
+}
+
+function buildGovernorateStats(drivers = [], users = []) {
+  const groups = new Map();
+
+  for (const name of PRIMARY_GOVERNORATES) {
+    groups.set(name, emptyGroup());
+  }
+
+  const ensureGroup = (name) => {
+    if (!groups.has(name)) {
+      groups.set(name, emptyGroup());
+    }
+    return groups.get(name);
+  };
+
+  const addRecord = (record, countKey, cityKey) => {
+    const location = resolveRegistrationLocation(record);
+    const group = ensureGroup(location.governorate);
+    group[countKey] += 1;
+
+    const cityName = location.city || 'غير محدد';
+    if (!group.cities.has(cityName)) {
+      group.cities.set(cityName, { drivers: 0, users: 0 });
+    }
+    group.cities.get(cityName)[cityKey] += 1;
+  };
+
+  for (const driver of drivers) {
+    addRecord(driver, 'totalDrivers', 'drivers');
+  }
+  for (const user of users) {
+    addRecord(user, 'totalUsers', 'users');
+  }
+
+  const stats = {};
+  for (const [name, group] of groups.entries()) {
+    const cities = [...group.cities.entries()]
+      .map(([cityName, counts]) => ({
+        name: cityName,
+        drivers: counts.drivers,
+        users: counts.users,
+        total: counts.drivers + counts.users,
+      }))
+      .sort(
+        (a, b) =>
+          b.total - a.total
+          || a.name.localeCompare(b.name, 'ar'),
+      );
+
+    stats[name] = {
+      totalDrivers: group.totalDrivers,
+      totalUsers: group.totalUsers,
+      total: group.totalDrivers + group.totalUsers,
+      cities,
+    };
+  }
+
+  const primaryIndex = new Map(
+    PRIMARY_GOVERNORATES.map((name, index) => [name, index]),
+  );
+  const governorateOrder = Object.keys(stats).sort((a, b) => {
+    const byTotal = stats[b].total - stats[a].total;
+    if (byTotal !== 0) return byTotal;
+
+    const aIndex = primaryIndex.has(a) ? primaryIndex.get(a) : 999;
+    const bIndex = primaryIndex.has(b) ? primaryIndex.get(b) : 999;
+    if (aIndex !== bIndex) return aIndex - bIndex;
+
+    return a.localeCompare(b, 'ar');
+  });
+
+  return { stats, governorateOrder };
+}
+
+module.exports = {
+  PRIMARY_GOVERNORATES,
+  canonicalGovernorate,
+  resolveRegistrationLocation,
+  buildGovernorateStats,
+};

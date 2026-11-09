@@ -90,12 +90,14 @@ test('driver and user result HTML encodes displayed API fields', () => {
     '${escapeHtml(driver.name)}',
     '${escapeHtml(driver.email)}',
     '${escapeHtml(driver.phone)}',
-    '${escapeHtml(driver.area)}',
+    '${escapeHtml(driver.governorate || \'غير محدد\')}',
+    '${escapeHtml(driver.city || driver.area || \'غير محدد\')}',
     '${escapeHtml(user.userId)}',
     '${escapeHtml(user.name)}',
     '${escapeHtml(user.email)}',
     '${escapeHtml(user.phone)}',
-    '${escapeHtml(user.area)}',
+    '${escapeHtml(user.governorate || \'غير محدد\')}',
+    '${escapeHtml(user.city || user.area || \'غير محدد\')}',
   ]) {
     assert.ok(
       source.includes(marker),
@@ -193,7 +195,8 @@ test('documents, financial rows, orders, broadcast, and pending providers encode
     '${escapeHtml(provider.fullName)}',
     '${escapeHtml(provider.email)}',
     '${escapeHtml(provider.phone)}',
-    '${escapeHtml(provider.area || \'غير محدد\')}',
+    '${escapeHtml(provider.governorate || \'غير محدد\')}',
+    '${escapeHtml(provider.city || provider.area || \'غير محدد\')}',
   ]) {
     assert.ok(
       source.includes(marker),

@@ -13,6 +13,9 @@ const { executeTransaction } = require('../services/transaction');
 const { serviceTypesFromAdminLabel, serviceTypesLabel } = require('../services/providerServiceTypes');
 const { splitCommission } = require('../services/commissionLedger');
 const { notAcceptedOrderIds } = require('../services/driverOrderStats');
+const {
+  resolveRegistrationLocation,
+} = require('../services/registrationLocation');
 const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
 const express = require('express');
 const router = express.Router();
@@ -147,30 +150,35 @@ router.get('/:id/reports', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const drivers = await User.find({ role: 'provider' })
-      .select('fullName publicId email phoneNumbers area status isAvailable serviceTypes licenseType blockedUntil offerCooldownUntil createdAt deleted')
+      .select('fullName publicId email phoneNumbers area governorate status isAvailable serviceTypes licenseType blockedUntil offerCooldownUntil createdAt deleted')
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
 
-    res.json(drivers.map((driver) => ({
-      _id: driver._id.toString(),
-      fullName: driver.fullName,
-      publicId: driver.publicId || '',
-      email: driver.email || '',
-      phone:
-        driver.phoneNumbers?.find((phone) => phone.primary)?.number
-        || driver.phoneNumbers?.[0]?.number
-        || '',
-      area: driver.area || '',
-      status: driver.status || '',
-      isAvailable: driver.isAvailable !== false,
-      serviceTypes: driver.serviceTypes || [],
-      licenseType: driver.licenseType || '',
-      blockedUntil: driver.blockedUntil || null,
-      offerCooldownUntil: driver.offerCooldownUntil || null,
-      createdAt: driver.createdAt,
-      deleted: driver.deleted === true,
-    })));
+    res.json(drivers.map((driver) => {
+      const location = resolveRegistrationLocation(driver);
+      return {
+        _id: driver._id.toString(),
+        fullName: driver.fullName,
+        publicId: driver.publicId || '',
+        email: driver.email || '',
+        phone:
+          driver.phoneNumbers?.find((phone) => phone.primary)?.number
+          || driver.phoneNumbers?.[0]?.number
+          || '',
+        area: driver.area || '',
+        governorate: location.governorate,
+        city: location.city,
+        status: driver.status || '',
+        isAvailable: driver.isAvailable !== false,
+        serviceTypes: driver.serviceTypes || [],
+        licenseType: driver.licenseType || '',
+        blockedUntil: driver.blockedUntil || null,
+        offerCooldownUntil: driver.offerCooldownUntil || null,
+        createdAt: driver.createdAt,
+        deleted: driver.deleted === true,
+      };
+    }));
   } catch (err) {
     sendInternalServerError(res);
   }
@@ -244,6 +252,7 @@ router.get('/search', async (req, res) => {
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const recentOrders = orders.filter(o => new Date(o.createdAt) >= thirtyDaysAgo);
     const last30Profit = recentOrders.reduce((s, o) => s + (o.providerEarning || 0), 0);
+    const location = resolveRegistrationLocation(match);
 
     const driver = {
       _id: match._id.toString(),
@@ -262,6 +271,8 @@ router.get('/search', async (req, res) => {
       blockedUntil: match.blockedUntil || null,
       offerCooldownUntil: match.offerCooldownUntil || null,
       area: match.area || 'غير محدد',
+      governorate: location.governorate,
+      city: location.city,
       status: match.status === 'blocked' ? 'inactive' : match.status,
       financial: {
         paymentStatus,
@@ -361,6 +372,11 @@ router.post('/', async (req, res) => {
     const publicId =
       await generatePublicId();
 
+    const driverLocation =
+      resolveRegistrationLocation({
+        area: driverArea || '',
+      });
+
     const user =
       new User({
         fullName: driverName,
@@ -375,6 +391,10 @@ router.post('/', async (req, res) => {
         password: hashedPassword,
         role: 'provider',
         area: driverArea || '',
+        governorate:
+          driverLocation.governorate === 'غير محدد'
+            ? ''
+            : driverLocation.governorate,
         serviceTypes: serviceTypesFromAdminLabel(driverServiceType),
         licenseType: driverLicenseType || '',
         status: 'active',
@@ -948,6 +968,8 @@ router.post('/pending/:id/approve', async (req, res) => {
                   'provider',
                 area:
                   pending.area,
+                governorate:
+                  pending.governorate || '',
                 serviceTypes:
                   pending.serviceTypes || [],
                 licenseType:

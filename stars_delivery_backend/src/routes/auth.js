@@ -95,7 +95,20 @@ function providerRegistrationDocuments(
 
 router.post('/register', mobileRegistrationLimiter, providerRegistrationDocuments, async (req, res) => {
   try {
-    const { fullName, email, phone, password, role, area, privacyPolicy } = req.body;
+    const {
+      fullName,
+      email,
+      phone,
+      password,
+      role,
+      area,
+      governorate,
+      privacyPolicy,
+    } = req.body;
+    const registrationArea =
+      typeof area === 'string' ? area.trim() : '';
+    const registrationGovernorate =
+      typeof governorate === 'string' ? governorate.trim() : '';
     const normalizedEmail =
       normalizeMobileEmail(email);
 
@@ -180,7 +193,9 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
           phone,
           password:
             hashed,
-          area,
+          area: registrationArea,
+          governorate:
+            registrationGovernorate,
           serviceTypes,
           providerDocuments,
         });
@@ -216,7 +231,13 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
     // Customers register immediately
     const publicId = await generatePublicId();
     const user = await User.create({
-      fullName, email: normalizedEmail, password: hashed, role, area, publicId,
+      fullName,
+      email: normalizedEmail,
+      password: hashed,
+      role,
+      area: registrationArea,
+      governorate: registrationGovernorate,
+      publicId,
       phoneNumbers: [{ number: phone, primary: true }],
       privacyPolicy: privacyPolicy || false,
     });
@@ -244,7 +265,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
 
     res.status(201).json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, phone, role: user.role, area: user.area, publicId: user.publicId },
+      user: { id: user._id, fullName: user.fullName, email: user.email, phone, role: user.role, area: user.area, governorate: user.governorate || '', publicId: user.publicId },
     });
   } catch (err) {
     sendInternalServerError(res);
@@ -325,7 +346,7 @@ router.post('/login', mobileLoginLimiter, async (req, res) => {
 
     res.json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, phone: primaryPhone, role: user.role, area: user.area, publicId: user.publicId || '' },
+      user: { id: user._id, fullName: user.fullName, email: user.email, phone: primaryPhone, role: user.role, area: user.area, governorate: user.governorate || '', publicId: user.publicId || '' },
     });
   } catch (err) {
     sendInternalServerError(res);

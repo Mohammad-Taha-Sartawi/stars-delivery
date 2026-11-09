@@ -33,6 +33,7 @@ class RegisterEvent extends AuthEvent {
   final String password;
   final String role;
   final String area;
+  final String governorate;
   final bool privacyPolicy;
   final List<String> serviceTypes;
   final ProviderRegistrationDocument? driverLicenseDocument;
@@ -44,6 +45,7 @@ class RegisterEvent extends AuthEvent {
     required this.password,
     required this.role,
     required this.area,
+    required this.governorate,
     this.privacyPolicy = true,
     this.serviceTypes = const [],
     this.driverLicenseDocument,
@@ -60,6 +62,7 @@ class RegisterEvent extends AuthEvent {
     password,
     role,
     area,
+    governorate,
     privacyPolicy,
   ];
 }

@@ -140,6 +140,7 @@ abstract interface class AuthGateway {
     String password,
     String role,
     String area, {
+    String governorate = '',
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
@@ -191,6 +192,7 @@ class AuthService implements AuthGateway {
     String password,
     String role,
     String area, {
+    String governorate = '',
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
@@ -203,6 +205,7 @@ class AuthService implements AuthGateway {
         'password': password,
         'role': role,
         'area': area,
+        'governorate': governorate,
         'privacyPolicy': privacyPolicy,
       };
 

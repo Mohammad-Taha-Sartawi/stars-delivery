@@ -14,28 +14,36 @@ const {
 const {
   mobileSessionRotationFilter,
 } = require('../services/mobileSession');
+const {
+  resolveRegistrationLocation,
+} = require('../services/registrationLocation');
 
 router.get('/', async (req, res) => {
   try {
     const users = await User.find({ role: 'customer' })
-      .select('fullName publicId email phoneNumbers area status createdAt deleted')
+      .select('fullName publicId email phoneNumbers area governorate status createdAt deleted')
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
 
-    res.json(users.map((user) => ({
-      _id: user._id.toString(),
-      fullName: user.fullName,
-      publicId: user.publicId || '',
-      email: user.email || '',
-      phone:
-        user.phoneNumbers?.find((phone) => phone.primary)?.number
-        || user.phoneNumbers?.[0]?.number
-        || '',
-      area: user.area || '',
-      status: user.status || '',
-      createdAt: user.createdAt,
-    })));
+    res.json(users.map((user) => {
+      const location = resolveRegistrationLocation(user);
+      return {
+        _id: user._id.toString(),
+        fullName: user.fullName,
+        publicId: user.publicId || '',
+        email: user.email || '',
+        phone:
+          user.phoneNumbers?.find((phone) => phone.primary)?.number
+          || user.phoneNumbers?.[0]?.number
+          || '',
+        area: user.area || '',
+        governorate: location.governorate,
+        city: location.city,
+        status: user.status || '',
+        createdAt: user.createdAt,
+      };
+    }));
   } catch (err) {
     sendInternalServerError(res);
   }
@@ -63,6 +71,7 @@ router.get('/search', async (req, res) => {
     if (!user) return res.json({ error: 'لم يتم العثور على مستخدم' });
 
     const orders = await Order.find({ customerId: user._id }).lean();
+    const location = resolveRegistrationLocation(user);
     const mappedUser = {
       _id: user._id.toString(),
       userId: user.publicId || user._id.toString().slice(-8),
@@ -75,6 +84,8 @@ router.get('/search', async (req, res) => {
         || '',
       joinDate: user.createdAt ? user.createdAt.toISOString().split('T')[0] : 'غير محدد',
       area: user.area || 'غير محدد',
+      governorate: location.governorate,
+      city: location.city,
       status: user.status === 'blocked' ? 'inactive' : user.status,
       orders: orders.map(o => ({
         fullId: o._id.toString(),

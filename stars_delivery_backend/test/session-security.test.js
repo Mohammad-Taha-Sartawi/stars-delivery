@@ -210,6 +210,7 @@ test(
         password: 'hashed-secret',
         role: 'customer',
         area: 'Ramallah',
+        governorate: 'رام الله والبيرة',
         publicId: 'USR-001',
         status: 'active',
         deleted: false,
@@ -234,6 +235,7 @@ test(
         phone: '222',
         role: 'customer',
         area: 'Ramallah',
+        governorate: 'رام الله والبيرة',
         publicId: 'USR-001',
       },
     );

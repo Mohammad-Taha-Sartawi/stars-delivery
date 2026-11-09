@@ -43,6 +43,9 @@ class _TestVault implements TokenVault {
 }
 
 class _StubGateway implements AuthGateway {
+  static String? lastArea;
+  static String? lastGovernorate;
+
   @override
   Future<Map<String, dynamic>> login(
     String email,
@@ -60,11 +63,13 @@ class _StubGateway implements AuthGateway {
     String password,
     String role,
     String area, {
+    String governorate = '',
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
   }) {
-    // Reject dialog tests never reach registration.
+    lastArea = area;
+    lastGovernorate = governorate;
     throw UnimplementedError();
   }
 
@@ -162,7 +167,12 @@ void main() {
 
   /// Switches to registration mode, fills the customer form (with area) and
   /// submits, leaving the Terms of Service dialog open.
-  Future<void> openTermsDialog(WidgetTester tester, bool isAr) async {
+  Future<void> openTermsDialog(
+    WidgetTester tester,
+    bool isAr, {
+    String governorate = 'Jerusalem (Quds)',
+    String city = 'القدس',
+  }) async {
     // Switch to the registration form.
     final signupToggle = find.textContaining(
       isAr ? 'إنشاء حساب' : 'Sign Up',
@@ -188,25 +198,25 @@ void main() {
     final governorateDropdown = tester.widget<DropdownButtonFormField<String>>(
       find.byKey(const Key('governorateDropdown')),
     );
-    governorateDropdown.onChanged!('Jerusalem (Quds)');
+    governorateDropdown.onChanged!(governorate);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     final cityDropdown = tester.widget<DropdownButtonFormField<String>>(
       find.byType(DropdownButtonFormField<String>).at(1),
     );
-    cityDropdown.onChanged!('القدس');
+    cityDropdown.onChanged!(city);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     tester
         .state<FormFieldState<String>>(
           find.byKey(const Key('governorateDropdown')),
         )
-        .didChange('Jerusalem (Quds)');
+        .didChange(governorate);
     tester
         .state<FormFieldState<String>>(
           find.byType(DropdownButtonFormField<String>).at(1),
         )
-        .didChange('القدس');
+        .didChange(city);
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
     await tester.enterText(find.byType(TextFormField).at(2), 'ann@example.com');
@@ -440,6 +450,34 @@ void main() {
       ).items!.map((item) => item.value).toList();
       expect(values, contains('ad-Dhahiriya'));
       expect(values, isNot(contains('Al-Bireh')));
+    });
+
+    testWidgets('submits the selected governorate and village to the gateway', (
+      tester,
+    ) async {
+      _StubGateway.lastArea = null;
+      _StubGateway.lastGovernorate = null;
+
+      await tester.pumpWidget(loginHarness(locale: const Locale('en')));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await openTermsDialog(
+        tester,
+        false,
+        governorate: 'Ramallah',
+        city: 'Al-Bireh',
+      );
+
+      expect(find.text('Terms of Service'), findsOneWidget);
+      await tester.tap(find.text('Agree'));
+      await tester.pumpAndSettle(const Duration(milliseconds: 150));
+      expect(find.text('Privacy Policy'), findsOneWidget);
+
+      await tester.tap(find.text('Agree'));
+      await tester.pumpAndSettle(const Duration(milliseconds: 150));
+
+      expect(_StubGateway.lastArea, 'Al-Bireh');
+      expect(_StubGateway.lastGovernorate, 'رام الله والبيرة');
     });
   });
 }

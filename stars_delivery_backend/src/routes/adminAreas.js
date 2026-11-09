@@ -2,36 +2,26 @@ const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-
-const governorateOrder = ['القدس', 'رام الله والبيرة', 'الخليل', 'نابلس', 'بيت لحم', 'أريحا', 'سلفيت', 'جنين', 'طولكرم', 'قلقيلية', 'طوباس', 'غزة', 'خان يونس', 'رفح', 'دير البلح', 'شمال غزة', 'حيفا', 'عكا', 'الناصرة', 'يافا'];
+const {
+  buildGovernorateStats,
+} = require('../services/registrationLocation');
 
 router.get('/', async (req, res) => {
   try {
     const drivers = await User.find({ role: 'provider' }).lean();
     const users = await User.find({ role: 'customer' }).lean();
 
-    const areaCounts = {};
-    drivers.forEach(d => {
-      const area = d.governorate || d.area || 'غير محدد';
-      if (!areaCounts[area]) areaCounts[area] = { totalDrivers: 0, totalUsers: 0 };
-      areaCounts[area].totalDrivers++;
-    });
-    users.forEach(u => {
-      const area = u.governorate || u.area || 'غير محدد';
-      if (!areaCounts[area]) areaCounts[area] = { totalDrivers: 0, totalUsers: 0 };
-      areaCounts[area].totalUsers++;
-    });
+    const { stats, governorateOrder } = buildGovernorateStats(
+      drivers,
+      users,
+    );
 
-    const stats = {};
-    for (const [area, counts] of Object.entries(areaCounts)) {
-      stats[area] = {
-        totalDrivers: counts.totalDrivers,
-        totalUsers: counts.totalUsers,
-        cities: [{ name: area, drivers: counts.totalDrivers, users: counts.totalUsers }]
-      };
-    }
-
-    res.json({ stats, governorateOrder });
+    res.json({
+      stats,
+      governorateOrder,
+      totalDrivers: drivers.length,
+      totalUsers: users.length,
+    });
   } catch (err) {
     sendInternalServerError(res);
   }

@@ -1037,6 +1037,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
         role: _selectedRole,
         area: _selectedArea ?? '',
+        governorate: _currentGovernorate?.areaValue ?? '',
         serviceTypes: _serviceTypes.toList(),
         driverLicenseDocument: driverLicenseDocument,
       ),

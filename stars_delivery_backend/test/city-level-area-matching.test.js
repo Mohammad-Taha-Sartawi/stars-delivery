@@ -14,12 +14,14 @@ test('registration area is matched exactly at village/city level', () => {
   const orders = source('src/routes/orders.js');
   const provider = source('src/routes/provider.js');
 
-  // Registration persists the selected village/city in `area`.
+  // Registration persists the selected village/city in `area` and the
+  // selected governorate in `governorate`.
   assert.match(
     auth,
-    /const \{ fullName, email, phone, password, role, area, privacyPolicy \} = req\.body/,
+    /area,\s*\n\s*governorate,/,
   );
-  assert.match(auth, /area,/);
+  assert.match(auth, /area:\s*registrationArea/);
+  assert.match(auth, /governorate:\s*registrationGovernorate/);
 
   // Orders take the customer's registered area (not GPS) and providers only
   // see orders from the same exact area value.

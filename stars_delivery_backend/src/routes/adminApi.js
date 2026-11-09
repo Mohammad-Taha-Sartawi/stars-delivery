@@ -4,6 +4,10 @@ const router = express.Router();
 const User = require('../models/User');
 const Order = require('../models/Order');
 const Report = require('../models/Report');
+const {
+  orderStatBoundaries,
+  normalizeOrderTypeCounts,
+} = require('../services/orderStats');
 
 router.get('/stats', async (req, res) => {
   try {
@@ -42,6 +46,23 @@ router.get('/stats', async (req, res) => {
 
     const inactiveUsers = totalUsers - activeUsers;
 
+    const { startOfToday, startOfMonth } = orderStatBoundaries();
+    const orderTypeRows = await Order.aggregate([
+      { $match: { createdAt: { $gte: startOfMonth } } },
+      {
+        $group: {
+          _id: '$type',
+          month: { $sum: 1 },
+          today: {
+            $sum: {
+              $cond: [{ $gte: ['$createdAt', startOfToday] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+    const orderTypeCounts = normalizeOrderTypeCounts(orderTypeRows);
+
     const driverReportsPending = await Report.countDocuments({ reportType: 'driver', status: { $in: ['in-review', 'in-progress'] } });
     const userReportsPending = await Report.countDocuments({ reportType: 'user', status: { $in: ['in-review', 'in-progress'] } });
 
@@ -49,7 +70,8 @@ router.get('/stats', async (req, res) => {
       totalDrivers, activeDrivers, inactiveDrivers,
       totalUsers, activeUsers, inactiveUsers,
       totalCommission, pendingAmount, pendingDrivers: totalBlocked,
-      driverReportsPending, userReportsPending
+      driverReportsPending, userReportsPending,
+      orderTypeCounts,
     });
   } catch (err) {
     sendInternalServerError(res);

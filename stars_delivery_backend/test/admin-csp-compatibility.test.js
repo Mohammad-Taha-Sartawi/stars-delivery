@@ -78,9 +78,11 @@ test('presentation tokens preserve all migrated inline styles externally', () =>
     ),
   ];
 
+  // Three fake trend chips (product/passenger/cargo percentages) were
+  // replaced by real order counters, so their presentation tokens were removed.
   assert.equal(
     tokenMatches.length,
-    78,
+    75,
   );
 
   const tokens = new Set(

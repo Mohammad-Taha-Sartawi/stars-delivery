@@ -759,6 +759,16 @@ async function loadDashboardStats() {
     document.getElementById('totalUsers').textContent = data.totalUsers;
     document.getElementById('activeUsers').textContent = data.activeUsers;
     document.getElementById('inactiveUsers').textContent = data.inactiveUsers;
+    const orderCounts = data.orderTypeCounts || {};
+    const productOrders = orderCounts.product || {};
+    const peopleOrders = orderCounts.people || {};
+    const goodsOrders = orderCounts.goods || {};
+    document.getElementById('prodCount').textContent = productOrders.month || 0;
+    document.getElementById('prodToday').textContent = productOrders.today || 0;
+    document.getElementById('passCount').textContent = peopleOrders.month || 0;
+    document.getElementById('passToday').textContent = peopleOrders.today || 0;
+    document.getElementById('cargoCount').textContent = goodsOrders.month || 0;
+    document.getElementById('cargoToday').textContent = goodsOrders.today || 0;
     document.getElementById('totalCommission').textContent = data.totalCommission;
     document.getElementById('pendingDrivers').textContent = data.pendingDrivers;
     document.getElementById('pendingAmount').textContent = data.pendingAmount;

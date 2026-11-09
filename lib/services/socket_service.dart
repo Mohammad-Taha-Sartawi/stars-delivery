@@ -71,7 +71,7 @@ class SocketService {
       io.OptionBuilder()
           .setAuth({'token': token})
           .setQuery({'area': area ?? ''})
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
           .enableAutoConnect()
           .build(),
     );

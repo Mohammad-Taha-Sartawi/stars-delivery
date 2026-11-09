@@ -31,6 +31,7 @@ const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const Notification = require('../models/Notification');
 const PendingProvider = require('../models/PendingProvider');
+const CommissionPayment = require('../models/CommissionPayment');
 const { generatePublicId } = require('../utils/publicId');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
@@ -153,7 +154,10 @@ router.get('/:id/reports', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const drivers = await User.find({ role: 'provider' })
+    const drivers = await User.find({
+      role: 'provider',
+      deleted: { $ne: true },
+    })
       .select('fullName publicId email phoneNumbers area governorate status isAvailable serviceTypes licenseType licenseNotAvailable blockedUntil offerCooldownUntil createdAt deleted')
       .sort({ createdAt: -1 })
       .limit(200)
@@ -205,6 +209,7 @@ router.get('/search', async (req, res) => {
 
     const match = await User.findOne({
       role: 'provider',
+      deleted: { $ne: true },
       $or: searchTerms,
     }).lean();
 
@@ -258,6 +263,12 @@ router.get('/search', async (req, res) => {
     const recentOrders = orders.filter(o => new Date(o.createdAt) >= thirtyDaysAgo);
     const last30Profit = recentOrders.reduce((s, o) => s + (o.providerEarning || 0), 0);
     const location = resolveRegistrationLocation(match);
+    const commissionPayments = await CommissionPayment.find({
+      driverId: match._id,
+    })
+      .sort({ paidAt: -1 })
+      .limit(10)
+      .lean();
 
     const driver = {
       _id: match._id.toString(),
@@ -282,6 +293,12 @@ router.get('/search', async (req, res) => {
       status: match.status === 'blocked' ? 'inactive' : match.status,
       financial: {
         paymentStatus,
+        payments: commissionPayments.map((payment) => ({
+          amount: payment.amount || 0,
+          method: payment.method || 'manual_admin',
+          note: payment.note || '',
+          paidAt: payment.paidAt || payment.createdAt,
+        })),
         transactions: orders.map(o => ({
           id: o._id.toString(),
           desc: `طلب #${o._id.toString().slice(-8)}`,

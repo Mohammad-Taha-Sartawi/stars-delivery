@@ -12,7 +12,7 @@ const {
 router.get('/stats', async (req, res) => {
   try {
     const [totalDrivers, activeDrivers, inactiveDrivers, totalUsers, activeUsers] = await Promise.all([
-      User.countDocuments({ role: 'provider' }),
+      User.countDocuments({ role: 'provider', deleted: { $ne: true } }),
       // Drivers who kept receiving orders enabled.
       User.countDocuments({
         role: 'provider',
@@ -27,8 +27,12 @@ router.get('/stats', async (req, res) => {
         deleted: { $ne: true },
         isAvailable: false,
       }),
-      User.countDocuments({ role: 'customer' }),
-      User.countDocuments({ role: 'customer', status: 'active' }),
+      User.countDocuments({ role: 'customer', deleted: { $ne: true } }),
+      User.countDocuments({
+        role: 'customer',
+        status: 'active',
+        deleted: { $ne: true },
+      }),
     ]);
 
     const { startOfToday, startOfMonth } = orderStatBoundaries();

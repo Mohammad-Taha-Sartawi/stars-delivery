@@ -12,6 +12,7 @@ const reportSchema = new mongoose.Schema({
   reporterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   reporter: { type: String, required: true },
   reportedPublicId: { type: String, required: true },
+  reportedUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   category: { type: String, required: true },
   date: { type: String, default: () => new Date().toISOString().split('T')[0] },
   status: { type: String, enum: ['in-review', 'in-progress', 'resolved', 'rejected'], default: 'in-review' },

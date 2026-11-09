@@ -233,6 +233,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.delivery_dining;
       case 'order_completed':
         return Icons.check_circle_outline;
+      case 'report_reply':
+        return Icons.support_agent;
       case 'broadcast':
         return Icons.campaign;
       default:

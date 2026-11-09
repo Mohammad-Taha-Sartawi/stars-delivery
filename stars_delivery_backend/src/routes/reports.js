@@ -1,6 +1,7 @@
 const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
 const Report = require('../models/Report');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 
@@ -14,15 +15,32 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'ID ووصف المشكلة مطلوبان' });
     }
 
+    const normalizedReportType =
+      reportType === 'user' ? 'user' : 'driver';
+    const targetRole =
+      normalizedReportType === 'driver' ? 'provider' : 'customer';
+    const target = await User.findOne({
+      publicId: String(reportedPublicId).trim(),
+      role: targetRole,
+      deleted: { $ne: true },
+    }).select('_id').lean();
+
+    if (!target) {
+      return res.status(400).json({
+        error: 'لا يوجد حساب مطابق لهذا المعرف.',
+      });
+    }
+
     const reportId = `RPT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const report = await Report.create({
       reportId,
-      reportType: reportType || 'driver',
+      reportType: normalizedReportType,
       reporterId: req.userId,
       reporter: req.userId,
       reportedPublicId,
-      category: reportType === 'driver' ? 'الابلاغ عن سائق' : 'الابلاغ عن زبون',
+      reportedUserId: target._id,
+      category: normalizedReportType === 'driver' ? 'الابلاغ عن سائق' : 'الابلاغ عن زبون',
       content,
     });
 

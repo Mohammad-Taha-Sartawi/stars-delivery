@@ -20,7 +20,10 @@ const {
 
 router.get('/', async (req, res) => {
   try {
-    const users = await User.find({ role: 'customer' })
+    const users = await User.find({
+      role: 'customer',
+      deleted: { $ne: true },
+    })
       .select('fullName publicId email phoneNumbers area governorate status createdAt deleted')
       .sort({ createdAt: -1 })
       .limit(200)
@@ -65,6 +68,7 @@ router.get('/search', async (req, res) => {
 
     const user = await User.findOne({
       role: 'customer',
+      deleted: { $ne: true },
       $or: searchTerms,
     }).lean();
 

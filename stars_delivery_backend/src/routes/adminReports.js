@@ -2,6 +2,9 @@ const { sendInternalServerError, sendInternalServerFailure } = require('../secur
 const express = require('express');
 const router = express.Router();
 const Report = require('../models/Report');
+const {
+  createUserNotification,
+} = require('../services/mobileNotifications');
 
 router.get('/:type', async (req, res) => {
   try {
@@ -34,6 +37,17 @@ router.post('/reply/:id', async (req, res) => {
       time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
     });
     await report.save();
+
+    const io = req.app.get('io');
+    await createUserNotification({
+      io,
+      userId: report.reporterId,
+      type: 'report_reply',
+      title: 'رد جديد على بلاغك',
+      body: String(req.body.text || '').trim(),
+      expireAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
+
     res.json({ success: true, report });
   } catch (err) {
     sendInternalServerFailure(res);
@@ -46,6 +60,24 @@ router.put('/:id/status', async (req, res) => {
     if (!report) return res.json({ success: false, message: 'الإبلاغ غير موجود' });
     report.status = req.body.status;
     await report.save();
+
+    const io = req.app.get('io');
+    const statusLabel = {
+      'in-review': 'قيد المراجعة',
+      'in-progress': 'قيد المعالجة',
+      resolved: 'تم الحل',
+      rejected: 'مرفوض',
+    }[report.status] || report.status;
+
+    await createUserNotification({
+      io,
+      userId: report.reporterId,
+      type: 'report_reply',
+      title: 'تحديث حالة البلاغ',
+      body: `أصبحت حالة بلاغك: ${statusLabel}.`,
+      expireAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
+
     res.json({ success: true });
   } catch (err) {
     sendInternalServerFailure(res);

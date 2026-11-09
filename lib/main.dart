@@ -7,6 +7,7 @@ import 'bloc/app/app_state.dart';
 import 'bloc/notification/notification_bloc.dart';
 import 'services/theme_service.dart';
 import 'services/theme_preferences.dart';
+import 'services/locale_preferences.dart';
 import 'package:stars_delivery/services/api_config.dart';
 import 'services/location_service.dart';
 import 'screens/login_screen.dart';
@@ -16,17 +17,22 @@ void main() async {
   await ApiConfig.init();
   await LocationService.initialize();
   final initialTheme = await ThemePreferences.load();
-  runApp(StarsDeliveryApp(initialTheme: initialTheme));
+  final initialLocale = await LocalePreferences.load();
+  runApp(
+    StarsDeliveryApp(initialTheme: initialTheme, initialLocale: initialLocale),
+  );
 }
 
 class StarsDeliveryApp extends StatelessWidget {
   final AuthBloc Function()? authBlocFactory;
   final ThemeMode initialTheme;
+  final Locale initialLocale;
 
   const StarsDeliveryApp({
     super.key,
     this.authBlocFactory,
     this.initialTheme = ThemeMode.light,
+    this.initialLocale = const Locale('ar'),
   });
 
   @override
@@ -36,7 +42,10 @@ class StarsDeliveryApp extends StatelessWidget {
         BlocProvider<AuthBloc>(
           create: (_) => authBlocFactory?.call() ?? AuthBloc(),
         ),
-        BlocProvider(create: (_) => AppBloc(initialTheme: initialTheme)),
+        BlocProvider(
+          create: (_) =>
+              AppBloc(initialTheme: initialTheme, initialLocale: initialLocale),
+        ),
         BlocProvider(create: (_) => NotificationBloc()),
       ],
       child: BlocBuilder<AppBloc, AppState>(

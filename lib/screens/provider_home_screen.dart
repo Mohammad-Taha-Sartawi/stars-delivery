@@ -40,6 +40,7 @@ import 'rejected_orders_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import 'report_screen.dart';
+import 'settings_screen.dart';
 import 'support_chat_screen.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
@@ -515,6 +516,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
               tooltip: AppLocalization.get(context, 'language'),
               icon: Text(isAr ? 'EN' : 'ع', style: theme.textTheme.labelLarge),
               onPressed: () => context.read<AppBloc>().add(ToggleLocale()),
+            );
+          },
+        ),
+        IconButton(
+          tooltip: AppLocalization.get(context, 'settings'),
+          icon: const Icon(Icons.settings_outlined),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
             );
           },
         ),

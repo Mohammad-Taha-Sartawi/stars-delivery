@@ -641,6 +641,7 @@ function renderDriverResultFromDB(data) {
     <div class="row"><span class="label">إجمالي الطلبات غير المقبولة</span><span class="value">${escapeHtml(notAcceptedOrdersCount ?? 0)}</span></div>
     <div class="driver-orders-note">المقبولة: الطلبات التي قبلها الزبون وأُسندت للسائق. غير المقبولة: الطلبات التي رفضها السائق، أو لم يقبل الزبون عرضه، أو انتهت مهلة قبول عرض السعر.</div>
     <div class="row"><span class="label">حالة الدفع</span><span class="value">${paymentLabel}</span></div>
+    ${Array.isArray(driver.financial.payments) && driver.financial.payments.length > 0 ? `<div class="row"><span class="label">آخر دفعة مسجلة</span><span class="value">${escapeHtml(driver.financial.payments[0].amount)} شيكل — ${escapeHtml(new Date(driver.financial.payments[0].paidAt).toLocaleString('ar-EG'))}</span></div>` : ''}
     <div class="row"><span class="label">إجمالي الأرباح (صافي)</span><span class="value" data-presentation="p002">${escapeHtml(netProfit)} </div>
     <div class="row"><span class="label">أرباح آخر 30 يوم (صافي)</span><span class="value" data-presentation="p018">${escapeHtml(last30Profit)} </div>
     <div class="row"><span class="label">عمولة المنصة المستحقة</span><span class="value" data-presentation="p019">${escapeHtml(commission)} </div>

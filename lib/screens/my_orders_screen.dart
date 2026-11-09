@@ -8,6 +8,7 @@ import '../services/order_service.dart';
 import '../services/offer_service.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
+import '../services/socket_service.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_status_chip.dart';
@@ -37,6 +38,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   bool _loading = true;
   Timer? _clockTimer;
   Timer? _refreshTimer;
+  final List<StreamSubscription> _socketSubs = [];
 
   @override
   void initState() {
@@ -53,12 +55,27 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         _loadOrders();
       }
     });
+
+    for (final stream in [
+      SocketService.instance.onNewOffer,
+      SocketService.instance.onOfferAccepted,
+      SocketService.instance.onOrderStatusChanged,
+    ]) {
+      _socketSubs.add(
+        stream.listen((_) {
+          if (mounted) _loadOrders();
+        }),
+      );
+    }
   }
 
   @override
   void dispose() {
     _clockTimer?.cancel();
     _refreshTimer?.cancel();
+    for (final subscription in _socketSubs) {
+      subscription.cancel();
+    }
     super.dispose();
   }
 

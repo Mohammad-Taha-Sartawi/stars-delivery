@@ -195,3 +195,19 @@ test('commission rows use the registered phone and service specialties', () => {
   assert.doesNotMatch(commissions, /serviceType: 'توصيل'/);
   assert.doesNotMatch(commissions, /phone: driver\.phone/);
 });
+
+test('manual commission payments leave an auditable payment record', () => {
+  const commissions = source('src/routes/adminCommissions.js');
+  const model = source('src/models/CommissionPayment.js');
+  const index = source('src/index.js');
+  const adminDrivers = source('src/routes/adminDrivers.js');
+
+  assert.match(commissions, /CommissionPayment\.create/);
+  assert.match(commissions, /amount: unpaid/);
+  assert.match(model, /driverId/);
+  assert.match(model, /amount/);
+  assert.match(model, /paidAt/);
+  assert.match(index, /CommissionPayment\.createIndexes\(\)/);
+  assert.match(adminDrivers, /CommissionPayment\.find/);
+  assert.match(adminDrivers, /payments: commissionPayments/);
+});

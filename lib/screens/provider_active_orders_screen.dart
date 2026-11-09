@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import '../services/provider_service.dart';
 import '../bloc/provider/provider_bloc.dart';
 import '../bloc/provider/provider_event.dart';
@@ -7,6 +8,7 @@ import '../bloc/app/app_bloc.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
+import '../services/socket_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/ui/app_feedback.dart';
@@ -28,11 +30,30 @@ class _ProviderActiveOrdersScreenState
   List<Map<String, dynamic>>? _orders;
   bool _loading = true;
   String? _error;
+  final List<StreamSubscription> _socketSubs = [];
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    for (final stream in [
+      SocketService.instance.onOfferAccepted,
+      SocketService.instance.onOrderStatusChanged,
+    ]) {
+      _socketSubs.add(
+        stream.listen((_) {
+          if (mounted) _loadOrders();
+        }),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _socketSubs) {
+      subscription.cancel();
+    }
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {

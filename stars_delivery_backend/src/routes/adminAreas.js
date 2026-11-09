@@ -8,8 +8,14 @@ const {
 
 router.get('/', async (req, res) => {
   try {
-    const drivers = await User.find({ role: 'provider' }).lean();
-    const users = await User.find({ role: 'customer' }).lean();
+    const drivers = await User.find({
+      role: 'provider',
+      deleted: { $ne: true },
+    }).lean();
+    const users = await User.find({
+      role: 'customer',
+      deleted: { $ne: true },
+    }).lean();
 
     const { stats, governorateOrder } = buildGovernorateStats(
       drivers,

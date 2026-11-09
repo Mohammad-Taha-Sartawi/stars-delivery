@@ -9,40 +9,39 @@ function source(file) {
   return fs.readFileSync(path.join(backendRoot, file), 'utf8');
 }
 
-test(
-  'customer and driver notification feeds expose only admin broadcasts',
-  () => {
-    const notifications = source('src/routes/notifications.js');
+test('customer and driver notification feeds include all notification types', () => {
+  const notifications = source('src/routes/notifications.js');
 
-    assert.match(
-      notifications,
-      /Notification\.find\(\{\s*userId: req\.userId,\s*type: 'broadcast',/s,
-    );
+  assert.match(
+    notifications,
+    /Notification\.find\(\{\s*userId: req\.userId,\s*\}\)/s,
+  );
+  assert.doesNotMatch(
+    notifications,
+    /type: 'broadcast',\s*read: false/,
+  );
 
-    assert.match(
-      notifications,
-      /Notification\.countDocuments\(\{\s*userId: req\.userId,\s*type: 'broadcast',\s*read: false/s,
-    );
+  assert.match(notifications, /Notification\.countDocuments/);
+  assert.match(notifications, /Notification\.updateMany/);
+});
 
-    assert.match(
-      notifications,
-      /Notification\.updateMany\(\{\s*userId: req\.userId,\s*type: 'broadcast',\s*read: false/s,
-    );
-  },
-);
+test('admin broadcasts remain notification-only and do not touch support chat', () => {
+  const broadcast = source('src/routes/adminBroadcast.js');
 
-test(
-  'order and offer activity no longer creates app notifications',
-  () => {
-    assert.doesNotMatch(
-      source('src/services/orderLifecycle.js'),
-      /Notification\.create/,
-    );
+  assert.doesNotMatch(broadcast, /ChatMessage/);
+  assert.doesNotMatch(broadcast, /support_reply/);
+  assert.match(broadcast, /BroadcastMessage\.create/);
+});
 
-    const orders = source('src/routes/orders.js');
+test('order, offer and report activity creates persisted notifications', () => {
+  const offers = source('src/routes/offers.js');
+  const orders = source('src/routes/orders.js');
+  const reports = source('src/routes/adminReports.js');
 
-    assert.doesNotMatch(orders, /Notification\.insertMany/);
-
-    assert.doesNotMatch(orders, /type: 'new_order'/);
-  },
-);
+  assert.match(offers, /createUserNotification/);
+  assert.match(offers, /type: 'new_offer'/);
+  assert.match(offers, /type: 'offer_accepted'/);
+  assert.match(orders, /type: 'order_pending'/);
+  assert.match(orders, /type: 'order_completed'/);
+  assert.match(reports, /type: 'report_reply'/);
+});

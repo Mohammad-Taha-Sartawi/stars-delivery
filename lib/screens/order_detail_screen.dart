@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/offer/offer_bloc.dart';
 import '../services/api_config.dart';
@@ -7,12 +8,14 @@ import '../services/localization_service.dart';
 import '../services/order_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
+import '../services/socket_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
+import '../widgets/ui/governorate_scope_warning.dart';
 import 'submit_offer_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
@@ -35,11 +38,30 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Map<String, dynamic>? _order;
   bool _loading = true;
   String? _error;
+  final List<StreamSubscription> _socketSubs = [];
 
   @override
   void initState() {
     super.initState();
     _load();
+    for (final stream in [
+      SocketService.instance.onNewOffer,
+      SocketService.instance.onOrderStatusChanged,
+    ]) {
+      _socketSubs.add(
+        stream.listen((_) {
+          if (mounted) _load();
+        }),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _socketSubs) {
+      subscription.cancel();
+    }
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -161,6 +183,42 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         '${AppLocalization.get(context, 'cooldown_remaining').replaceAll('%d', '$seconds')}',
       );
       return;
+    }
+
+    final order = _order;
+    if (order != null && order['outsideArea'] == true) {
+      final orderArea = (order['area'] ?? '').toString().trim();
+      final providerCity = (order['providerCity'] ?? '').toString().trim();
+      final providerArea = (order['providerArea'] ?? '').toString().trim();
+      final providerGovernorate = (order['providerGovernorate'] ?? '')
+          .toString()
+          .trim();
+      final providerPlace =
+          providerCity.isNotEmpty && providerCity != 'من المحافظة نفسها'
+          ? providerCity
+          : (providerArea.isNotEmpty
+                ? providerArea
+                : AppLocalization.get(context, 'area_region'));
+      final governorate = providerGovernorate.isEmpty
+          ? AppLocalization.get(context, 'your_governorate')
+          : providerGovernorate;
+
+      final proceed = await showGovernorateScopeWarning(
+        context,
+        title: AppLocalization.get(context, 'governorate_outside_area_title'),
+        message:
+            AppLocalization.get(context, 'governorate_outside_area_message')
+                .replaceFirst('%s', orderArea)
+                .replaceFirst('%s', governorate)
+                .replaceFirst('%s', providerPlace),
+        note: AppLocalization.get(context, 'governorate_outside_area_note'),
+        confirmLabel: AppLocalization.get(
+          context,
+          'governorate_outside_area_confirm',
+        ),
+      );
+
+      if (!proceed || !mounted) return;
     }
 
     await Navigator.push<bool>(

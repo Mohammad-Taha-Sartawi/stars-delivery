@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Order = require('../models/Order');
+const CommissionPayment = require('../models/CommissionPayment');
 const { splitCommission, isCommissionDue } = require('../services/commissionLedger');
 const { serviceTypesLabel } = require('../services/providerServiceTypes');
 
@@ -18,7 +19,10 @@ function primaryPhone(user) {
 
 router.get('/', async (req, res) => {
   try {
-    const providers = await User.find({ role: 'provider' }).lean();
+    const providers = await User.find({
+      role: 'provider',
+      deleted: { $ne: true },
+    }).lean();
     let totalUnpaid = 0, totalPaid = 0, unpaidDrivers = 0, paidDrivers = 0;
     const driverRows = [];
 
@@ -166,11 +170,31 @@ router.put('/pay/:id', async (req, res) => {
   try {
     const driver = await User.findById(req.params.id);
     if (!driver || driver.role !== 'provider') return res.json({ success: false, message: 'السائق غير موجود' });
+
+    const orders = await Order.find({
+      providerId: driver._id,
+      status: { $in: ['accepted', 'fulfilling', 'completed'] },
+    }).lean();
+    const { unpaid } = splitCommission(orders, driver);
+
+    if (unpaid > 0) {
+      await CommissionPayment.create({
+        driverId: driver._id,
+        amount: unpaid,
+        method: 'manual_admin',
+        note: 'تم تأكيد الدفع من لوحة التحكم',
+      });
+    }
+
     driver.commissionPaid = true;
     driver.commissionPaidAt = new Date();
     driver.commissionResetAt = null;
     await driver.save();
-    res.json({ success: true, message: `تم تحديث حالة السائق (${driver.fullName}) إلى مدفوع` });
+    res.json({
+      success: true,
+      amount: unpaid,
+      message: `تم تحديث حالة السائق (${driver.fullName}) إلى مدفوع`,
+    });
   } catch (err) {
     sendInternalServerFailure(res);
   }

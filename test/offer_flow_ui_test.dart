@@ -86,4 +86,18 @@ void main() {
     expect(home, contains('_openOffersForIncomingOffer'));
     expect(home, contains('data[\'orderId\']'));
   });
+
+  test('order details show the outside-area warning before offering', () {
+    final detail = File(
+      'lib/screens/order_detail_screen.dart',
+    ).readAsStringSync();
+    final ordersRoute = File(
+      'stars_delivery_backend/src/routes/orders.js',
+    ).readAsStringSync();
+
+    expect(detail, contains('showGovernorateScopeWarning'));
+    expect(detail, contains("order['outsideArea']"));
+    expect(ordersRoute, contains('order.outsideArea'));
+    expect(ordersRoute, contains('providerGovernorate'));
+  });
 }

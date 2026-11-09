@@ -196,7 +196,7 @@ test(
   () => {
     assert.match(
       workflow,
-      /flutter-version: '3\.44\.4'/,
+      /flutter-version: '3\.47\.4'/,
     );
 
     assert.match(
@@ -246,7 +246,7 @@ test(
 
     assert.match(
       workflow,
-      /\[ "\$ANALYZE_COUNT" != "30" \]/,
+      /\[ "\$ANALYZE_COUNT" != "13" \]/,
     );
 
     assert.match(

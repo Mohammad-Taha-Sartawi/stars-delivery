@@ -13,10 +13,14 @@ const lifecycle = require('../services/orderLifecycle');
 const { uploadImagesToCloud } = require('../services/upload');
 const {
   governorateKey,
+  resolveRegistrationLocation,
 } = require('../services/registrationLocation');
 const {
   canProviderSeeOrder,
 } = require('../services/orderVisibility');
+const {
+  createUserNotification,
+} = require('../services/mobileNotifications');
 
 const router = express.Router();
 
@@ -196,6 +200,17 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     if (req.userRole === 'provider') {
+      const providerLocation =
+        resolveRegistrationLocation(req.authUser);
+      order.outsideArea = Boolean(
+        order.area
+        && req.authUser.area
+        && order.area !== req.authUser.area,
+      );
+      order.providerArea = req.authUser.area || '';
+      order.providerCity = providerLocation.city;
+      order.providerGovernorate = providerLocation.governorate;
+
       if (!isAssignedProvider) {
         order.phone = order.phone ? order.phone.slice(0, -3) + '***' : '';
       }
@@ -240,6 +255,16 @@ router.put('/:id/fulfilling', auth, requireRole('provider'), async (req, res) =>
     const io = req.app.get('io');
     if (io) io.to(`user:${order.customerId}`).emit('order_status_changed', { orderId: order._id, status: 'fulfilling' });
 
+    await createUserNotification({
+      io,
+      userId: order.customerId,
+      orderId: order._id,
+      type: 'order_pending',
+      title: 'طلبك قيد التنفيذ',
+      body: 'بدأ السائق العمل على طلبك.',
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
+
     res.json(order);
   } catch (err) {
     if (err instanceof lifecycle.LifecycleConflict) return res.status(409).json(lifecycle.conflictResponse(err));
@@ -254,6 +279,16 @@ router.put('/:id/complete', auth, requireRole('provider'), async (req, res) => {
 
     const io = req.app.get('io');
     if (io) io.to(`user:${order.customerId}`).emit('order_status_changed', { orderId: order._id, status: 'completed' });
+
+    await createUserNotification({
+      io,
+      userId: order.customerId,
+      orderId: order._id,
+      type: 'order_completed',
+      title: 'تم إكمال طلبك',
+      body: 'أعلن السائق إكمال الطلب بنجاح.',
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
 
     res.json(order);
   } catch (err) {

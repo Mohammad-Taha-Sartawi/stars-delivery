@@ -8,6 +8,9 @@ const lifecycle = require('../services/orderLifecycle');
 const {
   resolveRegistrationLocation,
 } = require('../services/registrationLocation');
+const {
+  createUserNotification,
+} = require('../services/mobileNotifications');
 
 const router = express.Router();
 
@@ -32,6 +35,16 @@ router.post('/', auth, requireRole('provider'), async (req, res) => {
         providerPhone: result.providerPhone,
       });
     }
+
+    await createUserNotification({
+      io,
+      userId: result.customerId,
+      orderId,
+      type: 'new_offer',
+      title: 'عرض سعر جديد',
+      body: `قدم ${result.providerName} عرض سعر بقيمة ${price} شيكل.`,
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
 
     res.status(201).json(result.offer);
   } catch (err) {
@@ -119,6 +132,16 @@ router.post('/:id/accept', auth, requireRole('customer'), async (req, res) => {
         price: result.price,
       });
     }
+
+    await createUserNotification({
+      io,
+      userId: result.providerId,
+      orderId: result.orderId,
+      type: 'offer_accepted',
+      title: 'تم قبول عرضك',
+      body: 'قبل الزبون عرض السعر الخاص بك. يمكنك بدء تنفيذ الطلب.',
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
 
     res.json({ message: 'Offer accepted' });
   } catch (err) {

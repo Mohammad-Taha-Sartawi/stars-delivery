@@ -30,6 +30,7 @@ import 'order_offers_screen.dart';
 import 'login_screen.dart';
 import 'report_screen.dart';
 import 'profile_screen.dart';
+import 'settings_screen.dart';
 import 'support_chat_screen.dart';
 import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
@@ -721,6 +722,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               tooltip: AppLocalization.get(context, 'language'),
               icon: Text(isAr ? 'EN' : 'ع', style: theme.textTheme.labelLarge),
               onPressed: () => context.read<AppBloc>().add(ToggleLocale()),
+            );
+          },
+        ),
+        IconButton(
+          tooltip: AppLocalization.get(context, 'settings'),
+          icon: const Icon(Icons.settings_outlined),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
             );
           },
         ),

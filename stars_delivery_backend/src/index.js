@@ -143,6 +143,7 @@ const Notification = require('./models/Notification');
 const ChatMessage = require('./models/ChatMessage');
 const ContactRequest = require('./models/ContactRequest');
 const BroadcastMessage = require('./models/BroadcastMessage');
+const CommissionPayment = require('./models/CommissionPayment');
 const User = require('./models/User');
 
 const MONGO_RETRY_DELAYS_MS = Object.freeze([
@@ -165,6 +166,7 @@ async function ensureMongoIndexes() {
     ChatMessage.createIndexes(),
     ContactRequest.createIndexes(),
     BroadcastMessage.createIndexes(),
+    CommissionPayment.createIndexes(),
   ]);
   console.log('Indexes ready');
 }

@@ -319,6 +319,66 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'pay now appears only with due commission and opens instructions',
+      (tester) async {
+        mockApi.statsJson = <String, dynamic>{
+          'dailyEarnings': 0.0,
+          'monthlyEarnings': 500.0,
+          'totalSuccessful': 3,
+          'dailyOrderCount': 0,
+          'dailyCommission': 0.0,
+          'monthlyCommission': 45.0,
+          'pendingOrdersCount': 0,
+          'offeredOrdersCount': 0,
+          'ordersReportCount': 0,
+          'activeOrdersCount': 0,
+          'isAvailable': true,
+        };
+
+        await tester.pumpWidget(
+          screenHarness(themeMode: ThemeMode.light, locale: const Locale('en')),
+        );
+        await tester.pumpAndSettle();
+
+        final payButton = find.byKey(const Key('payCommissionButton'));
+        await tester.ensureVisible(payButton);
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+        expect(find.text('Pay now'), findsOneWidget);
+
+        await tester.tap(payButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Pay platform commission'), findsOneWidget);
+        expect(find.text('+970569571995'), findsOneWidget);
+        expect(find.text('Copy WhatsApp number'), findsOneWidget);
+      },
+    );
+
+    testWidgets('pay now is hidden when no commission is due', (tester) async {
+      mockApi.statsJson = <String, dynamic>{
+        'dailyEarnings': 0.0,
+        'monthlyEarnings': 0.0,
+        'totalSuccessful': 0,
+        'dailyOrderCount': 0,
+        'dailyCommission': 0.0,
+        'monthlyCommission': 0.0,
+        'pendingOrdersCount': 0,
+        'offeredOrdersCount': 0,
+        'ordersReportCount': 0,
+        'activeOrdersCount': 0,
+        'isAvailable': true,
+      };
+
+      await tester.pumpWidget(
+        screenHarness(themeMode: ThemeMode.light, locale: const Locale('en')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('payCommissionButton')), findsNothing);
+      expect(find.text('Pay now'), findsNothing);
+    });
+
     testWidgets('dispatches the service call, refreshes stats and snackbar', (
       tester,
     ) async {

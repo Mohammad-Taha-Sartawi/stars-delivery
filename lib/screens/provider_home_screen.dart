@@ -31,6 +31,7 @@ import '../widgets/ui/app_state_views.dart';
 import '../widgets/ui/app_status_badge.dart';
 import '../widgets/ui/app_tone.dart';
 import '../widgets/governorate_scope_card.dart';
+import 'commission_payment_screen.dart';
 import 'login_screen.dart';
 import 'pending_orders_screen.dart';
 import 'provider_active_orders_screen.dart';
@@ -1197,6 +1198,34 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (s.monthlyCommission > 0) ...[
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('payCommissionButton'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CommissionPaymentScreen(
+                          dueAmount: s.monthlyCommission,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.payments_outlined, size: 20),
+                  label: Text(AppLocalization.get(context, 'pay_now')),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.md,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             Divider(height: 1, color: tone.border),
             const SizedBox(height: AppSpacing.xs),

@@ -342,6 +342,37 @@ class AppLocalization {
       'ar': 'يمكنك أن تشارك التطبيق مع سائق توصي به.',
       'en': 'You can share the app with a driver you recommend.',
     },
+    'pay_now': {'ar': 'ادفع الآن', 'en': 'Pay now'},
+    'commission_payment_title': {
+      'ar': 'دفع عمولة المنصة',
+      'en': 'Pay platform commission',
+    },
+    'commission_due_amount': {'ar': 'المبلغ المستحق', 'en': 'Amount due'},
+    'payment_method': {'ar': 'طريقة الدفع', 'en': 'Payment method'},
+    'payment_contact_sales_whatsapp': {
+      'ar':
+          'لترتيب دفع عمولة المنصة، تواصل مع فريق المبيعات عبر واتساب على الرقم التالي:',
+      'en':
+          'To arrange payment of the platform commission, contact our sales team on WhatsApp at:',
+    },
+    'payment_whatsapp_label': {
+      'ar': 'رقم واتساب المبيعات',
+      'en': 'Sales WhatsApp number',
+    },
+    'copy_whatsapp_number': {
+      'ar': 'نسخ رقم واتساب',
+      'en': 'Copy WhatsApp number',
+    },
+    'whatsapp_number_copied': {
+      'ar': 'تم نسخ رقم واتساب.',
+      'en': 'WhatsApp number copied.',
+    },
+    'payment_follow_up_note': {
+      'ar':
+          'بعد ترتيب الدفع، ستؤكد الإدارة استلام المبلغ ويُحدَّث عداد المستحقات تلقائياً.',
+      'en':
+          'After arranging payment, an admin will confirm receipt and update the due commission.',
+    },
     'commission_body': {
       'ar': ' شيكل بناء على الطلبات الناجحة',
       'en': ' ILS based on successful orders',

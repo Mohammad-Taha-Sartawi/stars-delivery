@@ -27,6 +27,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stars_delivery/bloc/app/app_bloc.dart';
 import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
 import 'package:stars_delivery/services/auth_service.dart';
+import 'package:stars_delivery/services/location_catalog.dart';
 import 'package:stars_delivery/services/session_storage.dart';
 import 'package:stars_delivery/services/theme_service.dart';
 import 'package:stars_delivery/screens/login_screen.dart';
@@ -109,6 +110,7 @@ void main() {
   // fake-async zone never completes in the next test, so evict it per test.
   setUp(() {
     rootBundle.evict(areaAssetKey);
+    LocationCatalog.clearCache();
   });
 
   Future<void> waitForGovernorateOptions(WidgetTester tester) async {

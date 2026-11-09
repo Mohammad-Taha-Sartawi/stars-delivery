@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stars_delivery/services/theme_service.dart';
 import 'package:stars_delivery/services/user_service.dart';
+import 'package:stars_delivery/services/location_catalog.dart';
 import 'package:stars_delivery/models/user_model.dart';
 import 'package:stars_delivery/screens/create_order_screen.dart';
 import 'package:stars_delivery/widgets/governorate_scope_card.dart';
@@ -33,6 +34,42 @@ Widget _app(Widget home) {
 }
 
 void main() {
+  test('location catalog resolves legacy and city accounts', () {
+    const bethlehem = GovernorateOption(
+      name: 'Bethlehem',
+      nativeName: 'بيت لحم',
+      areaValue: 'بيت لحم',
+      cities: ['Beit Jala', 'Bethlehem'],
+    );
+    const ramallah = GovernorateOption(
+      name: 'Ramallah',
+      nativeName: 'رام الله',
+      areaValue: 'رام الله والبيرة',
+      cities: ['Al-Bireh', 'Bir Zeit'],
+    );
+    const governorates = [bethlehem, ramallah];
+
+    expect(
+      LocationCatalog.findForUser(
+        governorates,
+        governorate: '',
+        area: 'بيت لحم',
+      )?.name,
+      'Bethlehem',
+    );
+    expect(
+      LocationCatalog.findForUser(
+        governorates,
+        governorate: 'الخليل',
+        area: 'Al-Bireh',
+      )?.name,
+      'Ramallah',
+    );
+    expect(LocationCatalog.cityForUser(bethlehem, 'بيت لحم'), 'بيت لحم');
+    expect(LocationCatalog.cityForUser(bethlehem, 'Beit Jala'), 'Beit Jala');
+    expect(LocationCatalog.cityForUser(bethlehem, 'Al-Bireh'), isNull);
+  });
+
   testWidgets('governorate scope card is visible and persists toggles', (
     tester,
   ) async {

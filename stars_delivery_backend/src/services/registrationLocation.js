@@ -1,3 +1,5 @@
+const { CITIES_BY_GOVERNORATE } = require('./palestineCities');
+
 const PRIMARY_GOVERNORATES = [
   'القدس',
   'رام الله والبيرة',
@@ -80,6 +82,25 @@ function governorateKey(record = {}) {
     || normalizeValue(record.governorate)
     || ''
   );
+}
+
+function isValidAreaForGovernorate(governorate, area) {
+  const canonical =
+    canonicalGovernorate(governorate) || normalizeValue(governorate);
+  const normalizedArea = normalizeValue(area);
+
+  if (!canonical || !normalizedArea) return false;
+
+  // The "governorate itself" option stores the canonical governorate name.
+  if (
+    normalizedArea === canonical
+    || canonicalGovernorate(normalizedArea) === canonical
+  ) {
+    return true;
+  }
+
+  const cities = CITIES_BY_GOVERNORATE[canonical] || [];
+  return cities.includes(normalizedArea);
 }
 
 /**
@@ -217,6 +238,7 @@ module.exports = {
   PRIMARY_GOVERNORATES,
   canonicalGovernorate,
   governorateKey,
+  isValidAreaForGovernorate,
   resolveRegistrationLocation,
   buildGovernorateStats,
 };

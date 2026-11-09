@@ -22,7 +22,7 @@ const protectedFiles = new Map([
   ['src/routes/orders.js', 5],
   ['src/routes/provider.js', 7],
   ['src/routes/reports.js', 2],
-  ['src/routes/users.js', 14],
+  ['src/routes/users.js', 15],
 ]);
 
 function read(relative) {
@@ -102,7 +102,7 @@ test('all STARS-009A HTTP 500 sites use the safe helper', () => {
     total += calls.length;
   }
 
-  assert.equal(total, 53);
+  assert.equal(total, 54);
 });
 
 test('controlled non-500 application errors remain intact', () => {

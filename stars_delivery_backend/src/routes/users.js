@@ -12,10 +12,15 @@ const {
 } = require('../security/mobileEmail');
 const {
   mobileSessionRotationFilter,
+  publicMobileUser,
 } = require('../services/mobileSession');
 const {
   customerProviderVisibilityFilter,
 } = require('../services/orderVisibility');
+const {
+  isValidAreaForGovernorate,
+  canonicalGovernorate,
+} = require('../services/registrationLocation');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
   MAX_MOBILE_PASSWORD_LENGTH,
@@ -121,6 +126,43 @@ router.put('/governorate-level', async (req, res) => {
     res.json({
       success: true,
       enabled: user.governorateLevel === true,
+    });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.put('/area', async (req, res) => {
+  try {
+    const requestedGovernorate =
+      typeof req.body.governorate === 'string'
+        ? req.body.governorate.trim()
+        : '';
+    const requestedArea =
+      typeof req.body.area === 'string' ? req.body.area.trim() : '';
+
+    if (
+      !requestedGovernorate
+      || !requestedArea
+      || !isValidAreaForGovernorate(requestedGovernorate, requestedArea)
+    ) {
+      return res.status(400).json({
+        error: 'المحافظة أو القرية/المدينة غير صالحة.',
+        code: 'INVALID_AREA',
+      });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.governorate =
+      canonicalGovernorate(requestedGovernorate) || requestedGovernorate;
+    user.area = requestedArea;
+    await user.save();
+
+    res.json({
+      success: true,
+      user: publicMobileUser(user),
     });
   } catch (err) {
     sendInternalServerError(res);

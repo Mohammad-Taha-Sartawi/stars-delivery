@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth/auth_bloc.dart';
@@ -11,6 +9,7 @@ import '../bloc/app/app_event.dart';
 import '../bloc/provider/provider_bloc.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
+import '../services/location_catalog.dart';
 import '../services/auth_service.dart';
 import '../services/validators.dart';
 import '../services/api_config.dart';
@@ -43,39 +42,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLogin = true;
   String _selectedRole = 'customer';
-  List<_Governorate> _governorates = [];
+  List<GovernorateOption> _governorates = [];
   final _cityFieldKey = GlobalKey<FormFieldState<String>>();
-
-  // Legacy registration stored the Arabic governorate label as `area`.
-  // Keeping the same values for the "from the governorate itself" option
-  // lets those existing accounts keep matching at governorate level.
-  static const _legacyAreaValues = {
-    'Jerusalem (Quds)': 'القدس',
-    'Ramallah': 'رام الله والبيرة',
-    'Hebron': 'الخليل',
-    'Nablus': 'نابلس',
-    'Bethlehem': 'بيت لحم',
-    'Jericho': 'أريحا',
-    'Salfit': 'سلفيت',
-    'Jenin': 'جنين',
-    'Tulkarm': 'طولكرم',
-    'Qalqilya': 'قلقيلية',
-    'Tubas': 'طوباس',
-    'Gaza': 'غزة',
-    'Khan Yunis': 'خان يونس',
-    'Rafah': 'رفح',
-    'Deir El Balah': 'دير البلح',
-    'North Gaza': 'شمال غزة',
-  };
-
-  static final _legacyAreaValuesTrimmed = {
-    for (var key in _legacyAreaValues.keys) key.trim(): _legacyAreaValues[key]!,
-  };
 
   String? _selectedGovernorate;
   String? _selectedArea; // City/village value sent as the account area.
 
-  _Governorate? get _currentGovernorate {
+  GovernorateOption? get _currentGovernorate {
     for (final governorate in _governorates) {
       if (governorate.name == _selectedGovernorate) {
         return governorate;
@@ -84,11 +57,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  String _governorateLabel(_Governorate governorate, bool isAr) {
+  String _governorateLabel(GovernorateOption governorate, bool isAr) {
     if (isAr) {
       return governorate.nativeName;
     }
-    return governorate.name.replaceFirst(' (Quds)', '').trim();
+    return governorate.displayName;
   }
 
   @override
@@ -99,33 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loadAreas() async {
     try {
-      final json = await rootBundle.loadString(
-        'assets/countries+states+cities.json',
-      );
-      final list = jsonDecode(json) as List;
-      final palestine = list.cast<Map<String, dynamic>>().firstWhere(
-        (c) => c['iso2'] == 'PS',
-      );
-      final states = palestine['states'] as List;
-
-      final governorates = states.cast<Map<String, dynamic>>().map((state) {
-        final name = state['name'].toString().trim();
-        final native = state['native']?.toString().trim() ?? '';
-        final nativeName = native.isEmpty ? name : native;
-        final cities = ((state['cities'] as List?) ?? const [])
-            .cast<Map<String, dynamic>>()
-            .map((city) => city['name'].toString().trim())
-            .where((city) => city.isNotEmpty)
-            .toList();
-
-        return _Governorate(
-          name: name,
-          nativeName: nativeName,
-          areaValue: _legacyAreaValuesTrimmed[name] ?? nativeName,
-          cities: cities,
-        );
-      }).toList();
-
+      final governorates = await LocationCatalog.load();
       setState(() {
         _governorates = governorates;
       });
@@ -1053,27 +1000,6 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     }
   }
-}
-
-class _Governorate {
-  const _Governorate({
-    required this.name,
-    required this.nativeName,
-    required this.areaValue,
-    required this.cities,
-  });
-
-  /// English name from the asset, used as the stable dropdown value.
-  final String name;
-
-  /// Arabic display name from the asset (`native`).
-  final String nativeName;
-
-  /// Value stored in the account `area` for the "governorate itself" option.
-  final String areaValue;
-
-  /// Villages/cities listed under this governorate only.
-  final List<String> cities;
 }
 
 class _RoleCard extends StatelessWidget {

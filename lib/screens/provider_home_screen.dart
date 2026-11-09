@@ -69,7 +69,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   StreamSubscription? _supportReplySub;
   bool _sessionExitStarted = false;
   bool _updatingAvailability = false;
-  late bool _governorateLevel = widget.user.governorateLevel;
+  late UserModel _user = widget.user;
+  late bool _governorateLevel = _user.governorateLevel;
   int _supportUnreadCount = 0;
   late ChatService _supportChatService;
 
@@ -320,7 +321,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                       builder: (_) => PendingOrdersScreen(
                         orders: state.pendingOrders!,
                         token: widget.token,
-                        user: widget.user,
+                        user: _user,
                         onRefresh: () {
                           context.read<ProviderBloc>().add(
                             LoadPendingOrders(token: widget.token),
@@ -375,8 +376,31 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    ProfileScreen(user: widget.user, token: widget.token),
+                builder: (_) => ProfileScreen(
+                  user: _user,
+                  token: widget.token,
+                  onUserUpdated: (updated) {
+                    setState(() {
+                      _user = updated;
+                      _governorateLevel = updated.governorateLevel;
+                    });
+                    // Reconnect so the server joins the new village and
+                    // governorate socket rooms immediately.
+                    SocketService.instance.connect(
+                      token: widget.token,
+                      area: ApiConfig.detectedArea,
+                    );
+                    context.read<ProviderBloc>().add(
+                      LoadPendingOrders(token: widget.token),
+                    );
+                    context.read<ProviderBloc>().add(
+                      LoadOfferedOrders(token: widget.token),
+                    );
+                    context.read<ProviderBloc>().add(
+                      LoadProviderStats(token: widget.token),
+                    );
+                  },
+                ),
               ),
             );
           },
@@ -556,9 +580,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                     token: widget.token,
                     initialEnabled: _governorateLevel,
                     isProvider: true,
-                    governorateName: widget.user.governorate.trim().isNotEmpty
-                        ? widget.user.governorate
-                        : widget.user.area,
+                    governorateName: _user.governorate.trim().isNotEmpty
+                        ? _user.governorate
+                        : _user.area,
                     onChanged: (enabled) {
                       setState(() => _governorateLevel = enabled);
                       // The server joins the governorate socket room only
@@ -606,7 +630,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                                 builder: (_) => PendingOrdersScreen(
                                   orders: state.pendingOrders!,
                                   token: widget.token,
-                                  user: widget.user,
+                                  user: _user,
                                   onRefresh: () {
                                     context.read<ProviderBloc>().add(
                                       LoadPendingOrders(token: widget.token),

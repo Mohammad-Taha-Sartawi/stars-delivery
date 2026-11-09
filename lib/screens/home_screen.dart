@@ -63,7 +63,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription? _httpSessionRejectedSub;
   StreamSubscription? _supportReplySub;
   bool _sessionExitStarted = false;
-  late bool _governorateLevel = widget.user.governorateLevel;
+  late UserModel _user = widget.user;
+  late bool _governorateLevel = _user.governorateLevel;
 
   @override
   void initState() {
@@ -325,10 +326,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         token: widget.token,
                         initialEnabled: _governorateLevel,
                         isProvider: false,
-                        governorateName:
-                            widget.user.governorate.trim().isNotEmpty
-                            ? widget.user.governorate
-                            : widget.user.area,
+                        governorateName: _user.governorate.trim().isNotEmpty
+                            ? _user.governorate
+                            : _user.area,
                         onChanged: (enabled) {
                           setState(() => _governorateLevel = enabled);
                           _loadAvailableDriversCount();
@@ -354,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   builder: (_) => BlocProvider(
                                     create: (_) => OrderBloc(),
                                     child: CreateOrderScreen(
-                                      user: widget.user,
+                                      user: _user,
                                       token: widget.token,
                                       governorateLevel: _governorateLevel,
                                     ),
@@ -474,8 +474,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    ProfileScreen(user: widget.user, token: widget.token),
+                builder: (_) => ProfileScreen(
+                  user: _user,
+                  token: widget.token,
+                  onUserUpdated: (updated) {
+                    setState(() {
+                      _user = updated;
+                      _governorateLevel = updated.governorateLevel;
+                    });
+                    _loadAvailableDriversCount();
+                  },
+                ),
               ),
             );
           },

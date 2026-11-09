@@ -6,6 +6,7 @@ import '../bloc/auth/auth_event.dart';
 import '../models/user_model.dart';
 import '../services/api_config.dart';
 import '../services/mobile_api_client.dart';
+import '../services/location_catalog.dart';
 import '../services/validators.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
@@ -14,7 +15,14 @@ import '../widgets/ui/app_feedback.dart';
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
   final String token;
-  const ProfileScreen({super.key, required this.user, required this.token});
+  final ValueChanged<UserModel>? onUserUpdated;
+
+  const ProfileScreen({
+    super.key,
+    required this.user,
+    required this.token,
+    this.onUserUpdated,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -30,12 +38,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _phoneCtrl = TextEditingController();
   bool _loadingPhones = true;
 
+  late UserModel _currentUser = widget.user;
+  late final _cityFieldKey = GlobalKey<FormFieldState<String>>();
+  List<GovernorateOption> _governorates = [];
+  String? _selectedGovernorate;
+  String? _selectedArea;
+  bool _loadingLocation = true;
+  bool _savingLocation = false;
+
   @override
   void initState() {
     super.initState();
     _nameCtrl.text = widget.user.fullName;
     _emailCtrl.text = widget.user.email;
     _loadPhones();
+    _loadLocationOptions();
+  }
+
+  GovernorateOption? get _currentGovernorate {
+    for (final governorate in _governorates) {
+      if (governorate.name == _selectedGovernorate) {
+        return governorate;
+      }
+    }
+    return null;
+  }
+
+  String _governorateLabel(GovernorateOption governorate) {
+    return governorate.nativeName;
+  }
+
+  Future<void> _loadLocationOptions() async {
+    try {
+      final governorates = await LocationCatalog.load();
+      final currentGovernorate = LocationCatalog.findForUser(
+        governorates,
+        governorate: _currentUser.governorate,
+        area: _currentUser.area,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _governorates = governorates;
+        _selectedGovernorate = currentGovernorate?.name;
+        _selectedArea = currentGovernorate == null
+            ? null
+            : LocationCatalog.cityForUser(
+                currentGovernorate,
+                _currentUser.area,
+              );
+        _loadingLocation = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingLocation = false);
+      }
+    }
+  }
+
+  Future<void> _saveLocation() async {
+    final governorate = _currentGovernorate;
+    final area = _selectedArea;
+
+    if (governorate == null || area == null) {
+      AppFeedback.error(context, 'يرجى اختيار المحافظة والقرية/المدينة أولاً.');
+      return;
+    }
+
+    if (_savingLocation) return;
+    setState(() => _savingLocation = true);
+
+    try {
+      final response = await _client().put(
+        '/users/area',
+        data: {'governorate': governorate.areaValue, 'area': area},
+      );
+      final updated = UserModel.fromJson(
+        Map<String, dynamic>.from(response.data['user'] as Map),
+      );
+
+      if (!mounted) return;
+      setState(() => _currentUser = updated);
+      widget.onUserUpdated?.call(updated);
+      AppFeedback.success(
+        context,
+        'تم تحديث المحافظة والقرية. الطلبات الجديدة ستستخدم المنطقة الجديدة.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppFeedback.error(context, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _savingLocation = false);
+      }
+    }
   }
 
   @override
@@ -326,6 +422,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   latin: true,
                 ),
                 const SizedBox(height: 12),
+                _buildLocationSection(context),
+                const SizedBox(height: 12),
                 const Text(
                   'أرقام الهاتف',
                   style: TextStyle(fontWeight: FontWeight.bold),
@@ -444,6 +542,161 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLocationSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final governorate = _currentGovernorate;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined, color: scheme.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'المحافظة والقرية / المدينة',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'تُستخدم هذه المنطقة في إرسال واستقبال الطلبات داخل التطبيق.',
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_loadingLocation)
+            const Center(
+              child: Padding(
+                padding: EdgeInsetsDirectional.symmetric(vertical: 12),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_governorates.isEmpty)
+            Text(
+              'تعذر تحميل قائمة المناطق. حاول فتح الصفحة مرة أخرى.',
+              style: TextStyle(color: scheme.error, fontSize: 13),
+            )
+          else ...[
+            DropdownButtonFormField<String>(
+              key: const Key('profileGovernorateDropdown'),
+              initialValue: _selectedGovernorate,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'المحافظة',
+                border: OutlineInputBorder(),
+              ),
+              items: _governorates
+                  .map(
+                    (option) => DropdownMenuItem(
+                      value: option.name,
+                      child: Text(_governorateLabel(option)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _savingLocation
+                  ? null
+                  : (value) {
+                      _cityFieldKey.currentState?.didChange(null);
+                      setState(() {
+                        _selectedGovernorate = value;
+                        _selectedArea = null;
+                      });
+                    },
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              key: _cityFieldKey,
+              initialValue: _selectedArea,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'القرية / المدينة',
+                border: OutlineInputBorder(),
+              ),
+              items: governorate == null
+                  ? const <DropdownMenuItem<String>>[]
+                  : [
+                      DropdownMenuItem(
+                        value: governorate.areaValue,
+                        child: Text('من ${governorate.nativeName} نفسها'),
+                      ),
+                      ...governorate.cities.map(
+                        (city) =>
+                            DropdownMenuItem(value: city, child: Text(city)),
+                      ),
+                    ],
+              onChanged: governorate == null || _savingLocation
+                  ? null
+                  : (value) => setState(() => _selectedArea = value),
+            ),
+            if (_currentUser.governorateLevel) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: scheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.public,
+                      size: 18,
+                      color: scheme.onSecondaryContainer,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'خيار العمل على مستوى المحافظة مفعّل، وسيُطبّق تلقائياً على المحافظة الجديدة.',
+                        style: TextStyle(
+                          color: scheme.onSecondaryContainer,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              'تغيير المنطقة يؤثر على الطلبات الجديدة فقط. الطلبات الحالية تبقى في منطقتها الأصلية.',
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                fontSize: 11.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              key: const Key('profileSaveLocation'),
+              onPressed: _savingLocation ? null : _saveLocation,
+              icon: const Icon(Icons.save_outlined, size: 18),
+              label: Text(
+                _savingLocation ? 'جاري الحفظ...' : 'حفظ المحافظة والقرية',
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

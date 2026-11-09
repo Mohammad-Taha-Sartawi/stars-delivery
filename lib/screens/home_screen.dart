@@ -61,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription? _newOfferSub;
   StreamSubscription? _deliveryConfirmationSub;
   StreamSubscription? _offerCancelledSub;
+  StreamSubscription? _socketConnectedSub;
   StreamSubscription? _orderStatusSub;
   StreamSubscription? _offerAcceptedSub;
   StreamSubscription? _broadcastSub;
@@ -92,6 +93,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     LocationService.syncToBackend(widget.token);
 
     SocketService.instance.connect(token: widget.token);
+
+    _socketConnectedSub = SocketService.instance.onConnected.listen((_) {
+      if (!mounted) return;
+      _loadOrderCounts();
+      context.read<NotificationBloc>().add(
+        LoadNotifications(token: widget.token),
+      );
+    });
 
     context.read<NotificationBloc>().add(
       LoadNotifications(token: widget.token),
@@ -341,10 +350,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState st) {
     if (st == AppLifecycleState.resumed) {
+      if (!SocketService.instance.isConnected) {
+        SocketService.instance.connect(token: widget.token);
+      }
       LocationService.syncToBackend(widget.token);
       _loadOrderCounts();
       _loadAvailableDriversCount();
       _loadSupportUnreadCount();
+
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        _loadOrderCounts();
+      });
     }
   }
 
@@ -361,6 +378,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _newOfferSub?.cancel();
     _deliveryConfirmationSub?.cancel();
     _offerCancelledSub?.cancel();
+    _socketConnectedSub?.cancel();
     _orderStatusSub?.cancel();
     _offerAcceptedSub?.cancel();
     _broadcastSub?.cancel();

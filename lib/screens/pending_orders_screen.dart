@@ -41,7 +41,10 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
   late final List<Map<String, dynamic>> _orders = List.of(widget.orders);
   StreamSubscription? _offerAcceptedSub;
   StreamSubscription? _offerNotSelectedSub;
+  StreamSubscription? _newOrderSub;
   Timer? _cooldownTimer;
+  Timer? _refreshTimer;
+  bool _refreshing = false;
   DateTime? _cooldownUntil;
 
   bool get _cooldownActive {
@@ -65,10 +68,19 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
     super.initState();
 
     _loadCooldown();
+    _refreshOrders();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _refreshOrders(),
+    );
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _cooldownActive) {
         setState(() {});
       }
+    });
+
+    _newOrderSub = SocketService.instance.onNewOrder.listen((_) {
+      _refreshOrders();
     });
 
     _offerAcceptedSub = SocketService.instance.onOfferAccepted.listen((_) {
@@ -103,9 +115,31 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
   @override
   void dispose() {
     _cooldownTimer?.cancel();
+    _refreshTimer?.cancel();
     _offerAcceptedSub?.cancel();
     _offerNotSelectedSub?.cancel();
+    _newOrderSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _refreshOrders() async {
+    if (_refreshing) return;
+    _refreshing = true;
+
+    try {
+      final orders = await _providerService.getPendingOrders(widget.token);
+      if (!mounted) return;
+
+      setState(() {
+        _orders
+          ..clear()
+          ..addAll(orders);
+      });
+    } catch (_) {
+      // Keep the current list; the next refresh or pull-to-refresh retries.
+    } finally {
+      _refreshing = false;
+    }
   }
 
   Future<void> _loadCooldown() async {
@@ -419,7 +453,7 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
           top: false,
           child: RefreshIndicator(
             onRefresh: () async {
-              widget.onRefresh?.call();
+              await _refreshOrders();
               await _loadCooldown();
             },
             child: Center(

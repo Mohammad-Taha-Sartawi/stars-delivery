@@ -62,6 +62,42 @@ void main() {
     expect(pending, contains('_orders.removeWhere'));
   });
 
+  test(
+    'pending orders refresh when a new order arrives or the app resumes',
+    () {
+      final pending = File(
+        'lib/screens/pending_orders_screen.dart',
+      ).readAsStringSync();
+      final providerHome = File(
+        'lib/screens/provider_home_screen.dart',
+      ).readAsStringSync();
+      final socket = File(
+        'lib/services/socket_service.dart',
+      ).readAsStringSync();
+
+      expect(pending, contains('onNewOrder'));
+
+      expect(pending, contains('_refreshOrders'));
+
+      expect(pending, contains('getPendingOrders'));
+
+      expect(pending, contains('Duration(seconds: 15)'));
+
+      expect(pending, contains('await _refreshOrders()'));
+
+      expect(providerHome, contains('onConnected'));
+
+      expect(
+        providerHome,
+        contains('Future.delayed(const Duration(seconds: 3)'),
+      );
+
+      expect(socket, contains('onConnected'));
+
+      expect(socket, contains("'Socket connected'"));
+    },
+  );
+
   test('backend cancels stale offers and notifies both sides', () {
     final lifecycle = File(
       'stars_delivery_backend/src/services/orderLifecycle.js',

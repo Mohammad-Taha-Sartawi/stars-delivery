@@ -30,6 +30,7 @@ class SocketService {
       StreamController<Map<String, dynamic>>.broadcast();
   final _accountDeletedController = StreamController<void>.broadcast();
   final _sessionRevokedController = StreamController<void>.broadcast();
+  final _connectedController = StreamController<void>.broadcast();
 
   Stream<Map<String, dynamic>> get onNewOrder => _newOrderController.stream;
   Stream<Map<String, dynamic>> get onNewOffer => _newOfferController.stream;
@@ -51,6 +52,7 @@ class SocketService {
   Stream<Map<String, dynamic>> get onBroadcast => _broadcastController.stream;
   Stream<void> get onAccountDeleted => _accountDeletedController.stream;
   Stream<void> get onSessionRevoked => _sessionRevokedController.stream;
+  Stream<void> get onConnected => _connectedController.stream;
 
   bool get isConnected => _socket?.connected ?? false;
 
@@ -94,6 +96,7 @@ class SocketService {
 
     _socket!.onConnect((_) {
       print('Socket connected');
+      _connectedController.add(null);
     });
 
     _socket!.onDisconnect((reason) {
@@ -211,6 +214,7 @@ class SocketService {
     _broadcastController.close();
     _accountDeletedController.close();
     _sessionRevokedController.close();
+    _connectedController.close();
     _instance = null;
   }
 }

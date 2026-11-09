@@ -64,6 +64,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   Timer? _unblockTimer;
   StreamSubscription? _newOrderSub;
   StreamSubscription? _notifCountSub;
+  StreamSubscription? _socketConnectedSub;
   StreamSubscription? _offerAcceptedSub;
   StreamSubscription? _offerNotSelectedSub;
   StreamSubscription? _deliveryResultSub;
@@ -179,6 +180,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       token: widget.token,
       area: ApiConfig.detectedArea,
     );
+
+    _socketConnectedSub = SocketService.instance.onConnected.listen((_) {
+      if (!mounted) return;
+      context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
+      context.read<ProviderBloc>().add(LoadOfferedOrders(token: widget.token));
+      context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
+      context.read<NotificationBloc>().add(
+        LoadNotifications(token: widget.token),
+      );
+    });
 
     context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
     context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
@@ -346,10 +357,29 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState st) {
     if (st == AppLifecycleState.resumed) {
+      if (!SocketService.instance.isConnected) {
+        SocketService.instance.connect(
+          token: widget.token,
+          area: ApiConfig.detectedArea,
+        );
+      }
       LocationService.syncToBackend(widget.token);
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
       context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
       _loadSupportUnreadCount();
+
+      // Mobile networks and the dev server may still be waking up when the
+      // app returns to the foreground. Retry once after a short delay so a
+      // missed socket event cannot leave the dashboard stale.
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        context.read<ProviderBloc>().add(
+          LoadPendingOrders(token: widget.token),
+        );
+        context.read<ProviderBloc>().add(
+          LoadProviderStats(token: widget.token),
+        );
+      });
     }
   }
 
@@ -361,6 +391,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     _unblockTimer?.cancel();
     _newOrderSub?.cancel();
     _notifCountSub?.cancel();
+    _socketConnectedSub?.cancel();
     _offerAcceptedSub?.cancel();
     _offerNotSelectedSub?.cancel();
     _deliveryResultSub?.cancel();

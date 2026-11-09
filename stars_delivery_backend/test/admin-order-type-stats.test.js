@@ -57,39 +57,44 @@ test('admin stats aggregate customer orders by type and period', () => {
   assert.match(adminApi, /accepted: \{/);
 });
 
-test('dashboard shows monthly totals with today counts and no fake data', () => {
+test('dashboard shows only accepted and not accepted order counters', () => {
   const index = source('src/views/admin/index.ejs');
   const main = source('src/public/js/main.js');
 
   for (const id of [
-    'prodCount',
-    'prodToday',
     'prodAccepted',
     'prodNotAccepted',
-    'passCount',
-    'passToday',
     'passAccepted',
     'passNotAccepted',
-    'cargoCount',
-    'cargoToday',
     'cargoAccepted',
     'cargoNotAccepted',
   ]) {
     assert.match(index, new RegExp(`id="${id}"`));
   }
 
+  // The previous card totals and today counters were removed from the UI.
+  for (const id of [
+    'prodCount',
+    'prodToday',
+    'passCount',
+    'passToday',
+    'cargoCount',
+    'cargoToday',
+  ]) {
+    assert.doesNotMatch(index, new RegExp(`id="${id}"`));
+  }
+
   assert.match(main, /orderCounts\.product/);
   assert.match(main, /orderCounts\.people/);
   assert.match(main, /orderCounts\.goods/);
-  assert.match(main, /prodToday/);
-  assert.match(main, /passToday/);
-  assert.match(main, /cargoToday/);
   assert.match(main, /prodAccepted/);
   assert.match(main, /prodNotAccepted/);
   assert.match(main, /passAccepted/);
   assert.match(main, /passNotAccepted/);
   assert.match(main, /cargoAccepted/);
   assert.match(main, /cargoNotAccepted/);
+  assert.doesNotMatch(main, /prodCount/);
+  assert.doesNotMatch(main, /prodToday/);
 
   // The previous fake percentages, wait times and active counts are gone.
   assert.doesNotMatch(index, /\+12%/);

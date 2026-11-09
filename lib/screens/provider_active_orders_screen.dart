@@ -46,6 +46,24 @@ class _ProviderActiveOrdersScreenState
         }),
       );
     }
+    _socketSubs.add(
+      SocketService.instance.onDeliveryConfirmationResult.listen((data) {
+        if (!mounted) return;
+        _loadOrders();
+        final approved = data['approved'] == true;
+        if (approved) {
+          AppFeedback.success(
+            context,
+            AppLocalization.get(context, 'delivery_confirmed_provider'),
+          );
+        } else {
+          AppFeedback.warning(
+            context,
+            AppLocalization.get(context, 'delivery_rejected_provider'),
+          );
+        }
+      }),
+    );
   }
 
   @override
@@ -179,9 +197,9 @@ class _ProviderActiveOrdersScreenState
         context.read<ProviderBloc>().add(
           LoadProviderStats(token: widget.token),
         );
-        AppFeedback.success(
+        AppFeedback.info(
           context,
-          AppLocalization.get(context, 'order_completed_msg'),
+          AppLocalization.get(context, 'waiting_customer_confirmation'),
         );
       }
     } catch (e) {
@@ -246,6 +264,9 @@ class _ProviderActiveOrdersScreenState
                           final isActive =
                               o['status'] == 'accepted' ||
                               o['status'] == 'fulfilling';
+                          final completionRequested =
+                              o['completionRequestedAt'] != null &&
+                              o['completionRequestedAt'].toString().isNotEmpty;
                           if (!isActive) return const SizedBox.shrink();
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -425,39 +446,75 @@ class _ProviderActiveOrdersScreenState
                                   ],
                                   if (o['status'] == 'fulfilling') ...[
                                     const SizedBox(height: 12),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed: () => _markComplete(
-                                          o['_id']?.toString() ?? '',
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: appToneStyle(
+                                    if (completionRequested)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: appToneStyle(
                                             context,
-                                            AppTone.success,
-                                          ).solid,
-                                          foregroundColor: appToneStyle(
-                                            context,
-                                            AppTone.success,
-                                          ).onSolid,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadiusDirectional.circular(
-                                                  AppRadius.xs,
-                                                ),
+                                            AppTone.warning,
+                                          ).background,
+                                          borderRadius:
+                                              BorderRadiusDirectional.circular(
+                                                AppRadius.xs,
+                                              ),
+                                          border: Border.all(
+                                            color: appToneStyle(
+                                              context,
+                                              AppTone.warning,
+                                            ).border,
                                           ),
                                         ),
                                         child: Text(
                                           AppLocalization.get(
                                             context,
-                                            'confirm_delivery',
+                                            'awaiting_delivery_confirmation',
                                           ),
-                                          style: const TextStyle(
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
+                                            color: appToneStyle(
+                                              context,
+                                              AppTone.warning,
+                                            ).foreground,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: () => _markComplete(
+                                            o['_id']?.toString() ?? '',
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: appToneStyle(
+                                              context,
+                                              AppTone.success,
+                                            ).solid,
+                                            foregroundColor: appToneStyle(
+                                              context,
+                                              AppTone.success,
+                                            ).onSolid,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadiusDirectional.circular(
+                                                    AppRadius.xs,
+                                                  ),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            AppLocalization.get(
+                                              context,
+                                              'confirm_delivery',
+                                            ),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ],
                               ),

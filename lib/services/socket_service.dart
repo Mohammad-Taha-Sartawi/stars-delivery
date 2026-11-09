@@ -15,6 +15,10 @@ class SocketService {
       StreamController<Map<String, dynamic>>.broadcast();
   final _orderStatusController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final _deliveryConfirmationRequestedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _deliveryConfirmationResultController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _notifCountController = StreamController<int>.broadcast();
   final _supportReplyController =
       StreamController<Map<String, dynamic>>.broadcast();
@@ -29,6 +33,10 @@ class SocketService {
       _offerAcceptedController.stream;
   Stream<Map<String, dynamic>> get onOrderStatusChanged =>
       _orderStatusController.stream;
+  Stream<Map<String, dynamic>> get onDeliveryConfirmationRequested =>
+      _deliveryConfirmationRequestedController.stream;
+  Stream<Map<String, dynamic>> get onDeliveryConfirmationResult =>
+      _deliveryConfirmationResultController.stream;
   Stream<int> get onNotificationCount => _notifCountController.stream;
   Stream<Map<String, dynamic>> get onSupportReply =>
       _supportReplyController.stream;
@@ -121,6 +129,22 @@ class SocketService {
       }
     });
 
+    _socket!.on('delivery_confirmation_requested', (data) {
+      if (data is Map) {
+        _deliveryConfirmationRequestedController.add(
+          Map<String, dynamic>.from(data),
+        );
+      }
+    });
+
+    _socket!.on('delivery_confirmation_result', (data) {
+      if (data is Map) {
+        _deliveryConfirmationResultController.add(
+          Map<String, dynamic>.from(data),
+        );
+      }
+    });
+
     _socket!.on('notification_count', (data) {
       if (data is Map && data['unreadCount'] is int) {
         _notifCountController.add(data['unreadCount'] as int);
@@ -158,6 +182,8 @@ class SocketService {
     _newOfferController.close();
     _offerAcceptedController.close();
     _orderStatusController.close();
+    _deliveryConfirmationRequestedController.close();
+    _deliveryConfirmationResultController.close();
     _notifCountController.close();
     _supportReplyController.close();
     _broadcastController.close();

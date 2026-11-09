@@ -11,6 +11,7 @@ import '../bloc/app/app_bloc.dart';
 import '../bloc/offer/offer_bloc.dart';
 import 'order_detail_screen.dart';
 import 'order_offers_screen.dart';
+import 'my_orders_screen.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_status_badge.dart';
@@ -233,6 +234,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.delivery_dining;
       case 'order_completed':
         return Icons.check_circle_outline;
+      case 'delivery_confirmation':
+        return Icons.assignment_turned_in_outlined;
+      case 'delivery_confirmed':
+        return Icons.verified_outlined;
+      case 'delivery_rejected':
+        return Icons.report_gmailerrorred_outlined;
       case 'report_reply':
         return Icons.support_agent;
       case 'broadcast':
@@ -248,8 +255,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return;
     }
 
-    const providerTypes = {'new_order', 'offer_accepted'};
+    const providerTypes = {
+      'new_order',
+      'offer_accepted',
+      'delivery_confirmed',
+      'delivery_rejected',
+    };
     const customerTypes = {'new_offer', 'order_pending', 'order_completed'};
+
+    if (n.type == 'delivery_confirmation') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MyOrdersScreen(
+            token: widget.token,
+            statuses: const {'fulfilling'},
+            titleKey: 'in_progress_orders_btn',
+          ),
+        ),
+      );
+      return;
+    }
 
     if (providerTypes.contains(n.type)) {
       Navigator.push(

@@ -275,18 +275,96 @@ router.put('/:id/fulfilling', auth, requireRole('provider'), async (req, res) =>
 
 router.put('/:id/complete', auth, requireRole('provider'), async (req, res) => {
   try {
-    const order = await lifecycle.transitionOrder({ orderId: req.params.id, providerId: req.userId, from: 'fulfilling', to: 'completed' });
+    const order = await lifecycle.requestDeliveryConfirmation({ orderId: req.params.id, providerId: req.userId });
 
     const io = req.app.get('io');
-    if (io) io.to(`user:${order.customerId}`).emit('order_status_changed', { orderId: order._id, status: 'completed' });
+    if (io) {
+      io.to(`user:${order.customerId}`).emit('delivery_confirmation_requested', {
+        orderId: order._id,
+      });
+    }
 
     await createUserNotification({
       io,
       userId: order.customerId,
       orderId: order._id,
-      type: 'order_completed',
-      title: 'تم إكمال طلبك',
-      body: 'أعلن السائق إكمال الطلب بنجاح.',
+      type: 'delivery_confirmation',
+      title: 'السائق يطلب تأكيد التسليم',
+      body: 'يرجى تأكيد استلام الطلب أو عدم الموافقة على التسليم.',
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
+
+    res.json(order);
+  } catch (err) {
+    if (err instanceof lifecycle.LifecycleConflict) return res.status(409).json(lifecycle.conflictResponse(err));
+    if (lifecycle.isTransactionUnavailable(err)) return res.status(503).json({ error: 'Order service is temporarily unavailable' });
+    sendInternalServerError(res);
+  }
+});
+
+router.put('/:id/confirm-delivery', auth, requireRole('customer'), async (req, res) => {
+  try {
+    const order = await lifecycle.confirmDelivery({
+      orderId: req.params.id,
+      customerId: req.userId,
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${order.providerId}`).emit('delivery_confirmation_result', {
+        orderId: order._id,
+        approved: true,
+      });
+      io.to(`user:${order.customerId}`).emit('order_status_changed', {
+        orderId: order._id,
+        status: 'completed',
+      });
+    }
+
+    await createUserNotification({
+      io,
+      userId: order.providerId,
+      orderId: order._id,
+      type: 'delivery_confirmed',
+      title: 'تم تأكيد التسليم',
+      body: 'أكد الزبون استلام الطلب وتم إكماله بنجاح.',
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
+
+    res.json(order);
+  } catch (err) {
+    if (err instanceof lifecycle.LifecycleConflict) return res.status(409).json(lifecycle.conflictResponse(err));
+    if (lifecycle.isTransactionUnavailable(err)) return res.status(503).json({ error: 'Order service is temporarily unavailable' });
+    sendInternalServerError(res);
+  }
+});
+
+router.put('/:id/reject-delivery', auth, requireRole('customer'), async (req, res) => {
+  try {
+    const order = await lifecycle.rejectDelivery({
+      orderId: req.params.id,
+      customerId: req.userId,
+      reason: req.body?.reason,
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${order.providerId}`).emit('delivery_confirmation_result', {
+        orderId: order._id,
+        approved: false,
+        reason: order.deliveryRejectionReason || '',
+      });
+    }
+
+    await createUserNotification({
+      io,
+      userId: order.providerId,
+      orderId: order._id,
+      type: 'delivery_rejected',
+      title: 'الزبون لم يوافق على التسليم',
+      body: order.deliveryRejectionReason
+        ? `سبب الرفض: ${order.deliveryRejectionReason}`
+        : 'يرجى التواصل مع الزبون وإعادة تأكيد التسليم.',
       expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     }).catch(() => {});
 

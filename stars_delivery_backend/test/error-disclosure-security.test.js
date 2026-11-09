@@ -19,7 +19,7 @@ const protectedFiles = new Map([
   ['src/routes/adminChat.js', 2],
   ['src/routes/notifications.js', 4],
   ['src/routes/offers.js', 5],
-  ['src/routes/orders.js', 5],
+  ['src/routes/orders.js', 7],
   ['src/routes/provider.js', 7],
   ['src/routes/reports.js', 2],
   ['src/routes/users.js', 15],
@@ -102,7 +102,7 @@ test('all STARS-009A HTTP 500 sites use the safe helper', () => {
     total += calls.length;
   }
 
-  assert.equal(total, 54);
+  assert.equal(total, 56);
 });
 
 test('controlled non-500 application errors remain intact', () => {

@@ -55,6 +55,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         }),
       );
     }
+    _socketSubs.add(
+      SocketService.instance.onDeliveryConfirmationResult.listen((data) {
+        if (!mounted) return;
+        _load();
+        final approved = data['approved'] == true;
+        if (approved) {
+          AppFeedback.success(
+            context,
+            AppLocalization.get(context, 'delivery_confirmed_provider'),
+          );
+        } else {
+          AppFeedback.warning(
+            context,
+            AppLocalization.get(context, 'delivery_rejected_provider'),
+          );
+        }
+      }),
+    );
   }
 
   @override
@@ -157,9 +175,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       await _providerService.markComplete(widget.token, widget.orderId);
       await _load();
       if (!mounted) return;
-      AppFeedback.success(
+      AppFeedback.info(
         context,
-        AppLocalization.get(context, 'order_completed_msg'),
+        AppLocalization.get(context, 'waiting_customer_confirmation'),
       );
     } catch (error) {
       if (!mounted) return;
@@ -287,6 +305,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
 
     final status = order['status']?.toString() ?? '';
+    final completionRequested =
+        order['completionRequestedAt'] != null &&
+        order['completionRequestedAt'].toString().isNotEmpty;
     final myOffer = order['myOffer'];
     final hasOffer = myOffer is Map;
     final rejected = order['rejected'] == true;
@@ -546,24 +567,53 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ),
         if (status == 'fulfilling')
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _markComplete,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: appToneStyle(context, AppTone.success).solid,
-                foregroundColor: appToneStyle(context, AppTone.success).onSolid,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          completionRequested
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: appToneStyle(context, AppTone.warning).background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: appToneStyle(context, AppTone.warning).border,
+                    ),
+                  ),
+                  child: Text(
+                    AppLocalization.get(
+                      context,
+                      'awaiting_delivery_confirmation',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: appToneStyle(context, AppTone.warning).foreground,
+                    ),
+                  ),
+                )
+              : SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _markComplete,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: appToneStyle(
+                        context,
+                        AppTone.success,
+                      ).solid,
+                      foregroundColor: appToneStyle(
+                        context,
+                        AppTone.success,
+                      ).onSolid,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      AppLocalization.get(context, 'confirm_delivery'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                AppLocalization.get(context, 'confirm_delivery'),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
       ],
     );
   }

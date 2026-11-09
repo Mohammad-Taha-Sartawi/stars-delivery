@@ -65,6 +65,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   StreamSubscription? _newOrderSub;
   StreamSubscription? _notifCountSub;
   StreamSubscription? _offerAcceptedSub;
+  StreamSubscription? _deliveryResultSub;
   StreamSubscription? _broadcastSub;
   StreamSubscription? _accountDeletedSub;
   StreamSubscription? _sessionRevokedSub;
@@ -233,6 +234,33 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       }
     });
 
+    _deliveryResultSub = SocketService.instance.onDeliveryConfirmationResult
+        .listen((data) {
+          if (!mounted) return;
+          context.read<ProviderBloc>().add(
+            LoadProviderStats(token: widget.token),
+          );
+          context.read<ProviderBloc>().add(
+            LoadPendingOrders(token: widget.token),
+          );
+          context.read<ProviderBloc>().add(
+            LoadOfferedOrders(token: widget.token),
+          );
+
+          final approved = data['approved'] == true;
+          if (approved) {
+            AppFeedback.success(
+              context,
+              AppLocalization.get(context, 'delivery_confirmed_provider'),
+            );
+          } else {
+            AppFeedback.warning(
+              context,
+              AppLocalization.get(context, 'delivery_rejected_provider'),
+            );
+          }
+        });
+
     _broadcastSub = SocketService.instance.onBroadcast.listen((_) {
       if (!mounted) return;
       // Admin broadcasts are notification-only; do not show a home snackbar
@@ -312,6 +340,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     _newOrderSub?.cancel();
     _notifCountSub?.cancel();
     _offerAcceptedSub?.cancel();
+    _deliveryResultSub?.cancel();
     _broadcastSub?.cancel();
     _accountDeletedSub?.cancel();
     _sessionRevokedSub?.cancel();

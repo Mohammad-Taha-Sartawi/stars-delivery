@@ -412,6 +412,60 @@ class AppLocalization {
       'en': 'Remaining: %d minutes',
     },
     'delivery_overdue': {'ar': 'تجاوز الوقت المحدد', 'en': 'Overdue'},
+    'delivery_not_started': {
+      'ar': 'بانتظار بدء السائق للتوصيل',
+      'en': 'Waiting for the driver to start delivery',
+    },
+    'awaiting_delivery_confirmation': {
+      'ar': 'بانتظار تأكيد التسليم',
+      'en': 'Awaiting delivery confirmation',
+    },
+    'delivery_confirmation_requested_title': {
+      'ar': 'السائق يطلب تأكيد التسليم',
+      'en': 'Driver requested delivery confirmation',
+    },
+    'delivery_confirmation_requested_body': {
+      'ar': 'يرجى تأكيد استلام الطلب أو عدم الموافقة على التسليم.',
+      'en': 'Please approve the delivery or reject it.',
+    },
+    'approve_delivery': {
+      'ar': 'الموافقة على التسليم',
+      'en': 'Approve delivery',
+    },
+    'reject_delivery': {
+      'ar': 'عدم الموافقة على التسليم',
+      'en': 'Reject delivery',
+    },
+    'delivery_approved_message': {
+      'ar': 'تم تأكيد التسليم وإكمال الطلب.',
+      'en': 'Delivery confirmed and order completed.',
+    },
+    'delivery_rejected_message': {
+      'ar': 'تم رفض تأكيد التسليم. سيبقى الطلب قيد التنفيذ.',
+      'en': 'Delivery confirmation rejected. The order remains in progress.',
+    },
+    'reject_delivery_confirm_title': {
+      'ar': 'رفض تأكيد التسليم؟',
+      'en': 'Reject delivery confirmation?',
+    },
+    'reject_delivery_confirm_message': {
+      'ar':
+          'سيتم إبلاغ السائق بأنك لم توافق على التسليم، وسيبقى الطلب قيد التنفيذ.',
+      'en':
+          'The driver will be notified that you rejected the delivery, and the order will remain in progress.',
+    },
+    'waiting_customer_confirmation': {
+      'ar': 'تم إرسال طلب تأكيد التسليم إلى الزبون.',
+      'en': 'Delivery confirmation request sent to the customer.',
+    },
+    'delivery_confirmed_provider': {
+      'ar': 'أكد الزبون استلام الطلب وتم إكماله.',
+      'en': 'The customer confirmed delivery and the order was completed.',
+    },
+    'delivery_rejected_provider': {
+      'ar': 'رفض الزبون تأكيد التسليم. يمكنك إعادة المحاولة.',
+      'en': 'The customer rejected the delivery. You can try again.',
+    },
     'offer_already_submitted': {
       'ar': 'لقد قدمت عرض سعر لهذا الطلب مسبقاً.',
       'en': 'You have already submitted an offer for this order.',

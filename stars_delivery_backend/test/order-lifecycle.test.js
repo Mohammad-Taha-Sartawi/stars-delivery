@@ -806,9 +806,9 @@ test('transitionOrder requires provider ownership and exact source state', async
         status: 'accepted',
       });
 
-      assert.deepEqual(update, {
-        $set: { status: 'fulfilling' },
-      });
+      assert.equal(update.$set.status, 'fulfilling');
+      assert.ok(update.$set.fulfillingAt instanceof Date);
+      assert.equal(update.$set.fulfillingAt instanceof Date, true);
 
       assert.equal(options.session, session);
 
@@ -989,14 +989,27 @@ test('socket success emissions remain structurally after awaited lifecycle commi
 
   const completeAwait =
     ordersRoute.indexOf(
-      "await lifecycle.transitionOrder({ orderId: req.params.id, providerId: req.userId, from: 'fulfilling', to: 'completed' })"
+      'await lifecycle.requestDeliveryConfirmation'
     );
 
   const completeEmit =
     ordersRoute.indexOf(
-      "emit('order_status_changed', { orderId: order._id, status: 'completed' })"
+      "emit('delivery_confirmation_requested'"
     );
 
   assert.ok(completeAwait >= 0);
   assert.ok(completeEmit > completeAwait);
+
+  const confirmationAwait =
+    ordersRoute.indexOf(
+      'await lifecycle.confirmDelivery'
+    );
+
+  const confirmationEmit =
+    ordersRoute.indexOf(
+      "emit('delivery_confirmation_result'"
+    );
+
+  assert.ok(confirmationAwait >= 0);
+  assert.ok(confirmationEmit > confirmationAwait);
 });

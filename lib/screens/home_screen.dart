@@ -58,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _supportUnreadCount = 0;
   late ChatService _supportChatService;
   StreamSubscription? _newOfferSub;
+  StreamSubscription? _deliveryConfirmationSub;
   StreamSubscription? _orderStatusSub;
   StreamSubscription? _offerAcceptedSub;
   StreamSubscription? _broadcastSub;
@@ -69,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late UserModel _user = widget.user;
   late bool _governorateLevel = _user.governorateLevel;
   String? _openingOffersOrderId;
+  bool _openingDeliveryConfirmation = false;
 
   @override
   void initState() {
@@ -119,6 +121,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         unawaited(_openOffersForIncomingOffer(orderId));
       }
     });
+
+    _deliveryConfirmationSub = SocketService
+        .instance
+        .onDeliveryConfirmationRequested
+        .listen((_) {
+          if (!mounted) return;
+          _loadOrderCounts();
+          context.read<NotificationBloc>().add(
+            LoadNotifications(token: widget.token),
+          );
+          unawaited(_openDeliveryConfirmation());
+        });
 
     _orderStatusSub = SocketService.instance.onOrderStatusChanged.listen((
       data,
@@ -175,6 +189,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     } finally {
       _openingOffersOrderId = null;
+      if (mounted) {
+        _loadOrderCounts();
+      }
+    }
+  }
+
+  Future<void> _openDeliveryConfirmation() async {
+    if (!mounted || _openingDeliveryConfirmation) return;
+
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return;
+
+    _openingDeliveryConfirmation = true;
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MyOrdersScreen(
+            token: widget.token,
+            statuses: const {'fulfilling'},
+            titleKey: 'in_progress_orders_btn',
+          ),
+        ),
+      );
+    } finally {
+      _openingDeliveryConfirmation = false;
       if (mounted) {
         _loadOrderCounts();
       }
@@ -305,6 +345,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _notifTimer?.cancel();
     _newOfferSub?.cancel();
+    _deliveryConfirmationSub?.cancel();
     _orderStatusSub?.cancel();
     _offerAcceptedSub?.cancel();
     _broadcastSub?.cancel();

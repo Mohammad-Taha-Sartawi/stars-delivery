@@ -464,12 +464,100 @@ async function transitionOrder({ orderId, providerId, from, to }) {
   return inTransaction(async (session) => {
     const updates = to === 'completed'
       ? { status: to, completedAt: new Date() }
-      : { status: to };
+      : {
+          status: to,
+          ...(to === 'fulfilling' ? { fulfillingAt: new Date() } : {}),
+        };
     const updated = await Order.findOneAndUpdate({ _id: orderId, providerId, status: from }, { $set: updates }, { new: true, session }).lean();
     if (!updated) throw new LifecycleConflict('INVALID_TRANSITION', orderId);
     if (to === 'completed') {
       await User.updateOne({ _id: providerId }, { $set: { blockedUntil: null } }, { session });
     }
+    return updated;
+  });
+}
+
+async function requestDeliveryConfirmation({ orderId, providerId }) {
+  return inTransaction(async (session) => {
+    const now = new Date();
+    const updated = await Order.findOneAndUpdate(
+      {
+        _id: orderId,
+        providerId,
+        status: 'fulfilling',
+        $or: [
+          { completionRequestedAt: null },
+          { completionRequestedAt: { $exists: false } },
+        ],
+      },
+      {
+        $set: {
+          completionRequestedAt: now,
+          deliveryRejectedAt: null,
+          deliveryRejectionReason: '',
+        },
+      },
+      { new: true, session },
+    ).lean();
+
+    if (!updated) throw new LifecycleConflict('INVALID_TRANSITION', orderId);
+    return updated;
+  });
+}
+
+async function confirmDelivery({ orderId, customerId }) {
+  return inTransaction(async (session) => {
+    const now = new Date();
+    const updated = await Order.findOneAndUpdate(
+      {
+        _id: orderId,
+        customerId,
+        status: 'fulfilling',
+        completionRequestedAt: { $ne: null },
+      },
+      {
+        $set: {
+          status: 'completed',
+          completedAt: now,
+          deliveryConfirmedAt: now,
+          deliveryRejectedAt: null,
+          deliveryRejectionReason: '',
+        },
+      },
+      { new: true, session },
+    ).lean();
+
+    if (!updated) throw new LifecycleConflict('INVALID_TRANSITION', orderId);
+    await User.updateOne(
+      { _id: updated.providerId },
+      { $set: { blockedUntil: null } },
+      { session },
+    );
+    return updated;
+  });
+}
+
+async function rejectDelivery({ orderId, customerId, reason = '' }) {
+  return inTransaction(async (session) => {
+    const now = new Date();
+    const updated = await Order.findOneAndUpdate(
+      {
+        _id: orderId,
+        customerId,
+        status: 'fulfilling',
+        completionRequestedAt: { $ne: null },
+      },
+      {
+        $set: {
+          completionRequestedAt: null,
+          deliveryRejectedAt: now,
+          deliveryRejectionReason: String(reason || '').slice(0, 500),
+        },
+      },
+      { new: true, session },
+    ).lean();
+
+    if (!updated) throw new LifecycleConflict('INVALID_TRANSITION', orderId);
     return updated;
   });
 }
@@ -490,4 +578,7 @@ module.exports = {
   resetOrder,
   cancelOrder,
   transitionOrder,
+  requestDeliveryConfirmation,
+  confirmDelivery,
+  rejectDelivery,
 };

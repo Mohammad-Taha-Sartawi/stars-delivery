@@ -9,6 +9,7 @@ import '../services/offer_service.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/socket_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_status_chip.dart';
@@ -60,6 +61,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       SocketService.instance.onNewOffer,
       SocketService.instance.onOfferAccepted,
       SocketService.instance.onOrderStatusChanged,
+      SocketService.instance.onDeliveryConfirmationRequested,
+      SocketService.instance.onDeliveryConfirmationResult,
     ]) {
       _socketSubs.add(
         stream.listen((_) {
@@ -96,6 +99,52 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       });
     } catch (e) {
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _confirmDelivery(String orderId) async {
+    try {
+      await _orderService.confirmDelivery(widget.token, orderId);
+      await _loadOrders();
+      if (!mounted) return;
+      AppFeedback.success(
+        context,
+        AppLocalization.get(context, 'delivery_approved_message'),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
+  Future<void> _rejectDelivery(String orderId) async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: AppLocalization.get(context, 'reject_delivery_confirm_title'),
+      message: AppLocalization.get(context, 'reject_delivery_confirm_message'),
+      confirmLabel: AppLocalization.get(context, 'reject_delivery'),
+      cancelLabel: AppLocalization.get(context, 'cancel'),
+    );
+
+    if (!confirmed || !mounted) return;
+
+    try {
+      await _orderService.rejectDelivery(widget.token, orderId);
+      await _loadOrders();
+      if (!mounted) return;
+      AppFeedback.warning(
+        context,
+        AppLocalization.get(context, 'delivery_rejected_message'),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -256,7 +305,30 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                               (status == 'pending' &&
                                   o['offerWindowExpiredAt'] != null &&
                                   !isOfferSuspended);
-                          final statusLabel = isOfferSuspended
+                          final acceptedAt = DateTime.tryParse(
+                            o['acceptedAt']?.toString() ?? '',
+                          );
+                          final fulfillingAt = DateTime.tryParse(
+                            o['fulfillingAt']?.toString() ?? '',
+                          );
+                          final completionRequestedAt =
+                              o['completionRequestedAt'] != null &&
+                                  o['completionRequestedAt']
+                                      .toString()
+                                      .isNotEmpty
+                              ? DateTime.tryParse(
+                                  o['completionRequestedAt'].toString(),
+                                )
+                              : null;
+                          final awaitingConfirmation =
+                              status == 'fulfilling' &&
+                              completionRequestedAt != null;
+                          final statusLabel = awaitingConfirmation
+                              ? AppLocalization.get(
+                                  context,
+                                  'awaiting_delivery_confirmation',
+                                )
+                              : isOfferSuspended
                               ? AppLocalization.get(context, 'order_suspended')
                               : isOfferExpired
                               ? AppLocalization.get(
@@ -264,24 +336,26 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                   'offer_window_expired_short',
                                 )
                               : _statusLabel(status);
-                          final statusTone = isOfferExpired
+                          final statusTone = awaitingConfirmation
+                              ? AppTone.warning
+                              : isOfferExpired
                               ? AppTone.danger
                               : isOfferSuspended
                               ? AppTone.warning
                               : _statusTone(status);
-                          final acceptedAt = DateTime.tryParse(
-                            o['acceptedAt']?.toString() ?? '',
-                          );
                           final estimatedMinutes =
                               (o['estimatedTime'] as num?)?.toInt() ?? 0;
+                          final clockStart = status == 'fulfilling'
+                              ? (fulfillingAt ?? acceptedAt)
+                              : null;
                           final showDeliveryClock =
-                              (status == 'accepted' ||
-                                  status == 'fulfilling') &&
-                              acceptedAt != null &&
+                              status == 'fulfilling' &&
+                              clockStart != null &&
                               estimatedMinutes > 0;
-                          final elapsed = acceptedAt == null
+                          final showWaitingStart = status == 'accepted';
+                          final elapsed = clockStart == null
                               ? Duration.zero
-                              : DateTime.now().difference(acceptedAt);
+                              : DateTime.now().difference(clockStart);
                           final elapsedMinutes = elapsed.inMinutes;
                           final remainingMinutes =
                               estimatedMinutes - elapsedMinutes;
@@ -512,6 +586,171 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                           ),
                                         ),
                                       ],
+                                    ),
+                                  ),
+                                if (showWaitingStart)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      12,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.schedule,
+                                          size: 16,
+                                          color: appToneStyle(
+                                            context,
+                                            AppTone.info,
+                                          ).solid,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            AppLocalization.get(
+                                              context,
+                                              'delivery_not_started',
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (awaitingConfirmation)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      12,
+                                    ),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: appToneStyle(
+                                          context,
+                                          AppTone.warning,
+                                        ).background,
+                                        borderRadius:
+                                            BorderRadiusDirectional.circular(
+                                              AppRadius.sm,
+                                            ),
+                                        border: Border.all(
+                                          color: appToneStyle(
+                                            context,
+                                            AppTone.warning,
+                                          ).border,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            AppLocalization.get(
+                                              context,
+                                              'delivery_confirmation_requested_title',
+                                            ),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: appToneStyle(
+                                                context,
+                                                AppTone.warning,
+                                              ).foreground,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            AppLocalization.get(
+                                              context,
+                                              'delivery_confirmation_requested_body',
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: appToneStyle(
+                                                context,
+                                                AppTone.warning,
+                                              ).foreground,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () =>
+                                                      _confirmDelivery(
+                                                        o['_id']?.toString() ??
+                                                            '',
+                                                      ),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            appToneStyle(
+                                                              context,
+                                                              AppTone.success,
+                                                            ).solid,
+                                                        foregroundColor:
+                                                            appToneStyle(
+                                                              context,
+                                                              AppTone.success,
+                                                            ).onSolid,
+                                                      ),
+                                                  child: Text(
+                                                    AppLocalization.get(
+                                                      context,
+                                                      'approve_delivery',
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  onPressed: () =>
+                                                      _rejectDelivery(
+                                                        o['_id']?.toString() ??
+                                                            '',
+                                                      ),
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                        foregroundColor:
+                                                            scheme.error,
+                                                        side: BorderSide(
+                                                          color: scheme.error,
+                                                        ),
+                                                      ),
+                                                  child: Text(
+                                                    AppLocalization.get(
+                                                      context,
+                                                      'reject_delivery',
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 if (o['status'] == 'pending' &&

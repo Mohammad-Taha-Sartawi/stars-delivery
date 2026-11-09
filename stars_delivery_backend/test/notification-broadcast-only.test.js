@@ -42,6 +42,8 @@ test('order, offer and report activity creates persisted notifications', () => {
   assert.match(offers, /type: 'new_offer'/);
   assert.match(offers, /type: 'offer_accepted'/);
   assert.match(orders, /type: 'order_pending'/);
-  assert.match(orders, /type: 'order_completed'/);
+  assert.match(orders, /type: 'delivery_confirmation'/);
+  assert.match(orders, /type: 'delivery_confirmed'/);
+  assert.match(orders, /type: 'delivery_rejected'/);
   assert.match(reports, /type: 'report_reply'/);
 });

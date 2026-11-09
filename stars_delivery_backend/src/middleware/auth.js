@@ -75,7 +75,7 @@ function createAuthMiddleware({
     try {
       user = await UserModel.findById(
         decoded.id,
-        'fullName email phoneNumbers role area governorate governorateLevel publicId status deleted sessionVersion blockedUntil offerCooldownUntil',
+        'fullName email phoneNumbers role area governorate governorateLevel publicId status deleted sessionVersion mustChangePassword blockedUntil offerCooldownUntil',
       );
     } catch (err) {
       return next(err);
@@ -107,6 +107,26 @@ function createAuthMiddleware({
         error: 'Account is not active',
         code: 'ACCOUNT_INACTIVE',
       });
+    }
+
+    if (user.mustChangePassword === true) {
+      const baseUrl = req.baseUrl || '';
+      const path = req.path || '';
+      const isPasswordChange =
+        req.method === 'PUT'
+        && baseUrl.endsWith('/users')
+        && path === '/password';
+      const isSessionCheck =
+        req.method === 'GET'
+        && baseUrl.endsWith('/auth')
+        && path === '/me';
+
+      if (!isPasswordChange && !isSessionCheck) {
+        return res.status(403).json({
+          error: 'Password change required',
+          code: 'PASSWORD_CHANGE_REQUIRED',
+        });
+      }
     }
 
     req.userId =

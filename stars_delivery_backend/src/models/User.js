@@ -55,6 +55,7 @@ const userSchema = new mongoose.Schema({
   }],
   password: { type: String, required: true, select: false },
   sessionVersion: { type: Number, default: 0, min: 0 },
+  mustChangePassword: { type: Boolean, default: false },
   providerDocuments: {
     type: [providerDocumentSchema],
     default: [],

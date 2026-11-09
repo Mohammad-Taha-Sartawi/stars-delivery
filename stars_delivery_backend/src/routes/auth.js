@@ -284,7 +284,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
 
     res.status(201).json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, phone, role: user.role, area: user.area, governorate: user.governorate || '', governorateLevel: user.governorateLevel === true, publicId: user.publicId },
+      user: { id: user._id, fullName: user.fullName, email: user.email, phone, role: user.role, area: user.area, governorate: user.governorate || '', governorateLevel: user.governorateLevel === true, publicId: user.publicId, mustChangePassword: user.mustChangePassword === true },
     });
   } catch (err) {
     sendInternalServerError(res);
@@ -365,7 +365,7 @@ router.post('/login', mobileLoginLimiter, async (req, res) => {
 
     res.json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, phone: primaryPhone, role: user.role, area: user.area, governorate: governorateKey(user) || user.governorate || '', governorateLevel: user.governorateLevel === true, publicId: user.publicId || '' },
+      user: { id: user._id, fullName: user.fullName, email: user.email, phone: primaryPhone, role: user.role, area: user.area, governorate: governorateKey(user) || user.governorate || '', governorateLevel: user.governorateLevel === true, publicId: user.publicId || '', mustChangePassword: user.mustChangePassword === true },
     });
   } catch (err) {
     sendInternalServerError(res);
@@ -383,9 +383,13 @@ router.get(
   requireRole('customer', 'provider'),
   (req, res) => {
     return res.json({
-      user: publicMobileUser(
-        req.authUser,
-      ),
+      user: {
+        ...publicMobileUser(
+          req.authUser,
+        ),
+        mustChangePassword:
+          req.authUser.mustChangePassword === true,
+      },
     });
   },
 );

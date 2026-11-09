@@ -8,6 +8,7 @@ class UserModel {
   final String governorate;
   final bool governorateLevel;
   final String publicId;
+  final bool mustChangePassword;
 
   UserModel({
     required this.id,
@@ -19,6 +20,7 @@ class UserModel {
     this.governorate = '',
     this.governorateLevel = false,
     required this.publicId,
+    this.mustChangePassword = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class UserModel {
       governorate: json['governorate'] ?? '',
       governorateLevel: json['governorateLevel'] == true,
       publicId: json['publicId'] ?? '',
+      mustChangePassword: json['mustChangePassword'] == true,
     );
   }
 
@@ -45,5 +48,6 @@ class UserModel {
     'governorate': governorate,
     'governorateLevel': governorateLevel,
     'publicId': publicId,
+    'mustChangePassword': mustChangePassword,
   };
 }

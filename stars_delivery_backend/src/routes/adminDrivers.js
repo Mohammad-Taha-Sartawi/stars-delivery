@@ -464,6 +464,7 @@ router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
           },
         ],
         password: hashedPassword,
+        mustChangePassword: true,
         role: 'provider',
         area: requestedArea,
         governorate,
@@ -480,7 +481,7 @@ router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
 
     res.json({
       success: true,
-      message: `تم إضافة السائق (${driverName}) بنجاح!`,
+      message: `تم إضافة السائق (${driverName}) بنجاح! سيُطلب منه تغيير كلمة المرور عند أول تسجيل دخول.`,
     });
   } catch (err) {
     if (providerDocuments.length > 0) {
@@ -662,6 +663,7 @@ router.put('/:id/password', async (req, res) => {
         {
           $set: {
             password: hashedPassword,
+            mustChangePassword: true,
           },
           $inc: {
             sessionVersion: 1,
@@ -687,7 +689,8 @@ router.put('/:id/password', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'تم تغيير كلمة المرور بنجاح',
+      message:
+        'تم تغيير كلمة المرور بنجاح. سيُطلب من السائق تغييرها عند أول تسجيل دخول.',
     });
   } catch (err) {
     sendInternalServerFailure(res);

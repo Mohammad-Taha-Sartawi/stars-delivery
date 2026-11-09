@@ -23,6 +23,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterEvent>(_onRegister);
     on<ToggleAuthModeEvent>(_onToggle);
     on<LogoutEvent>(_onLogout);
+    on<SessionUpdatedEvent>(_onSessionUpdated);
 
     if (checkOnStart) {
       add(CheckAuthEvent());
@@ -152,5 +153,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     SocketService.instance.disconnect();
     await _sessionStorage.clear();
     emit(AuthInitial());
+  }
+
+  Future<void> _onSessionUpdated(
+    SessionUpdatedEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    await _sessionStorage.writeToken(event.token);
+    emit(AuthSuccess(user: event.user, token: event.token));
   }
 }

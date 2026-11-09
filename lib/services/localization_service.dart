@@ -99,6 +99,44 @@ class AppLocalization {
     'phone_number': {'ar': 'رقم الهاتف', 'en': 'Phone Number'},
     'email': {'ar': 'البريد الإلكتروني', 'en': 'Email'},
     'password': {'ar': 'كلمة المرور', 'en': 'Password'},
+    'current_password': {'ar': 'كلمة المرور الحالية', 'en': 'Current Password'},
+    'forced_password_title': {
+      'ar': 'تغيير كلمة المرور مطلوب',
+      'en': 'Password Change Required',
+    },
+    'forced_password_body': {
+      'ar':
+          'تم تعيين كلمة مرور جديدة لحسابك من قبل الإدارة. يجب تغييرها الآن قبل استخدام التطبيق.',
+      'en':
+          'Your password was set by the administration. You must change it now before using the app.',
+    },
+    'forced_password_hint': {
+      'ar': 'أدخل كلمة المرور المؤقتة التي حصلت عليها من الإدارة.',
+      'en': 'Enter the temporary password provided by the administration.',
+    },
+    'forced_password_cannot_leave': {
+      'ar': 'يجب تغيير كلمة المرور للمتابعة.',
+      'en': 'You must change your password to continue.',
+    },
+    'change_password': {'ar': 'تغيير كلمة المرور', 'en': 'Change Password'},
+    'password_changed_success': {
+      'ar': 'تم تغيير كلمة المرور بنجاح. يمكنك استخدام التطبيق الآن.',
+      'en': 'Password changed successfully. You can use the app now.',
+    },
+    'current_password_invalid': {
+      'ar': 'كلمة المرور الحالية غير صحيحة',
+      'en': 'The current password is incorrect',
+    },
+    'password_change_failed': {
+      'ar': 'تعذر تغيير كلمة المرور. حاول مرة أخرى.',
+      'en': 'Could not change the password. Please try again.',
+    },
+    'password_change_session_failed': {
+      'ar':
+          'تم تغيير كلمة المرور، لكن تعذر تحديث الجلسة. أعد تشغيل التطبيق وسجّل الدخول بكلمة المرور الجديدة.',
+      'en':
+          'The password was changed, but the session could not be refreshed. Restart the app and sign in with the new password.',
+    },
     'area_region': {'ar': 'المنطقة', 'en': 'Area / Region'},
     'governorate': {'ar': 'المحافظة', 'en': 'Governorate'},
     'city_village': {'ar': 'المدينة / القرية', 'en': 'City / Village'},

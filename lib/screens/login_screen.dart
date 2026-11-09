@@ -20,6 +20,7 @@ import '../widgets/ui/app_feedback.dart';
 import 'home_screen.dart';
 import 'provider_home_screen.dart';
 import 'forgot_password_screen.dart';
+import 'force_change_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -498,6 +499,19 @@ class _LoginScreenState extends State<LoginScreen> {
               BlocConsumer<AuthBloc, AuthState>(
                 listener: (context, state) {
                   if (state is AuthSuccess) {
+                    if (state.user.mustChangePassword) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ForceChangePasswordScreen(
+                            user: state.user,
+                            token: state.token,
+                          ),
+                        ),
+                        (route) => false,
+                      );
+                      return;
+                    }
                     final home = state.user.role == 'provider'
                         ? BlocProvider(
                             create: (_) => ProviderBloc(),

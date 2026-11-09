@@ -270,6 +270,7 @@ router.put('/password', async (req, res) => {
         {
           $set: {
             password: hashedPassword,
+            mustChangePassword: false,
           },
           $inc: {
             sessionVersion: 1,

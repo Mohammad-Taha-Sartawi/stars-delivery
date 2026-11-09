@@ -275,7 +275,7 @@ io.use(async (socket, next) => {
       const user =
         await User.findById(
           identity.id,
-          'role status deleted sessionVersion',
+          'role status deleted sessionVersion mustChangePassword',
         );
 
       if (
@@ -294,6 +294,7 @@ io.use(async (socket, next) => {
           user,
           identity.role,
         )
+        || user.mustChangePassword === true
       ) {
         throw new Error(
           'Invalid authentication',

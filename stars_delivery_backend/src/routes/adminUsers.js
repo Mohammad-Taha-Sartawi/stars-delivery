@@ -282,6 +282,7 @@ router.put('/:id/password', async (req, res) => {
         {
           $set: {
             password: hashedPassword,
+            mustChangePassword: true,
           },
           $inc: {
             sessionVersion: 1,
@@ -307,7 +308,8 @@ router.put('/:id/password', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'تم تغيير كلمة المرور بنجاح',
+      message:
+        'تم تغيير كلمة المرور بنجاح. سيُطلب من المستخدم تغييرها عند أول تسجيل دخول.',
     });
   } catch (err) {
     sendInternalServerFailure(res);

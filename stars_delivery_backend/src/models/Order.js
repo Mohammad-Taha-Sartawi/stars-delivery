@@ -17,6 +17,7 @@ const orderSchema = new mongoose.Schema({
   price: { type: Number, default: 0 },
   providerEarning: { type: Number, default: 0 },
   platformCommission: { type: Number, default: 0 },
+  commissionWaivedAt: { type: Date, default: null },
   estimatedTime: { type: Number, default: 0 },
   acceptedAt: { type: Date, default: null },
   offerWindowExpiredAt: { type: Date, default: null },

@@ -25,6 +25,16 @@ function commissionDueAt(order) {
   return order?.acceptedAt || order?.completedAt || order?.createdAt || null;
 }
 
+function isCommissionDue(order, user) {
+  const dueAt = commissionDueAt(order);
+
+  if (!dueAt) {
+    return true;
+  }
+
+  return new Date(dueAt) > commissionCutoff(user);
+}
+
 /**
  * Splits platform commission into unpaid (due now) and paid (settled by the
  * driver's last payment) amounts.
@@ -52,5 +62,6 @@ module.exports = {
   LEGACY_SETTLED_CUTOFF,
   commissionCutoff,
   commissionDueAt,
+  isCommissionDue,
   splitCommission,
 };

@@ -253,6 +253,8 @@ const adminActionHandlers = Object.freeze({
   freezeUser,
   handleResetPassword,
   markPaid,
+  resetAllCommissions,
+  resetDriverCommission,
   openChat,
   openDriverReports,
   openListModal,
@@ -553,7 +555,15 @@ async function searchDriver() {
 function renderDriverResultFromDB(data) {
   const { driver, commission, netProfit, last30Profit } = data;
   const container = document.getElementById('driverResult');
-  const isPaid = driver.financial.paymentStatus === 'paid';
+  const paymentStatus = driver.financial.paymentStatus;
+  const hasDue = Number(commission) > 0;
+  const paymentLabel = hasDue
+    ? `<span class="unpaid-badge">غير مدفوع (${escapeHtml(commission)} )</span>`
+    : paymentStatus === 'reset'
+      ? '<span class="reset-badge">تم تصفير العداد</span>'
+      : paymentStatus === 'paid'
+        ? '<span class="paid-badge">مدفوع</span>'
+        : '<span class="paid-badge">لا توجد مستحقات</span>';
   container.innerHTML = `
     <h4 data-presentation="p017">بيانات السائق</h4>
      <div class="row"><span class="label">ID السائق</span><span class="value">${escapeHtml(driver.driverId)}</span></div>
@@ -565,7 +575,7 @@ function renderDriverResultFromDB(data) {
     <div class="row"><span class="label">حالة التوفر</span><span class="value">${driver.isAvailable ? '<span class="order-status-badge completed">متاح الآن</span>' : '<span class="order-status-badge cancelled">غير متاح</span>'}${driver.blockedUntil && new Date(driver.blockedUntil) > new Date() ? ' <span class="order-status-badge pending">مشغول بطلب</span>' : ''}</span></div>
     <div class="row"><span class="label">المنطقة</span><span class="value">${escapeHtml(driver.area)}</span></div>
     <div class="row"><span class="label">الحالة</span><span class="value">${getStatusBadge(driver.status)}</span></div>
-    <div class="row"><span class="label">حالة الدفع</span><span class="value">${isPaid ? `<span class="paid-badge">مدفوع</span>` : `<span class="unpaid-badge">غير مدفوع (${escapeHtml(commission)} )</span>`}</span></div>
+    <div class="row"><span class="label">حالة الدفع</span><span class="value">${paymentLabel}</span></div>
     <div class="row"><span class="label">إجمالي الأرباح (صافي)</span><span class="value" data-presentation="p002">${escapeHtml(netProfit)} </div>
     <div class="row"><span class="label">أرباح آخر 30 يوم (صافي)</span><span class="value" data-presentation="p018">${escapeHtml(last30Profit)} </div>
     <div class="row"><span class="label">عمولة المنصة المستحقة</span><span class="value" data-presentation="p019">${escapeHtml(commission)} </div>
@@ -575,11 +585,14 @@ function renderDriverResultFromDB(data) {
       <button class="action-btn orders-report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openDriverReports" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تقرير رفض وتسليم الطلبات</button>
       <button class="action-btn ${driver.isAvailable ? 'freeze' : 'activate'}" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="toggleDriverAvailability" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${driver.isAvailable ? 'true' : 'false'}">${driver.isAvailable ? 'إيقاف التوفر' : 'جعله متاحاً'}</button>
       <button class="action-btn change-password" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="changeDriverPassword" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تغيير كلمة المرور</button>
-      ${isPaid
-        ? '<button class="action-btn paid" disabled>تم دفع المستحقات</button>'
-        : Number(commission) > 0
-          ? `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تم دفع المستحقات</button>`
-          : '<button class="action-btn paid" disabled>لا توجد مستحقات</button>'}
+      ${hasDue
+        ? `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تم دفع المستحقات</button>`
+        : paymentStatus === 'reset'
+          ? '<button class="action-btn paid" disabled>تم تصفير العداد</button>'
+          : paymentStatus === 'paid'
+            ? '<button class="action-btn paid" disabled>تم دفع المستحقات</button>'
+            : '<button class="action-btn paid" disabled>لا توجد مستحقات</button>'}
+      <button class="action-btn reset-commissions" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="resetDriverCommission" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تصفير عداد العمولة</button>
       <button class="action-btn docs" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="viewDocuments" data-admin-arg-count="2" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-admin-arg-2="${escapeHtml(String(driver.name || ''))}">الوثائق</button>
       <button class="action-btn freeze" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="freezeDriver" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تجميد</button>
       <button class="action-btn activate" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="activateDriver" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تفعيل</button>
@@ -829,12 +842,15 @@ async function loadCommissions() {
     let rows = '';
     data.driverRows.forEach(driver => {
       const isPaid = driver.paymentStatus === 'paid';
+      const isReset = driver.paymentStatus === 'reset';
       const hasDue = Number(driver.commission) > 0;
       const statusText = hasDue
         ? `<span class="status-unpaid">غير مدفوع (${escapeHtml(driver.commission)} )</span>`
-        : isPaid
-          ? '<span class="status-paid">مدفوع</span>'
-          : '<span class="status-paid">لا توجد مستحقات</span>';
+        : isReset
+          ? '<span class="status-reset">تم تصفير العداد</span>'
+          : isPaid
+            ? '<span class="status-paid">مدفوع</span>'
+            : '<span class="status-paid">لا توجد مستحقات</span>';
       const actionHtml = hasDue ?
         `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تحديد كمدفوع</button>` :
         '<span data-presentation="p021">—</span>';
@@ -890,6 +906,87 @@ async function markPaid(driverId) {
     }
   } catch (err) {
     alert('حدث خطأ في تحديث حالة الدفع');
+  }
+}
+
+async function resetDriverCommission(driverId) {
+  if (
+    !confirm(
+      'سيتم تصفير عداد عمولة السائق وإرجاع العمولة له. هل تريد المتابعة؟',
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const res = await adminFetch(`/admin/commissions/reset/${driverId}`, {
+      method: 'PUT',
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || 'تعذر تصفير عداد العمولة');
+      return;
+    }
+
+    alert(
+      'تم تصفير عداد العمولة' +
+        (Number(data.amount) > 0
+          ? ` وإرجاع ${data.amount} شيكل للسائق.`
+          : '.'),
+    );
+    loadCommissions();
+    loadDashboardStats();
+
+    const driversPage = document.getElementById('page-drivers');
+    if (driversPage && driversPage.classList.contains('active-page')) {
+      searchDriverById(driverId);
+    }
+
+    refreshPayoutsModal();
+  } catch (err) {
+    alert('حدث خطأ في تصفير عداد العمولة');
+  }
+}
+
+async function resetAllCommissions() {
+  if (
+    !confirm(
+      'سيتم تصفير عدادات عمولات جميع السائقين وإرجاع العمولة لهم. هل تريد المتابعة؟',
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const res = await adminFetch('/admin/commissions/reset-all', {
+      method: 'PUT',
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || 'تعذر تصفير عدادات العمولات');
+      return;
+    }
+
+    alert(
+      `تم تصفير ${data.drivers} سائق وإرجاع ${data.amount} شيكل لهم.`,
+    );
+    loadCommissions();
+    loadDashboardStats();
+    refreshPayoutsModal();
+  } catch (err) {
+    alert('حدث خطأ في تصفير عدادات العمولات');
+  }
+}
+
+function refreshPayoutsModal() {
+  const listModal = document.getElementById('listModal');
+  if (
+    listModal &&
+    listModal.classList.contains('show') &&
+    document.getElementById('listModalTitle')?.textContent ===
+      'السائقون المستحقون للدفع'
+  ) {
+    openListModal('payouts', 'unpaid', 'السائقون المستحقون للدفع');
   }
 }
 

@@ -124,11 +124,12 @@ test('delegated browser actions replace legacy inline handlers', () => {
     /data-file-name-target="/g,
   ) || [];
 
-  // The pending-payout dashboard card and its two pay buttons are new
-  // delegated actions (dashboard card + driver details + payout list).
+  // The pending-payout dashboard card, its pay buttons and the commission
+  // reset actions add delegated actions (dashboard card + driver details +
+  // payout list + reset-all + per-driver reset).
   assert.equal(
     clickActions.length,
-    61,
+    63,
   );
 
   assert.equal(
@@ -183,12 +184,12 @@ test('delegated admin actions require the admin session capability', () => {
 
   assert.equal(
     generatedActions.length,
-    39,
+    40,
   );
 
   assert.equal(
     generatedCapabilities.length,
-    39,
+    40,
   );
 
   const generatedActionLines = browserSource

@@ -206,6 +206,20 @@ router.get('/search', async (req, res) => {
       match,
     );
     const totalCommission = unpaidCommission + paidCommission;
+    const paidAt = match.commissionPaidAt
+      ? new Date(match.commissionPaidAt)
+      : null;
+    const resetAt = match.commissionResetAt
+      ? new Date(match.commissionResetAt)
+      : null;
+    let paymentStatus = 'unpaid';
+    if (unpaidCommission > 0) {
+      paymentStatus = 'unpaid';
+    } else if (resetAt && (!paidAt || resetAt >= paidAt)) {
+      paymentStatus = 'reset';
+    } else if (paidCommission > 0 || paidAt) {
+      paymentStatus = 'paid';
+    }
 
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const recentOrders = orders.filter(o => new Date(o.createdAt) >= thirtyDaysAgo);
@@ -230,9 +244,7 @@ router.get('/search', async (req, res) => {
       area: match.area || 'غير محدد',
       status: match.status === 'blocked' ? 'inactive' : match.status,
       financial: {
-        paymentStatus: unpaidCommission > 0
-          ? 'unpaid'
-          : (paidCommission > 0 ? 'paid' : 'unpaid'),
+        paymentStatus,
         transactions: orders.map(o => ({
           id: o._id.toString(),
           desc: `طلب #${o._id.toString().slice(-8)}`,

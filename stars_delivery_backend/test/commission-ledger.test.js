@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   commissionCutoff,
+  isCommissionDue,
   splitCommission,
 } = require('../src/services/commissionLedger');
 
@@ -48,4 +49,21 @@ test('legacy paid accounts without a timestamp are considered settled', () => {
 
   assert.deepEqual(split, { unpaid: 0, paid: 1 });
   assert.ok(commissionCutoff(driver).getTime() > Date.now());
+});
+
+
+test('due detection follows the last payment cutoff', () => {
+  const driver = {
+    commissionPaid: true,
+    commissionPaidAt: new Date('2026-11-09T12:00:00.000Z'),
+  };
+
+  assert.equal(
+    isCommissionDue(order(1, '2026-11-09T11:00:00.000Z'), driver),
+    false,
+  );
+  assert.equal(
+    isCommissionDue(order(1, '2026-11-09T13:00:00.000Z'), driver),
+    true,
+  );
 });

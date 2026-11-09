@@ -120,5 +120,34 @@ test('paying dues is available from the dashboard card and driver details', () =
     adminDrivers,
     /splitCommission\(\s*orders,\s*match,?\s*\)/,
   );
-  assert.match(adminDrivers, /paymentStatus: unpaidCommission > 0/);
+  assert.match(adminDrivers, /unpaidCommission > 0/);
+  assert.match(adminDrivers, /paymentStatus = 'reset'/);
+});
+
+
+test('commission counters can be reset for all drivers or one driver', () => {
+  const index = source('src/views/admin/index.ejs');
+  const main = source('src/public/js/main.js');
+  const commissions = source('src/routes/adminCommissions.js');
+  const userModel = source('src/models/User.js');
+  const orderModel = source('src/models/Order.js');
+
+  // Dashboard: one button resets all drivers.
+  assert.match(index, /data-admin-action="resetAllCommissions"/);
+  assert.match(main, /adminFetch\('\/admin\/commissions\/reset-all'/);
+  assert.match(main, /adminFetch\(`\/admin\/commissions\/reset\/\$\{driverId\}`/);
+  assert.match(main, /resetDriverCommission/);
+  assert.match(main, /تم تصفير العداد/);
+
+  // Resetting returns the commission to the driver and clears the platform
+  // commission, so it is no longer counted as platform revenue.
+  assert.match(commissions, /router\.put\('\/reset-all'/);
+  assert.match(commissions, /router\.put\('\/reset\/:id'/);
+  assert.match(commissions, /providerEarning: \{/);
+  assert.match(commissions, /\$add: \['\$providerEarning', '\$platformCommission'\]/);
+  assert.match(commissions, /platformCommission: 0/);
+  assert.match(commissions, /commissionWaivedAt/);
+  assert.match(commissions, /commissionResetAt/);
+  assert.match(userModel, /commissionResetAt/);
+  assert.match(orderModel, /commissionWaivedAt/);
 });

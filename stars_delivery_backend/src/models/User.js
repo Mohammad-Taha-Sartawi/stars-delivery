@@ -69,6 +69,7 @@ const userSchema = new mongoose.Schema({
   isAvailable: { type: Boolean, default: true },
   commissionPaid: { type: Boolean, default: false },
   commissionPaidAt: { type: Date, default: null },
+  commissionResetAt: { type: Date, default: null },
   blockedUntil: { type: Date, default: null },
   offerCooldownUntil: { type: Date, default: null },
   offerSequence: { type: Number, default: 0 },

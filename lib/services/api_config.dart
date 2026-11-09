@@ -297,4 +297,12 @@ class ApiConfig {
       await _discoverAndroidLan();
     }
   }
+
+  /// Test-only server URL injection so widget tests never touch real
+  /// services. Production startup keeps using [init].
+  @visibleForTesting
+  static void initForTesting(String serverUrl) {
+    _serverUrl = _normalizeServerUrl(serverUrl, allowHttp: true);
+    _initialized = true;
+  }
 }

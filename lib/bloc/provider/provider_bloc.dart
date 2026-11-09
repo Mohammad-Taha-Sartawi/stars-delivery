@@ -22,9 +22,11 @@ class ProviderBloc extends Bloc<ProviderEvent, ProviderState> {
   }
 
   Future<void> _onLoadStats(LoadProviderStats event, Emitter<ProviderState> emit) async {
-    final c = state;
     try {
       final stats = await _service.getStats(event.token);
+      // Bloc 9 processes event handlers concurrently, so pending/offered may
+      // have emitted meanwhile; merge onto the latest state, not a stale snapshot.
+      final c = state;
       emit(ProviderStatsLoaded(
         stats: stats,
         pendingOrders: c is ProviderStatsLoaded ? c.pendingOrders : null,
@@ -56,14 +58,17 @@ class ProviderBloc extends Bloc<ProviderEvent, ProviderState> {
   }
 
   Future<void> _onLoadPendingOrders(LoadPendingOrders event, Emitter<ProviderState> emit) async {
-    final current = state;
     try {
       final orders = await _service.getPendingOrders(event.token);
+      // Re-read state after the await so concurrent stats/offered emissions are
+      // not overwritten with a stale pre-await snapshot.
+      final current = state;
       if (current is ProviderStatsLoaded) {
         emit(ProviderStatsLoaded(stats: current.stats, pendingOrders: orders));
       }
     } catch (e) {
       debugPrint('[ProviderBloc] getPendingOrders FAILED: $e');
+      final current = state;
       if (current is ProviderStatsLoaded) {
         emit(ProviderStatsLoaded(
           stats: ProviderStats(
@@ -88,9 +93,10 @@ class ProviderBloc extends Bloc<ProviderEvent, ProviderState> {
   }
 
   Future<void> _onLoadOfferedOrders(LoadOfferedOrders event, Emitter<ProviderState> emit) async {
-    final current = state;
     try {
       final orders = await _service.getOfferedOrders(event.token);
+      // Same concurrent-handler merge rule as pending orders.
+      final current = state;
       if (current is ProviderStatsLoaded) {
         emit(ProviderStatsLoaded(stats: current.stats, pendingOrders: current.pendingOrders, offeredOrders: orders));
       }

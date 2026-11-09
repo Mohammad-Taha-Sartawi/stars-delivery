@@ -529,5 +529,19 @@ class AppLocalization {
     'contact_support': {'ar': 'التواصل مع الدعم', 'en': 'Contact support'},
     'agree': {'ar': 'أوافق', 'en': 'Agree'},
     'decline': {'ar': 'أرفض', 'en': 'Decline'},
+
+    // Legal dialogs (UX01-003). Dialog titles are ordinary UI and localized;
+    // the bodies remain the approved Arabic-only legal documents and are
+    // rendered explicitly RTL independent of the app locale.
+    'legal_terms_title': {'ar': 'شروط الخدمة', 'en': 'Terms of Service'},
+    'legal_privacy_title': {'ar': 'سياسة الخصوصية', 'en': 'Privacy Policy'},
+    'reject_terms_title': {'ar': 'الشروط مطلوبة', 'en': 'Agreement Required'},
+    'reject_terms_body': {
+      'ar':
+          'الموافقة على شروط الخدمة وسياسة الخصوصية هي جزء أساسي من استخدام هذا التطبيق. لا يمكنك إنشاء حساب دون الموافقة عليهما.',
+      'en':
+          'Agreeing to the Terms of Service and Privacy Policy is a required part of using this app. You cannot create an account without agreeing to them.',
+    },
+    'ok': {'ar': 'حسناً', 'en': 'OK'},
   };
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'api_config.dart';
 
@@ -38,11 +39,28 @@ class SocketService {
   bool get isConnected => _socket?.connected ?? false;
 
   static SocketService get instance {
+    // Widget tests install a no-op override so no real socket is opened.
+    final override = _instanceOverride;
+    if (override != null) {
+      return override;
+    }
+
     _instance ??= SocketService._();
     return _instance!;
   }
 
+  static SocketService? _instanceOverride;
+
+  /// Installs a test double; pass null to restore the real singleton.
+  @visibleForTesting
+  static set testInstance(SocketService? value) => _instanceOverride = value;
+
   SocketService._();
+
+  /// Constructor for test doubles only (real code uses the [instance]
+  /// singleton and never constructs this class directly).
+  @visibleForTesting
+  SocketService.forTest();
 
   void connect({required String token, String? area}) {
     disconnect();

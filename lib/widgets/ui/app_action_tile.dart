@@ -35,11 +35,16 @@ class AppActionTile extends StatelessWidget {
         ? Icons.chevron_left
         : Icons.chevron_right;
 
+    // The accessible label must announce the trailing order count. Provider
+    // tiles render counts through [trailingLabel]; without this, the visible
+    // count is silent to screen readers (UX-01 acceptance finding).
+    // [excludeSemantics: true] below keeps child text from duplicating them.
     final semanticsLabel =
         semanticLabel ??
         [
           title,
           if (subtitle != null && subtitle!.isNotEmpty) subtitle,
+          if (trailingLabel != null && trailingLabel!.isNotEmpty) trailingLabel,
           if (badgeCount > 0) '$badgeCount',
         ].join('. ');
 

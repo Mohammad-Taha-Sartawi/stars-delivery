@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,7 +14,9 @@ import '../services/localization_service.dart';
 import '../services/auth_service.dart';
 import '../services/validators.dart';
 import '../services/api_config.dart';
+import '../services/mobile_api_client.dart';
 import '../services/theme_service.dart';
+import '../widgets/ui/app_button_loading_indicator.dart';
 import '../widgets/ui/app_feedback.dart';
 import 'home_screen.dart';
 import 'provider_home_screen.dart';
@@ -463,14 +464,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   return ElevatedButton(
                     onPressed: isLoading ? null : _submit,
                     child: isLoading
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
-                          )
+                        // Disabled button paints onSurface@12% over the card,
+                        // so onPrimary would disappear; onSurface keeps the
+                        // indicator legible in both themes (UX01-001).
+                        ? const AppButtonLoadingIndicator()
                         : Text(
                             _isLogin
                                 ? AppLocalization.get(context, 'sign_in')
@@ -651,11 +648,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         setDialogState(() => sending = true);
 
                         try {
-                          final dio = Dio(
-                            BaseOptions(
-                              baseUrl: ApiConfig.apiUrl,
-                              connectTimeout: const Duration(seconds: 8),
-                            ),
+                          final dio = MobileApiClient.create(
+                            baseUrl: ApiConfig.apiUrl,
+                            connectTimeout: const Duration(seconds: 8),
                           );
                           await dio.post(
                             '/chat/contact',
@@ -691,14 +686,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                       },
                 child: sending
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: scheme.onPrimary,
-                        ),
-                      )
+                    // Same disabled-button pattern as the submit button; onSurface
+                    // stays visible against the disabled background (UX01-001).
+                    ? const AppButtonLoadingIndicator()
                     : Text(AppLocalization.get(ctx, 'send')),
               ),
             ],
@@ -866,7 +856,9 @@ class _LoginScreenState extends State<LoginScreen> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: Text(
-          'شروط الخدمة',
+          // Title is ordinary UI: localize it. The body below is the
+          // approved Arabic-only legal document (see report UX01-003 policy).
+          AppLocalization.get(context, 'legal_terms_title'),
           style: Theme.of(context).textTheme.titleLarge,
         ),
         content: SingleChildScrollView(
@@ -905,7 +897,9 @@ class _LoginScreenState extends State<LoginScreen> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: Text(
-          'سياسة الخصوصية',
+          // Title is ordinary UI: localize it. The body below is the
+          // approved Arabic-only legal document (see report UX01-003 policy).
+          AppLocalization.get(context, 'legal_privacy_title'),
           style: Theme.of(context).textTheme.titleLarge,
         ),
         content: SingleChildScrollView(
@@ -941,20 +935,23 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showRejectDialog() {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(
-          'الشروط مطلوبة',
-          style: Theme.of(context).textTheme.titleLarge,
+          // Ordinary UI text: localized and following the app direction.
+          // Only the Arabic legal document bodies above keep static RTL.
+          AppLocalization.get(dialogContext, 'reject_terms_title'),
+          style: Theme.of(dialogContext).textTheme.titleLarge,
         ),
         content: Text(
-          'الموافقة على شروط الخدمة وسياسة الخصوصية هي جزء أساسي من استخدام هذا التطبيق. لا يمكنك إنشاء حساب دون الموافقة عليهما.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
-          textDirection: TextDirection.rtl,
+          AppLocalization.get(dialogContext, 'reject_terms_body'),
+          style: Theme.of(
+            dialogContext,
+          ).textTheme.bodyMedium?.copyWith(height: 1.5),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('حسناً'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppLocalization.get(dialogContext, 'ok')),
           ),
         ],
       ),
@@ -1047,37 +1044,53 @@ class _RoleCard extends StatelessWidget {
         ),
         child: Material(
           type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.lg,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 36, color: foreground),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: foreground,
-                    ),
-                    textAlign: TextAlign.center,
+          child: Stack(
+            children: [
+              // Non-color selection cue (UX01-004): the check icon remains
+              // meaningful when color contrast or elevation is not perceivable.
+              if (isSelected)
+                PositionedDirectional(
+                  top: AppSpacing.sm,
+                  end: AppSpacing.sm,
+                  child: Icon(
+                    Icons.check_circle,
+                    size: 20,
+                    color: scheme.secondary,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: subtitleColor,
-                    ),
-                    textAlign: TextAlign.center,
+                ),
+              InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.lg,
                   ),
-                ],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 36, color: foreground),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: foreground,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: subtitleColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

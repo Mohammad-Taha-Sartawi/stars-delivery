@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'api_config.dart';
 import 'mobile_session_failure.dart';
@@ -17,6 +18,11 @@ class MobileSessionInterceptor extends Interceptor {
 }
 
 class MobileApiClient {
+  /// Test-only hook: when set, every client created by this factory uses this
+  /// adapter instead of the real network stack. Null in production.
+  @visibleForTesting
+  static HttpClientAdapter? testAdapter;
+
   static Dio create({
     String? baseUrl,
     Map<String, dynamic>? headers,
@@ -36,6 +42,11 @@ class MobileApiClient {
     dio.interceptors.add(
       MobileSessionInterceptor(sessionFailure: sessionFailure),
     );
+
+    final adapter = testAdapter;
+    if (adapter != null) {
+      dio.httpClientAdapter = adapter;
+    }
 
     return dio;
   }

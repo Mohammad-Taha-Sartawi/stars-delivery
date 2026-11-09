@@ -507,66 +507,142 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     );
   }
 
-  // dart format off
-  int _pendingWorkCount(ProviderStats s) => s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount;
-  // dart format on
+  int _pendingWorkCount(ProviderStats s) =>
+      s.pendingOrdersCount + s.offeredOrdersCount + s.activeOrdersCount;
 
   Widget _buildDashboard(BuildContext context, ProviderStats s) {
     final pendingWorkCount = _pendingWorkCount(s);
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: Responsive.maxReadableContentWidth,
-        ),
-        child: RefreshIndicator(
-          onRefresh: _refreshDashboard,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: Responsive.pageInsets(context),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AppSectionHeader(
-                  title: AppLocalization.get(context, 'provider_dashboard'),
-                ),
-                _buildAvailabilityCard(context, s),
-                if (pendingWorkCount > 0) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _buildPendingWorkBanner(context, pendingWorkCount),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                _buildEarnings(context, s),
-                const SizedBox(height: AppSpacing.lg),
-                AppSectionHeader(
-                  title: AppLocalization.get(context, 'home_quick_actions'),
-                ),
-                AppActionWrap(
-                  children: [
-                    AppActionTile(
-                      icon: Icons.pending_actions_outlined,
-                      title: AppLocalization.get(context, 'pending_orders_btn'),
-                      tone: AppTone.danger,
-                      trailingLabel: '${s.pendingOrdersCount}',
-                      onTap: () {
-                        final state = context.read<ProviderBloc>().state;
-                        if (state is ProviderStatsLoaded &&
-                            state.pendingOrders != null &&
-                            state.pendingOrders!.isNotEmpty) {
+    // SafeArea(false top) keeps the last action row clear of the system
+    // navigation/gesture inset on the bottom edge without duplicating the
+    // AppBar's top inset (UX01-006/007).
+    return SafeArea(
+      top: false,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: Responsive.maxReadableContentWidth,
+          ),
+          child: RefreshIndicator(
+            onRefresh: _refreshDashboard,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: Responsive.pageInsets(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppSectionHeader(
+                    title: AppLocalization.get(context, 'provider_dashboard'),
+                  ),
+                  _buildAvailabilityCard(context, s),
+                  if (pendingWorkCount > 0) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    _buildPendingWorkBanner(context, pendingWorkCount),
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildEarnings(context, s),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppSectionHeader(
+                    title: AppLocalization.get(context, 'home_quick_actions'),
+                  ),
+                  AppActionWrap(
+                    children: [
+                      AppActionTile(
+                        icon: Icons.pending_actions_outlined,
+                        title: AppLocalization.get(
+                          context,
+                          'pending_orders_btn',
+                        ),
+                        tone: AppTone.danger,
+                        trailingLabel: '${s.pendingOrdersCount}',
+                        onTap: () {
+                          final state = context.read<ProviderBloc>().state;
+                          if (state is ProviderStatsLoaded &&
+                              state.pendingOrders != null &&
+                              state.pendingOrders!.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PendingOrdersScreen(
+                                  orders: state.pendingOrders!,
+                                  token: widget.token,
+                                  onRefresh: () {
+                                    context.read<ProviderBloc>().add(
+                                      LoadPendingOrders(token: widget.token),
+                                    );
+                                    context.read<ProviderBloc>().add(
+                                      LoadProviderStats(token: widget.token),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ).then((_) {
+                              if (!context.mounted) return;
+                              context.read<ProviderBloc>().add(
+                                LoadProviderStats(token: widget.token),
+                              );
+                            });
+                          } else {
+                            context.read<ProviderBloc>().add(
+                              LoadPendingOrders(token: widget.token),
+                            );
+                          }
+                        },
+                      ),
+                      AppActionTile(
+                        icon: Icons.local_offer_outlined,
+                        title: AppLocalization.get(
+                          context,
+                          'offered_orders_btn',
+                        ),
+                        tone: AppTone.info,
+                        trailingLabel: '${s.offeredOrdersCount}',
+                        onTap: () {
+                          final state = context.read<ProviderBloc>().state;
+                          if (state is ProviderStatsLoaded &&
+                              state.offeredOrders != null &&
+                              state.offeredOrders!.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OfferedOrdersScreen(
+                                  orders: state.offeredOrders!,
+                                  token: widget.token,
+                                  onRefresh: () {
+                                    context.read<ProviderBloc>().add(
+                                      LoadOfferedOrders(token: widget.token),
+                                    );
+                                    context.read<ProviderBloc>().add(
+                                      LoadProviderStats(token: widget.token),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          } else {
+                            context.read<ProviderBloc>().add(
+                              LoadOfferedOrders(token: widget.token),
+                            );
+                          }
+                        },
+                      ),
+                      AppActionTile(
+                        icon: Icons.delivery_dining_outlined,
+                        title: AppLocalization.get(
+                          context,
+                          'active_orders_btn',
+                        ),
+                        tone: AppTone.success,
+                        trailingLabel: '${s.activeOrdersCount}',
+                        onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => PendingOrdersScreen(
-                                orders: state.pendingOrders!,
-                                token: widget.token,
-                                onRefresh: () {
-                                  context.read<ProviderBloc>().add(
-                                    LoadPendingOrders(token: widget.token),
-                                  );
-                                  context.read<ProviderBloc>().add(
-                                    LoadProviderStats(token: widget.token),
-                                  );
-                                },
+                              builder: (_) => BlocProvider.value(
+                                value: context.read<ProviderBloc>(),
+                                child: ProviderActiveOrdersScreen(
+                                  token: widget.token,
+                                ),
                               ),
                             ),
                           ).then((_) {
@@ -575,144 +651,82 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                               LoadProviderStats(token: widget.token),
                             );
                           });
-                        } else {
-                          context.read<ProviderBloc>().add(
-                            LoadPendingOrders(token: widget.token),
-                          );
-                        }
-                      },
-                    ),
-                    AppActionTile(
-                      icon: Icons.local_offer_outlined,
-                      title: AppLocalization.get(context, 'offered_orders_btn'),
-                      tone: AppTone.info,
-                      trailingLabel: '${s.offeredOrdersCount}',
-                      onTap: () {
-                        final state = context.read<ProviderBloc>().state;
-                        if (state is ProviderStatsLoaded &&
-                            state.offeredOrders != null &&
-                            state.offeredOrders!.isNotEmpty) {
+                        },
+                      ),
+                      AppActionTile(
+                        icon: Icons.assignment_outlined,
+                        title: AppLocalization.get(
+                          context,
+                          'rejected_orders_btn',
+                        ),
+                        tone: AppTone.neutral,
+                        trailingLabel: '${s.ordersReportCount}',
+                        onTap: () {
+                          final providerBloc = context.read<ProviderBloc>();
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => OfferedOrdersScreen(
-                                orders: state.offeredOrders!,
-                                token: widget.token,
-                                onRefresh: () {
-                                  context.read<ProviderBloc>().add(
-                                    LoadOfferedOrders(token: widget.token),
-                                  );
-                                  context.read<ProviderBloc>().add(
-                                    LoadProviderStats(token: widget.token),
-                                  );
-                                },
-                              ),
+                              builder: (_) =>
+                                  RejectedOrdersScreen(token: widget.token),
                             ),
-                          );
-                        } else {
-                          context.read<ProviderBloc>().add(
-                            LoadOfferedOrders(token: widget.token),
-                          );
-                        }
-                      },
-                    ),
-                    AppActionTile(
-                      icon: Icons.delivery_dining_outlined,
-                      title: AppLocalization.get(context, 'active_orders_btn'),
-                      tone: AppTone.success,
-                      trailingLabel: '${s.activeOrdersCount}',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: context.read<ProviderBloc>(),
-                              child: ProviderActiveOrdersScreen(
-                                token: widget.token,
-                              ),
-                            ),
-                          ),
-                        ).then((_) {
-                          if (!context.mounted) return;
-                          context.read<ProviderBloc>().add(
-                            LoadProviderStats(token: widget.token),
-                          );
-                        });
-                      },
-                    ),
-                    AppActionTile(
-                      icon: Icons.assignment_outlined,
-                      title: AppLocalization.get(
-                        context,
-                        'rejected_orders_btn',
+                          ).then((_) {
+                            providerBloc.add(
+                              LoadProviderStats(token: widget.token),
+                            );
+                          });
+                        },
                       ),
-                      tone: AppTone.neutral,
-                      trailingLabel: '${s.ordersReportCount}',
-                      onTap: () {
-                        final providerBloc = context.read<ProviderBloc>();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                RejectedOrdersScreen(token: widget.token),
-                          ),
-                        ).then((_) {
-                          providerBloc.add(
-                            LoadProviderStats(token: widget.token),
-                          );
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _buildCommissionCard(context, s),
-                const SizedBox(height: AppSpacing.lg),
-                AppActionWrap(
-                  children: [
-                    AppActionTile(
-                      icon: Icons.report_outlined,
-                      title: AppLocalization.get(context, 'report_customer'),
-                      tone: AppTone.danger,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ReportScreen(
-                              token: widget.token,
-                              reportType: 'user',
-                              title: AppLocalization.get(
-                                context,
-                                'report_customer',
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildCommissionCard(context, s),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppActionWrap(
+                    children: [
+                      AppActionTile(
+                        icon: Icons.report_outlined,
+                        title: AppLocalization.get(context, 'report_customer'),
+                        tone: AppTone.danger,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ReportScreen(
+                                token: widget.token,
+                                reportType: 'user',
+                                title: AppLocalization.get(
+                                  context,
+                                  'report_customer',
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                    AppActionTile(
-                      icon: Icons.headset_mic_outlined,
-                      title: AppLocalization.get(context, 'contact_support'),
-                      tone: AppTone.accent,
-                      badgeCount: _supportUnreadCount,
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                SupportChatScreen(token: widget.token),
-                          ),
-                        );
+                          );
+                        },
+                      ),
+                      AppActionTile(
+                        icon: Icons.headset_mic_outlined,
+                        title: AppLocalization.get(context, 'contact_support'),
+                        tone: AppTone.accent,
+                        badgeCount: _supportUnreadCount,
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  SupportChatScreen(token: widget.token),
+                            ),
+                          );
 
-                        if (mounted) {
-                          _loadSupportUnreadCount();
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xl),
-              ],
+                          if (mounted) {
+                            _loadSupportUnreadCount();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                ],
+              ),
             ),
           ),
         ),

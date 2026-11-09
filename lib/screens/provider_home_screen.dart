@@ -11,7 +11,6 @@ import '../bloc/provider/provider_event.dart';
 import '../bloc/provider/provider_state.dart';
 import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
-import '../bloc/notification/notification_state.dart';
 import '../models/provider_stats.dart';
 import '../models/user_model.dart';
 import '../services/responsive.dart';
@@ -26,6 +25,7 @@ import '../services/mobile_session_failure.dart';
 import '../widgets/ui/app_action_tile.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_notification_bell.dart';
 import '../widgets/ui/app_section_header.dart';
 import '../widgets/ui/app_state_views.dart';
 import '../widgets/ui/app_status_badge.dart';
@@ -37,7 +37,6 @@ import 'pending_orders_screen.dart';
 import 'provider_active_orders_screen.dart';
 import 'offered_orders_screen.dart';
 import 'rejected_orders_screen.dart';
-import 'notifications_screen.dart';
 import 'order_detail_screen.dart';
 import 'profile_screen.dart';
 import 'report_screen.dart';
@@ -258,13 +257,30 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       );
 
       final price = (data['price'] as num?)?.toInt() ?? 0;
-      AppFeedback.info(
-        context,
-        AppLocalization.get(
-          context,
-          'another_driver_selected_body',
-        ).replaceAll('%d', '$price'),
-      );
+      final route = ModalRoute.of(context);
+      if (route == null || route.isCurrent) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalization.get(
+                context,
+                'another_driver_selected_body',
+              ).replaceAll('%d', '$price'),
+            ),
+            action: SnackBarAction(
+              label: AppLocalization.get(context, 'view_reports'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RejectedOrdersScreen(token: widget.token),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
     });
 
     _deliveryResultSub = SocketService.instance.onDeliveryConfirmationResult
@@ -564,59 +580,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
         ),
       ),
       actions: [
-        BlocBuilder<NotificationBloc, NotificationState>(
-          builder: (context, nState) {
-            final unread = nState is NotificationsLoaded
-                ? nState.unreadCount
-                : 0;
-            return Stack(
-              children: [
-                IconButton(
-                  tooltip: AppLocalization.get(context, 'notifications'),
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider.value(
-                          value: context.read<NotificationBloc>(),
-                          child: NotificationsScreen(token: widget.token),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                if (unread > 0)
-                  PositionedDirectional(
-                    end: 6,
-                    top: 6,
-                    child: Semantics(
-                      label: AppLocalization.get(
-                        context,
-                        'unread_notifications',
-                      ).replaceAll('%d', '$unread'),
-                      excludeSemantics: true,
-                      child: Container(
-                        padding: const EdgeInsetsDirectional.all(AppSpacing.xs),
-                        decoration: BoxDecoration(
-                          color: scheme.error,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: scheme.surface, width: 1.5),
-                        ),
-                        child: Text(
-                          '$unread',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: scheme.onError,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
+        AppNotificationBell(token: widget.token),
         BlocBuilder<AppBloc, AppState>(
           builder: (context, appState) {
             final isDark = appState.themeMode == ThemeMode.dark;

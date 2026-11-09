@@ -12,6 +12,7 @@ import '../bloc/offer/offer_bloc.dart';
 import 'order_detail_screen.dart';
 import 'order_offers_screen.dart';
 import 'my_orders_screen.dart';
+import 'rejected_orders_screen.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_status_badge.dart';
@@ -281,6 +282,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             statuses: const {'fulfilling'},
             titleKey: 'in_progress_orders_btn',
           ),
+        ),
+      );
+      return;
+    }
+
+    if (n.type == 'offer_not_selected') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RejectedOrdersScreen(token: widget.token),
         ),
       );
       return;

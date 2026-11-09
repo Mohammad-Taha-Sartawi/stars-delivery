@@ -149,8 +149,11 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
         final customer = order['customerId'];
         final name = customer is Map ? (customer['fullName'] ?? '') : '';
         final pid = customer is Map ? (customer['publicId'] ?? '') : '';
+        final notSelected = order['recordType'] == 'offer_not_selected';
         final delivered = order['recordType'] == 'delivered';
         final phone = order['phone']?.toString() ?? '';
+        final offeredPrice = (order['offeredPrice'] as num?)?.toInt() ?? 0;
+        final acceptedPrice = (order['acceptedPrice'] as num?)?.toInt() ?? 0;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
@@ -175,11 +178,21 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                     AppStatusChip(
                       label: AppLocalization.get(
                         context,
-                        delivered ? 'status_completed' : 'rejected',
+                        delivered
+                            ? 'status_completed'
+                            : notSelected
+                            ? 'offer_not_selected_status'
+                            : 'rejected',
                       ),
-                      tone: delivered ? AppTone.success : AppTone.danger,
+                      tone: delivered
+                          ? AppTone.success
+                          : notSelected
+                          ? AppTone.warning
+                          : AppTone.danger,
                       icon: delivered
                           ? Icons.check_circle_outline
+                          : notSelected
+                          ? Icons.person_off_outlined
                           : Icons.cancel_outlined,
                     ),
                   ],
@@ -242,7 +255,66 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                     fontSize: 13,
                   ),
                 ),
-                if (!delivered) ...[
+                if (notSelected) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 13,
+                        color: appToneStyle(
+                          context,
+                          AppTone.warning,
+                        ).foreground,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          AppLocalization.get(
+                            context,
+                            'offer_not_selected_reason',
+                          ),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: appToneStyle(
+                              context,
+                              AppTone.warning,
+                            ).foreground,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        AppLocalization.get(
+                          context,
+                          'your_offer_price',
+                        ).replaceAll('%d', '$offeredPrice'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (acceptedPrice > 0)
+                        Text(
+                          AppLocalization.get(
+                            context,
+                            'winning_offer_price',
+                          ).replaceAll('%d', '$acceptedPrice'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                ] else if (!delivered) ...[
                   const SizedBox(height: 6),
                   Row(
                     children: [

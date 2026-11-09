@@ -116,7 +116,7 @@ router.get('/stats', async (req, res) => {
       areaFilter.type = { $in: serviceTypes };
     }
     // Exclude orders this provider already offered on or rejected
-    const [offeredIds, rejectedIds, rejectedReportCount] = await Promise.all([
+    const [offeredIds, rejectedIds, rejectedReportCount, lostOfferOrderIds] = await Promise.all([
       Offer.find({
         providerId: req.userId,
         $or: [
@@ -145,6 +145,11 @@ router.get('/stats', async (req, res) => {
         { $match: { 'order.0': { $exists: true } } },
         { $count: 'count' },
       ]).then((rows) => rows[0]?.count || 0),
+      Offer.find({
+        providerId: req.userId,
+        status: 'rejected',
+        rejectionReason: 'another_driver_selected',
+      }).distinct('orderId'),
     ]);
     const excludedIds = [...offeredIds, ...rejectedIds];
     if (excludedIds.length > 0) areaFilter._id = { $nin: excludedIds };
@@ -158,7 +163,11 @@ router.get('/stats', async (req, res) => {
     const dailyOrderCount = dailyOrders.length;
     const activeOrdersCount = await Order.countDocuments({ providerId: req.userId, status: { $in: ['accepted', 'fulfilling'] } });
     const deliveredOrdersCount = await Order.countDocuments({ providerId: req.userId, status: 'completed' });
-    const ordersReportCount = rejectedReportCount + deliveredOrdersCount;
+    const notSelectedReportCount = lostOfferOrderIds.length > 0
+      ? await Order.countDocuments({ _id: { $in: lostOfferOrderIds } })
+      : 0;
+    const ordersReportCount =
+      rejectedReportCount + deliveredOrdersCount + notSelectedReportCount;
     const offerCooldownUntil =
       user.offerCooldownUntil && user.offerCooldownUntil > now
         ? user.offerCooldownUntil
@@ -338,7 +347,7 @@ router.post('/orders/:orderId/reject', async (req, res) => {
 
 router.get('/rejected-orders', async (req, res) => {
   try {
-    const [rejections, deliveredOrders] = await Promise.all([
+    const [rejections, deliveredOrders, notSelectedOffers] = await Promise.all([
       RejectedOrder.find({
         providerId: req.userId,
         createdAt: { $lte: new Date() },
@@ -348,9 +357,22 @@ router.get('/rejected-orders', async (req, res) => {
       Order.find({ providerId: req.userId, status: 'completed' })
         .populate('customerId', 'fullName publicId')
         .lean(),
+      Offer.find({
+        providerId: req.userId,
+        status: 'rejected',
+        rejectionReason: 'another_driver_selected',
+      })
+        .sort({ rejectedAt: -1, createdAt: -1 })
+        .lean(),
     ]);
 
-    const orderIds = rejections.map(r => r.orderId);
+    const notSelectedOrderIds = notSelectedOffers.map(o => o.orderId.toString());
+    const orderIds = [
+      ...new Set([
+        ...rejections.map(r => r.orderId.toString()),
+        ...notSelectedOrderIds,
+      ]),
+    ];
     const orders = await Order.find({ _id: { $in: orderIds } })
       .populate('customerId', 'fullName publicId')
       .lean();
@@ -376,7 +398,25 @@ router.get('/rejected-orders', async (req, res) => {
       reportAt: o.completedAt || o.createdAt,
     }));
 
-    const report = [...rejected, ...delivered]
+    const notSelectedByOrder = new Map();
+    for (const offer of notSelectedOffers) {
+      const orderId = offer.orderId.toString();
+      if (notSelectedByOrder.has(orderId)) continue;
+
+      const order = orderMap.get(orderId);
+      if (!order) continue;
+
+      notSelectedByOrder.set(orderId, maskedOrder({
+        ...order,
+        recordType: 'offer_not_selected',
+        offeredPrice: offer.price,
+        acceptedPrice: offer.competingPrice || 0,
+        reason: 'another_driver_selected',
+        reportAt: offer.rejectedAt || offer.createdAt,
+      }));
+    }
+
+    const report = [...rejected, ...delivered, ...notSelectedByOrder.values()]
       .sort((a, b) => new Date(b.reportAt) - new Date(a.reportAt));
 
     res.json(report);

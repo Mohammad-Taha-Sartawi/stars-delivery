@@ -1,16 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/app/app_bloc.dart';
+import '../bloc/notification/notification_bloc.dart';
+import '../bloc/notification/notification_event.dart';
 import '../services/api_config.dart';
 import '../services/localization_service.dart';
+import '../services/provider_service.dart';
 import '../services/responsive.dart';
+import '../services/socket_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/ui/app_image_thumbnail.dart';
+import '../widgets/ui/app_notification_bell.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
+import 'rejected_orders_screen.dart';
 
-class OfferedOrdersScreen extends StatelessWidget {
+class OfferedOrdersScreen extends StatefulWidget {
   final List<Map<String, dynamic>> orders;
   final String token;
   final VoidCallback? onRefresh;
@@ -20,6 +28,120 @@ class OfferedOrdersScreen extends StatelessWidget {
     required this.token,
     this.onRefresh,
   });
+
+  @override
+  State<OfferedOrdersScreen> createState() => _OfferedOrdersScreenState();
+}
+
+class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
+  final ProviderService _providerService = ProviderService();
+  late final List<Map<String, dynamic>> _orders = List.of(widget.orders);
+  StreamSubscription? _offerNotSelectedSub;
+  StreamSubscription? _offerAcceptedSub;
+  Timer? _refreshTimer;
+  bool _refreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    context.read<NotificationBloc>().add(
+      LoadNotifications(token: widget.token),
+    );
+
+    _offerNotSelectedSub = SocketService.instance.onOfferNotSelected.listen((
+      data,
+    ) {
+      if (!mounted) return;
+
+      final orderId = data['orderId']?.toString();
+      if (orderId == null || orderId.isEmpty) return;
+
+      final wasListed = _orders.any(
+        (order) => order['_id']?.toString() == orderId,
+      );
+      setState(
+        () =>
+            _orders.removeWhere((order) => order['_id']?.toString() == orderId),
+      );
+      widget.onRefresh?.call();
+
+      if (!wasListed) return;
+
+      final price = (data['price'] as num?)?.toInt() ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalization.get(
+              context,
+              'another_driver_selected_body',
+            ).replaceAll('%d', '$price'),
+          ),
+          action: SnackBarAction(
+            label: AppLocalization.get(context, 'view_reports'),
+            onPressed: _openReports,
+          ),
+        ),
+      );
+    });
+
+    _offerAcceptedSub = SocketService.instance.onOfferAccepted.listen((data) {
+      if (!mounted) return;
+
+      final orderId = data['orderId']?.toString();
+      if (orderId != null && orderId.isNotEmpty) {
+        setState(
+          () => _orders.removeWhere(
+            (order) => order['_id']?.toString() == orderId,
+          ),
+        );
+      }
+      widget.onRefresh?.call();
+      _refresh();
+    });
+
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _refresh(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _offerNotSelectedSub?.cancel();
+    _offerAcceptedSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    _refreshing = true;
+
+    try {
+      final orders = await _providerService.getOfferedOrders(widget.token);
+      if (!mounted) return;
+
+      setState(() {
+        _orders
+          ..clear()
+          ..addAll(orders);
+      });
+    } catch (_) {
+      // Keep the current list; the next refresh retries.
+    } finally {
+      _refreshing = false;
+    }
+  }
+
+  void _openReports() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RejectedOrdersScreen(token: widget.token),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,17 +167,19 @@ class OfferedOrdersScreen extends StatelessWidget {
             icon: Icon(Icons.arrow_back, color: scheme.onSurface),
             onPressed: () => Navigator.pop(context),
           ),
+          actions: [AppNotificationBell(token: widget.token)],
         ),
         body: SafeArea(
           top: false,
           child: RefreshIndicator(
             onRefresh: () async {
-              onRefresh?.call();
+              await _refresh();
+              widget.onRefresh?.call();
             },
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
-                child: orders.isEmpty
+                child: _orders.isEmpty
                     ? ListView(
                         children: [
                           Padding(
@@ -89,9 +213,9 @@ class OfferedOrdersScreen extends StatelessWidget {
                           horizontal: Responsive.paddingHorizontal(context),
                           vertical: Responsive.paddingVertical(context),
                         ),
-                        itemCount: orders.length,
+                        itemCount: _orders.length,
                         itemBuilder: (context, index) {
-                          final o = orders[index];
+                          final o = _orders[index];
                           return _buildOrderCard(context, o, scheme);
                         },
                       ),

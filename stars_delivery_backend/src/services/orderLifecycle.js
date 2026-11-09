@@ -322,14 +322,22 @@ async function acceptOffer({ offerId, customerId }) {
 
       const offerUpdate = await Offer.updateOne(
         { _id: offer._id, status: 'pending' },
-        { $set: { status: 'accepted', rejectionReason: '' } },
+        { $set: { status: 'accepted', rejectionReason: '', rejectedAt: null } },
         { session },
       );
       if (offerUpdate.modifiedCount !== 1) throw new LifecycleConflict('OFFER_NOT_AVAILABLE', order._id);
 
+      const rejectedAt = new Date();
       await Offer.updateMany(
         { orderId: order._id, _id: { $ne: offer._id }, status: 'pending' },
-        { $set: { status: 'rejected', rejectionReason: 'another_driver_selected' } },
+        {
+          $set: {
+            status: 'rejected',
+            rejectionReason: 'another_driver_selected',
+            rejectedAt,
+            competingPrice: offer.price,
+          },
+        },
         { session },
       );
       await Offer.updateMany(
@@ -339,7 +347,13 @@ async function acceptOffer({ offerId, customerId }) {
           _id: { $ne: offer._id },
           orderId: { $ne: order._id },
         },
-        { $set: { status: 'rejected', rejectionReason: 'provider_unavailable' } },
+        {
+          $set: {
+            status: 'rejected',
+            rejectionReason: 'provider_unavailable',
+            rejectedAt,
+          },
+        },
         { session },
       );
 
@@ -399,6 +413,7 @@ async function acceptOffer({ offerId, customerId }) {
               $set: {
                 status: 'rejected',
                 rejectionReason: 'provider_unavailable',
+                rejectedAt: new Date(),
               },
             },
           );
@@ -563,9 +578,21 @@ async function resetOrder({ orderId, customerId }) {
       },
     }, { new: true, session }).lean();
     if (!updated) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', orderId);
+    const resetAt = new Date();
     await Offer.updateMany(
-      { orderId },
-      { $set: { status: 'rejected', rejectionReason: 'order_reset' } },
+      { orderId, status: 'pending' },
+      {
+        $set: {
+          status: 'rejected',
+          rejectionReason: 'order_reset',
+          rejectedAt: resetAt,
+        },
+      },
+      { session },
+    );
+    await Offer.updateMany(
+      { orderId, rejectionReason: 'provider_unavailable' },
+      { $set: { rejectionReason: 'order_reset' } },
       { session },
     );
     return updated;
@@ -578,7 +605,13 @@ async function cancelOrder({ orderId, customerId }) {
     if (!updated) throw new LifecycleConflict('ORDER_NOT_AVAILABLE', orderId);
     await Offer.updateMany(
       { orderId, status: 'pending' },
-      { $set: { status: 'rejected', rejectionReason: 'order_cancelled' } },
+      {
+        $set: {
+          status: 'rejected',
+          rejectionReason: 'order_cancelled',
+          rejectedAt: new Date(),
+        },
+      },
       { session },
     );
     return updated;

@@ -85,6 +85,17 @@ test(
     assert.match(routes, /recordType:\s*'delivered'/);
 
     assert.match(routes, /recordType:\s*'rejected'/);
+
+    assert.match(routes, /recordType:\s*'offer_not_selected'/);
+
+    assert.match(
+      routes,
+      /rejectionReason:\s*'another_driver_selected'/,
+    );
+
+    assert.match(routes, /offeredPrice:\s*offer\.price/);
+
+    assert.match(routes, /acceptedPrice:\s*offer\.competingPrice/);
   },
 );
 

@@ -249,9 +249,23 @@ class AppLocalization {
       'en': 'My Active Orders - Delivery',
     },
     'rejected_orders_btn': {
-      'ar': 'تقرير رفض وتسليم الطلبات',
-      'en': 'Rejection and Delivery Orders Report',
+      'ar': 'تقرير الطلبات والعروض',
+      'en': 'Orders and Offers Report',
     },
+    'offer_not_selected_status': {
+      'ar': 'تم اختيار سائق آخر',
+      'en': 'Another driver selected',
+    },
+    'offer_not_selected_reason': {
+      'ar': 'قبل الزبون عرض سائق آخر لهذا الطلب.',
+      'en': "The customer accepted another driver's offer for this order.",
+    },
+    'your_offer_price': {'ar': 'عرضك: %d شيكل', 'en': 'Your offer: %d shekels'},
+    'winning_offer_price': {
+      'ar': 'العرض المقبول: %d شيكل',
+      'en': 'Accepted offer: %d shekels',
+    },
+    'view_reports': {'ar': 'عرض التقارير', 'en': 'View reports'},
     'reject_order': {'ar': 'رفض الطلب', 'en': 'Reject Order'},
     'reject_order_confirm': {
       'ar': 'هل تريد رفض هذا الطلب؟ سيُخفى عن قائمة طلباتك فقط.',

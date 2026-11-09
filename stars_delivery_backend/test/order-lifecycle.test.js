@@ -359,9 +359,11 @@ test('acceptance passes the transaction session to every database mutation', asy
       return Promise.resolve({ modifiedCount: 1 });
     };
     const rejectionReasons = [];
+    const rejectionUpdates = [];
     Offer.updateMany = (filter, update, options) => {
       writes.push(options.session);
       rejectionReasons.push(update.$set.rejectionReason);
+      rejectionUpdates.push(update.$set);
       return Promise.resolve({});
     };
     User.findById = () => query({ fullName: 'Customer' });
@@ -383,6 +385,9 @@ test('acceptance passes the transaction session to every database mutation', asy
       'another_driver_selected',
       'provider_unavailable',
     ]);
+    assert.equal(rejectionUpdates[0].competingPrice, 10);
+    assert.ok(rejectionUpdates[0].rejectedAt instanceof Date);
+    assert.ok(rejectionUpdates[1].rejectedAt instanceof Date);
   } finally {
     mongoose.startSession = original.startSession;
     Offer.find = original.offerFind;
@@ -823,7 +828,17 @@ test('resetOrder enforces customer ownership and pre-acceptance states in one tr
 
     Offer.updateMany = (filter, update, options) => {
       assert.equal(filter.orderId, 'order-reset');
-      assert.equal(update.$set.status, 'rejected');
+      assert.equal(options.session, session);
+
+      if (filter.status === 'pending') {
+        assert.equal(update.$set.status, 'rejected');
+        assert.equal(update.$set.rejectionReason, 'order_reset');
+        assert.ok(update.$set.rejectedAt instanceof Date);
+      } else {
+        assert.equal(filter.rejectionReason, 'provider_unavailable');
+        assert.equal(update.$set.rejectionReason, 'order_reset');
+      }
+
       offerUpdateSession = options.session;
       return Promise.resolve({});
     };

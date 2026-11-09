@@ -43,6 +43,8 @@ void main() {
     expect(source, contains("'driver_taken'"));
 
     expect(source, contains("'offer_not_selected'"));
+
+    expect(source, contains('RejectedOrdersScreen'));
   });
 
   test('providers are notified and pending lists drop selected orders', () {
@@ -130,5 +132,15 @@ void main() {
     expect(offers, contains("'offer_cancelled'"));
 
     expect(offers, contains("'new_order'"));
+
+    final provider = File(
+      'stars_delivery_backend/src/routes/provider.js',
+    ).readAsStringSync();
+
+    expect(provider, contains("recordType: 'offer_not_selected'"));
+
+    expect(provider, contains('competingPrice'));
+
+    expect(provider, contains('offeredPrice: offer.price'));
   });
 }

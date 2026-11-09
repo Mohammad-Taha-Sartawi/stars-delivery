@@ -114,6 +114,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         privacyPolicy: event.privacyPolicy,
         serviceTypes: event.serviceTypes,
         driverLicenseDocument: event.driverLicenseDocument,
+        licenseNotAvailable: event.licenseNotAvailable,
       );
 
       if (data['pending'] == true) {

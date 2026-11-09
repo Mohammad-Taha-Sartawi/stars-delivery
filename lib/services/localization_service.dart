@@ -58,6 +58,22 @@ class AppLocalization {
       'ar': 'يجب إرفاق صورة رخصة القيادة لإنشاء حساب سائق.',
       'en': 'A driver-license image is required for provider registration.',
     },
+    'provider_no_license_option': {
+      'ar': 'لا أملك رخصة قيادة',
+      'en': 'I do not have a driver license',
+    },
+    'provider_no_license_hint': {
+      'ar':
+          'يمكنك متابعة تسجيل حساب السائق بدون رفع صورة الرخصة، وسيراجع المدير طلبك.',
+      'en':
+          'You can continue provider registration without a license image; an admin will review your request.',
+    },
+    'provider_no_license_selected': {
+      'ar':
+          'تم اختيار التسجيل بدون رخصة قيادة. يمكنك إكمال باقي البيانات وإنشاء الحساب.',
+      'en':
+          'Registration without a driver license is selected. You can finish the remaining fields and create the account.',
+    },
     'provider_document_empty': {
       'ar': 'الصورة المختارة فارغة.',
       'en': 'The selected image is empty.',

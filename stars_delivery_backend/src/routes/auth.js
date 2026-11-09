@@ -110,6 +110,9 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
       typeof area === 'string' ? area.trim() : '';
     const registrationGovernorate =
       typeof governorate === 'string' ? governorate.trim() : '';
+    const licenseNotAvailable =
+      req.body.licenseNotAvailable === true
+      || req.body.licenseNotAvailable === 'true';
     const normalizedEmail =
       normalizeMobileEmail(email);
 
@@ -143,19 +146,30 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
       null;
 
     if (role === 'provider') {
-      try {
-        inspectedProviderDocuments =
-          inspectProviderDocumentFiles(
-            req.files,
-          );
-      } catch (error) {
-        return res.status(400).json({
-          error:
-            'The driver-license document must be a valid JPEG or PNG image.',
-          code:
-            error?.code
-            || 'INVALID_PROVIDER_DOCUMENT',
-        });
+      if (licenseNotAvailable) {
+        if (hasProviderDocumentUploads(req.files)) {
+          return res.status(400).json({
+            error:
+              'Provider documents cannot be uploaded when no license is declared.',
+            code: 'INVALID_PROVIDER_DOCUMENT',
+          });
+        }
+        inspectedProviderDocuments = [];
+      } else {
+        try {
+          inspectedProviderDocuments =
+            inspectProviderDocumentFiles(
+              req.files,
+            );
+        } catch (error) {
+          return res.status(400).json({
+            error:
+              'The driver-license document must be a valid JPEG or PNG image.',
+            code:
+              error?.code
+              || 'INVALID_PROVIDER_DOCUMENT',
+          });
+        }
       }
     } else if (
       hasProviderDocumentUploads(
@@ -182,10 +196,12 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
       let providerDocuments = [];
 
       try {
-        providerDocuments =
-          await persistProviderDocumentFiles(
-            inspectedProviderDocuments,
-          );
+        if (!licenseNotAvailable) {
+          providerDocuments =
+            await persistProviderDocumentFiles(
+              inspectedProviderDocuments,
+            );
+        }
 
         await PendingProvider.create({
           fullName,
@@ -197,6 +213,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
           area: registrationArea,
           governorate:
             registrationGovernorate,
+          licenseNotAvailable,
           serviceTypes,
           providerDocuments,
         });

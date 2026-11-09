@@ -47,6 +47,7 @@ const pendingProviderSchema = new mongoose.Schema({
   password: { type: String, required: true, select: false },
   area: { type: String, default: '' },
   governorate: { type: String, default: '' },
+  licenseNotAvailable: { type: Boolean, default: false },
   serviceTypes: [{ type: String, enum: ['product', 'people', 'goods'] }],
   licenseType: { type: String, default: '' },
   providerDocuments: {

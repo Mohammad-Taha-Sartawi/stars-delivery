@@ -150,7 +150,7 @@ router.get('/:id/reports', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const drivers = await User.find({ role: 'provider' })
-      .select('fullName publicId email phoneNumbers area governorate status isAvailable serviceTypes licenseType blockedUntil offerCooldownUntil createdAt deleted')
+      .select('fullName publicId email phoneNumbers area governorate status isAvailable serviceTypes licenseType licenseNotAvailable blockedUntil offerCooldownUntil createdAt deleted')
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
@@ -173,6 +173,7 @@ router.get('/', async (req, res) => {
         isAvailable: driver.isAvailable !== false,
         serviceTypes: driver.serviceTypes || [],
         licenseType: driver.licenseType || '',
+        licenseNotAvailable: driver.licenseNotAvailable === true,
         blockedUntil: driver.blockedUntil || null,
         offerCooldownUntil: driver.offerCooldownUntil || null,
         createdAt: driver.createdAt,
@@ -267,6 +268,7 @@ router.get('/search', async (req, res) => {
       serviceType: serviceTypesLabel(match.serviceTypes),
       serviceTypes: match.serviceTypes || [],
       licenseType: match.licenseType || 'غير محدد',
+      licenseNotAvailable: match.licenseNotAvailable === true,
       isAvailable: match.isAvailable !== false,
       blockedUntil: match.blockedUntil || null,
       offerCooldownUntil: match.offerCooldownUntil || null,
@@ -773,8 +775,11 @@ router.get(
             .map(
               providerDocumentMetadata,
             ),
+        licenseNotAvailable:
+          pending.licenseNotAvailable === true,
         complete:
-          requiredProviderDocumentsPresent(
+          pending.licenseNotAvailable === true
+          || requiredProviderDocumentsPresent(
             pending.providerDocuments,
           ),
       });
@@ -842,8 +847,11 @@ router.get(
             .map(
               providerDocumentMetadata,
             ),
+        licenseNotAvailable:
+          provider.licenseNotAvailable === true,
         complete:
-          requiredProviderDocumentsPresent(
+          provider.licenseNotAvailable === true
+          || requiredProviderDocumentsPresent(
             provider.providerDocuments,
           ),
       });
@@ -941,7 +949,8 @@ router.post('/pending/:id/approve', async (req, res) => {
             }
 
             if (
-              !requiredProviderDocumentsPresent(
+              pending.licenseNotAvailable !== true
+              && !requiredProviderDocumentsPresent(
                 pending.providerDocuments,
               )
             ) {
@@ -973,6 +982,8 @@ router.post('/pending/:id/approve', async (req, res) => {
                   pending.governorate || '',
                 governorateLevel:
                   false,
+                licenseNotAvailable:
+                  pending.licenseNotAvailable === true,
                 serviceTypes:
                   pending.serviceTypes || [],
                 licenseType:

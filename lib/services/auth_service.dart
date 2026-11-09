@@ -144,6 +144,7 @@ abstract interface class AuthGateway {
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
+    bool licenseNotAvailable = false,
   });
 
   Future<Map<String, dynamic>> validateSession(String token);
@@ -196,6 +197,7 @@ class AuthService implements AuthGateway {
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
+    bool licenseNotAvailable = false,
   }) async {
     try {
       final fields = <String, dynamic>{
@@ -215,16 +217,18 @@ class AuthService implements AuthGateway {
         return _asMap(response.data);
       }
 
-      if (driverLicenseDocument == null) {
+      if (!licenseNotAvailable && driverLicenseDocument == null) {
         throw Exception('Provider driver-license document is required.');
       }
 
       final formData = FormData.fromMap({
         ...fields.map((key, value) => MapEntry(key, value.toString())),
         'serviceTypes': serviceTypes.join(','),
-        'driverLicenseDocument': _multipartProviderDocument(
-          driverLicenseDocument,
-        ),
+        'licenseNotAvailable': licenseNotAvailable.toString(),
+        if (!licenseNotAvailable && driverLicenseDocument != null)
+          'driverLicenseDocument': _multipartProviderDocument(
+            driverLicenseDocument,
+          ),
       });
 
       final response = await _dio.post(

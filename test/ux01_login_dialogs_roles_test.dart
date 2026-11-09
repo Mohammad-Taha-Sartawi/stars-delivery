@@ -65,6 +65,7 @@ class _StubGateway implements AuthGateway {
     String role,
     String area, {
     String governorate = '',
+    bool licenseNotAvailable = false,
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
     ProviderRegistrationDocument? driverLicenseDocument,
@@ -480,6 +481,49 @@ void main() {
 
       expect(_StubGateway.lastArea, 'Al-Bireh');
       expect(_StubGateway.lastGovernorate, 'رام الله والبيرة');
+    });
+  });
+
+  group('provider license waiver', () {
+    testWidgets('provider can hide the license upload and continue', (
+      tester,
+    ) async {
+      await tester.pumpWidget(loginHarness(locale: const Locale('en')));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Provider'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final signupToggle = find.textContaining('Sign Up', findRichText: true);
+      await tester.ensureVisible(signupToggle);
+      await tester.tap(signupToggle);
+      await tester.pumpAndSettle(const Duration(milliseconds: 150));
+
+      final noLicenseOption = find.byKey(const Key('providerNoLicenseOption'));
+      await tester.ensureVisible(noLicenseOption);
+      expect(
+        find.byKey(const Key('driverLicenseDocumentPicker')),
+        findsOneWidget,
+      );
+
+      await tester.tap(noLicenseOption);
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(
+        find.byKey(const Key('driverLicenseDocumentPicker')),
+        findsNothing,
+      );
+      expect(
+        find.textContaining('Registration without a driver license'),
+        findsOneWidget,
+      );
+
+      await tester.tap(noLicenseOption);
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      expect(
+        find.byKey(const Key('driverLicenseDocumentPicker')),
+        findsOneWidget,
+      );
     });
   });
 }

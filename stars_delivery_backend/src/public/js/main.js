@@ -580,6 +580,7 @@ function renderDriverResultFromDB(data) {
     <div class="row"><span class="label">رقم الجوال</span><span class="value">${escapeHtml(driver.phone)}</span></div>
     <div class="row"><span class="label">نوع الخدمة</span><span class="value">${escapeHtml(driver.serviceType || 'غير محدد')}</span></div>
     <div class="row"><span class="label">نوع السائق</span><span class="value">${escapeHtml(driver.licenseType || 'غير محدد')}</span></div>
+    ${driver.licenseNotAvailable ? '<div class="row"><span class="label">رخصة القيادة</span><span class="value"><span class="unpaid-badge">غير متوفرة — سُجّل بدون رخصة</span></span></div>' : ''}
     <div class="row"><span class="label">حالة التوفر</span><span class="value">${driver.isAvailable ? '<span class="order-status-badge completed">متاح الآن</span>' : '<span class="order-status-badge cancelled">غير متاح</span>'}${driver.blockedUntil && new Date(driver.blockedUntil) > new Date() ? ' <span class="order-status-badge pending">مشغول بطلب</span>' : ''}</span></div>
     <div class="row"><span class="label">المحافظة</span><span class="value">${escapeHtml(driver.governorate || 'غير محدد')}</span></div>
     <div class="row"><span class="label">المدينة / القرية</span><span class="value">${escapeHtml(driver.city || driver.area || 'غير محدد')}</span></div>
@@ -1483,10 +1484,17 @@ function renderProviderDocumentReview(
   const complete =
     data.complete === true;
 
+  const licenseWaived =
+    data.licenseNotAvailable === true;
+
   const completionText =
-    complete
-      ? 'الوثيقة المطلوبة مكتملة'
-      : 'الوثيقة المطلوبة غير مكتملة';
+    licenseWaived
+      ? 'مسجل بدون رخصة قيادة'
+      : (
+          complete
+            ? 'الوثيقة المطلوبة مكتملة'
+            : 'الوثيقة المطلوبة غير مكتملة'
+        );
 
   const completionClass =
     complete
@@ -2812,24 +2820,36 @@ async function loadPendingProviders() {
             unavailable: true,
           };
 
+        const licenseWaived =
+          provider.licenseNotAvailable === true
+          || review.licenseNotAvailable === true;
+        const canApprove =
+          licenseWaived
+          || (
+            review.complete
+            && !review.unavailable
+          );
+
         const documentStatusText =
-          review.unavailable
-            ? 'تعذر التحقق'
+          licenseWaived
+            ? 'لا يملك رخصة'
             : (
-                review.complete
-                  ? 'مكتملة'
-                  : 'ناقصة'
+                review.unavailable
+                  ? 'تعذر التحقق'
+                  : (
+                      review.complete
+                        ? 'مكتملة'
+                        : 'ناقصة'
+                    )
               );
 
         const statusClass =
-          review.complete
-          && !review.unavailable
+          canApprove
             ? 'paid-badge'
             : 'unpaid-badge';
 
         const approveButton =
-          review.complete
-          && !review.unavailable
+          canApprove
             ? (
                 `<button class="action-btn success" `
                 + `data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="approveProvider" `
@@ -2842,7 +2862,7 @@ async function loadPendingProviders() {
             : (
                 `<button class="action-btn success" `
                 + `type="button" disabled `
-                + `title="يجب اكتمال رخصة القيادة قبل القبول" `
+                + `title="يجب اكتمال رخصة القيادة قبل القبول أو اختيار تسجيل بدون رخصة" `
                 + `data-presentation="p034">`
                 + `<i class="fas fa-check"></i> قبول`
                 + `</button>`

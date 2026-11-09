@@ -38,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _providerDocumentPicker = ImagePicker();
 
   ProviderRegistrationDocument? _driverLicenseDocument;
+  bool _licenseNotAvailable = false;
   final Set<String> _serviceTypes = {'product', 'people', 'goods'};
 
   bool _isLogin = true;
@@ -348,22 +349,71 @@ class _LoginScreenState extends State<LoginScreen> {
                         .toList(),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    AppLocalization.get(context, 'provider_documents_title'),
-                    style: theme.textTheme.titleSmall,
+                  CheckboxListTile(
+                    key: const Key('providerNoLicenseOption'),
+                    value: _licenseNotAvailable,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(
+                      AppLocalization.get(
+                        context,
+                        'provider_no_license_option',
+                      ),
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    subtitle: Text(
+                      AppLocalization.get(context, 'provider_no_license_hint'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _licenseNotAvailable = value ?? false;
+                        if (_licenseNotAvailable) {
+                          _driverLicenseDocument = null;
+                        }
+                      });
+                    },
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    AppLocalization.get(context, 'provider_documents_hint'),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _providerDocumentButton(
-                    key: const Key('driverLicenseDocumentPicker'),
-                    labelKey: 'driver_license_document',
-                    document: _driverLicenseDocument,
-                    onPressed: _pickProviderDocument,
-                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (_licenseNotAvailable)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondaryContainer,
+                        borderRadius: BorderRadiusDirectional.circular(
+                          AppRadius.md,
+                        ),
+                      ),
+                      child: Text(
+                        AppLocalization.get(
+                          context,
+                          'provider_no_license_selected',
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSecondaryContainer,
+                          height: 1.4,
+                        ),
+                      ),
+                    )
+                  else ...[
+                    Text(
+                      AppLocalization.get(context, 'provider_documents_title'),
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      AppLocalization.get(context, 'provider_documents_hint'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _providerDocumentButton(
+                      key: const Key('driverLicenseDocumentPicker'),
+                      labelKey: 'driver_license_document',
+                      document: _driverLicenseDocument,
+                      onPressed: _pickProviderDocument,
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.lg),
                 ],
               ],
@@ -754,6 +804,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (role != 'provider') {
         _driverLicenseDocument = null;
+        _licenseNotAvailable = false;
       }
     });
   }
@@ -764,6 +815,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (_isLogin) {
         _driverLicenseDocument = null;
+        _licenseNotAvailable = false;
       }
     });
 
@@ -848,7 +900,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (_selectedRole == 'provider' && _driverLicenseDocument == null) {
+      if (_selectedRole == 'provider' &&
+          !_licenseNotAvailable &&
+          _driverLicenseDocument == null) {
         AppFeedback.error(
           context,
           AppLocalization.get(context, 'provider_documents_required'),
@@ -987,6 +1041,8 @@ class _LoginScreenState extends State<LoginScreen> {
         governorate: _currentGovernorate?.areaValue ?? '',
         serviceTypes: _serviceTypes.toList(),
         driverLicenseDocument: driverLicenseDocument,
+        licenseNotAvailable:
+            _selectedRole == 'provider' && _licenseNotAvailable,
       ),
     );
 

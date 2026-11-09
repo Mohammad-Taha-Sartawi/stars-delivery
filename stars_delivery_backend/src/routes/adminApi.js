@@ -7,23 +7,25 @@ const Report = require('../models/Report');
 
 router.get('/stats', async (req, res) => {
   try {
-    const now = new Date();
-    const [totalDrivers, activeDrivers, totalUsers, activeUsers, totalBlocked, availableDrivers] = await Promise.all([
+    const [totalDrivers, activeDrivers, inactiveDrivers, totalUsers, activeUsers, totalBlocked] = await Promise.all([
       User.countDocuments({ role: 'provider' }),
-      User.countDocuments({ role: 'provider', status: 'active' }),
-      User.countDocuments({ role: 'customer' }),
-      User.countDocuments({ role: 'customer', status: 'active' }),
-      User.countDocuments({ status: 'blocked' }),
+      // Drivers who kept receiving orders enabled.
       User.countDocuments({
         role: 'provider',
         status: 'active',
         deleted: { $ne: true },
         isAvailable: { $ne: false },
-        $and: [
-          { $or: [{ blockedUntil: null }, { blockedUntil: { $exists: false } }, { blockedUntil: { $lte: now } }] },
-          { $or: [{ offerCooldownUntil: null }, { offerCooldownUntil: { $exists: false } }, { offerCooldownUntil: { $lte: now } }] },
-        ],
       }),
+      // Drivers who switched themselves unavailable for new orders.
+      User.countDocuments({
+        role: 'provider',
+        status: 'active',
+        deleted: { $ne: true },
+        isAvailable: false,
+      }),
+      User.countDocuments({ role: 'customer' }),
+      User.countDocuments({ role: 'customer', status: 'active' }),
+      User.countDocuments({ status: 'blocked' }),
     ]);
 
     const commissionAgg = await Order.aggregate([
@@ -38,14 +40,13 @@ router.get('/stats', async (req, res) => {
     ]);
     const pendingAmount = pendingAgg[0]?.total || 0;
 
-    const inactiveDrivers = totalDrivers - activeDrivers;
     const inactiveUsers = totalUsers - activeUsers;
 
     const driverReportsPending = await Report.countDocuments({ reportType: 'driver', status: { $in: ['in-review', 'in-progress'] } });
     const userReportsPending = await Report.countDocuments({ reportType: 'user', status: { $in: ['in-review', 'in-progress'] } });
 
     res.json({
-      totalDrivers, activeDrivers, inactiveDrivers, availableDrivers,
+      totalDrivers, activeDrivers, inactiveDrivers,
       totalUsers, activeUsers, inactiveUsers,
       totalCommission, pendingAmount, pendingDrivers: totalBlocked,
       driverReportsPending, userReportsPending

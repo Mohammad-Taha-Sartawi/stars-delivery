@@ -656,9 +656,10 @@ test(
         ),
       );
 
+    // Formatting-tolerant: dart format may wrap the call across lines.
     const request =
-      method.indexOf(
-        "await dio.put('/users/password'",
+      method.search(
+        /await dio\.put\(\s*'\/users\/password'/,
       );
 
     const guard =

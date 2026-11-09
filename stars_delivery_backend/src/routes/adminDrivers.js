@@ -166,6 +166,7 @@ router.get('/', async (req, res) => {
       blockedUntil: driver.blockedUntil || null,
       offerCooldownUntil: driver.offerCooldownUntil || null,
       createdAt: driver.createdAt,
+      deleted: driver.deleted === true,
     })));
   } catch (err) {
     sendInternalServerError(res);

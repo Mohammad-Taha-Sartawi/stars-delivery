@@ -376,8 +376,6 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .csp-inline-block { display: inline-block !important; }
 
 /* Orders dashboard */
-.stat-card.no-click { cursor: default; }
-.stat-card.no-click:hover { transform: none; box-shadow: none; border-color: #1e2733; }
 .search-box select { padding: 14px 16px; border-radius: 14px; border: 1px solid #2a3546; background: #0f141c; color: #fff; font-size: 14px; outline: none; transition: 0.3s; }
 .search-box select:focus { border-color: #00d4ff; box-shadow: 0 0 0 3px #00d4ff33; }
 .orders-table { width: 100%; border-collapse: collapse; font-size: 13px; }

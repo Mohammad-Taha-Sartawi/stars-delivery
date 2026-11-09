@@ -81,7 +81,12 @@ test('dashboard exposes orders, driver availability and driver reports', () => {
   assert.match(adminOrders, /populate\('customerId'/);
   assert.match(adminOrders, /populate\('providerId'/);
 
-  assert.match(adminApi, /availableDrivers/);
+  // Availability is now represented by the existing active/inactive driver
+  // cards; a separate "available drivers" card was removed.
+  assert.match(adminApi, /inactiveDrivers/);
+  assert.match(adminApi, /isAvailable: false/);
+  assert.match(adminApi, /isAvailable: \{ \$ne: false \}/);
+  assert.doesNotMatch(adminApi, /availableDrivers/);
 });
 
 test('admin user search maps stored phone numbers', () => {

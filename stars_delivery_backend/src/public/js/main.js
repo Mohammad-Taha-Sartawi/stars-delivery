@@ -756,7 +756,6 @@ async function loadDashboardStats() {
     document.getElementById('totalDrivers').textContent = data.totalDrivers;
     document.getElementById('activeDrivers').textContent = data.activeDrivers;
     document.getElementById('inactiveDrivers').textContent = data.inactiveDrivers;
-    document.getElementById('availableDrivers').textContent = data.availableDrivers || 0;
     document.getElementById('totalUsers').textContent = data.totalUsers;
     document.getElementById('activeUsers').textContent = data.activeUsers;
     document.getElementById('inactiveUsers').textContent = data.inactiveUsers;
@@ -1929,10 +1928,89 @@ document.getElementById('reportDetailModal').addEventListener('click', function 
 // ================================================
 // 16. مودال القوائم الإحصائية
 // ================================================
-function openListModal(type, filter, title) {
-  document.getElementById('listModalTitle').textContent = title;
-  alert('انقر على أيقونة ' + type + ' في الإحصائيات لرؤية القائمة.');
-  closeListModal();
+async function openListModal(type, filter, title) {
+  const modal = document.getElementById('listModal');
+  const titleEl = document.getElementById('listModalTitle');
+  const subEl = document.getElementById('listModalSub');
+  const content = document.getElementById('listModalContent');
+
+  if (!modal || !titleEl || !subEl || !content) return;
+
+  titleEl.textContent = title || 'القائمة';
+
+  if (type !== 'drivers') {
+    subEl.textContent = 'تفاصيل الأعضاء';
+    content.innerHTML = '<p>تُدار قوائم المستخدمين من صفحة المستخدمين.</p>';
+    modal.classList.add('show');
+    return;
+  }
+
+  const isInactive = filter === 'inactive';
+  const isActive = filter === 'active';
+
+  subEl.textContent = isInactive
+    ? 'السائقون الذين أوقفوا استقبال الطلبات'
+    : isActive
+      ? 'السائقون المتاحون لاستقبال الطلبات'
+      : 'جميع السائقين';
+
+  content.innerHTML = '<p>جاري التحميل...</p>';
+  modal.classList.add('show');
+
+  try {
+    const res = await adminFetch('/admin/drivers');
+    const drivers = await res.json();
+
+    if (!Array.isArray(drivers)) {
+      content.innerHTML = '<p>تعذر تحميل قائمة السائقين.</p>';
+      return;
+    }
+
+    const filtered = drivers.filter((driver) => {
+      if (driver.deleted === true) return false;
+      if (filter === 'all') return true;
+      if (String(driver.status) !== 'active') return false;
+      const available = driver.isAvailable !== false;
+      return filter === 'active' ? available : !available;
+    });
+
+    if (filtered.length === 0) {
+      content.innerHTML = isInactive
+        ? '<p>لا يوجد سائقون أوقفوا استقبال الطلبات حالياً.</p>'
+        : '<p>لا يوجد سائقون في هذه القائمة.</p>';
+      return;
+    }
+
+    const rows = filtered.map((driver) => {
+      const available = driver.isAvailable !== false;
+      const availability = available
+        ? '<span class="order-status-badge completed">متاح</span>'
+        : '<span class="order-status-badge cancelled">غير متاح</span>';
+      return `<tr>
+        <td><strong>${escapeHtml(driver.fullName || 'غير محدد')}</strong>${driver.publicId ? `<br><small>#${escapeHtml(driver.publicId)}</small>` : ''}</td>
+        <td>${escapeHtml(driver.phone || '')}</td>
+        <td>${escapeHtml(driver.area || 'غير محدد')}</td>
+        <td>${availability}</td>
+        <td>${adminAccountStatusBadge(driver.status)}</td>
+      </tr>`;
+    }).join('');
+
+    content.innerHTML = `
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>السائق</th>
+            <th>الجوال</th>
+            <th>المنطقة</th>
+            <th>استقبال الطلبات</th>
+            <th>حالة الحساب</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch (err) {
+    content.innerHTML = '<p>حدث خطأ في تحميل القائمة.</p>';
+  }
 }
 
 function closeListModal() { document.getElementById('listModal').classList.remove('show'); }

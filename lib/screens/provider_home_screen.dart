@@ -593,42 +593,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          GovernorateScopeCard(
-                            token: widget.token,
-                            initialEnabled: _governorateLevel,
-                            isProvider: true,
-                            governorateName: _user.governorate.trim().isNotEmpty
-                                ? _user.governorate
-                                : _user.area,
-                            onChanged: (enabled) {
-                              setState(() => _governorateLevel = enabled);
-                              // The server joins the governorate socket room only
-                              // when the setting is enabled; reconnect to apply it.
-                              SocketService.instance.connect(
-                                token: widget.token,
-                                area: ApiConfig.detectedArea,
-                              );
-                              context.read<ProviderBloc>().add(
-                                LoadPendingOrders(token: widget.token),
-                              );
-                              context.read<ProviderBloc>().add(
-                                LoadProviderStats(token: widget.token),
-                              );
-                            },
-                          ),
-                          if (pendingWorkCount > 0) ...[
-                            const SizedBox(height: AppSpacing.md),
-                            _buildPendingWorkBanner(context, pendingWorkCount),
-                          ],
-                          const SizedBox(height: AppSpacing.lg),
-                          _buildEarnings(context, s),
-                          const SizedBox(height: AppSpacing.lg),
                           AppSectionHeader(
                             title: AppLocalization.get(
                               context,
-                              'home_quick_actions',
+                              'driver_orders_section',
                             ),
                           ),
+                          if (pendingWorkCount > 0) ...[
+                            _buildPendingWorkBanner(context, pendingWorkCount),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
                           AppActionWrap(
                             children: [
                               AppActionTile(
@@ -778,8 +752,52 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                             ],
                           ),
                           const SizedBox(height: AppSpacing.lg),
+                          AppSectionHeader(
+                            title: AppLocalization.get(
+                              context,
+                              'financial_summary_section',
+                            ),
+                          ),
+                          _buildEarnings(context, s),
+                          const SizedBox(height: AppSpacing.md),
                           _buildCommissionCard(context, s),
                           const SizedBox(height: AppSpacing.lg),
+                          AppSectionHeader(
+                            title: AppLocalization.get(
+                              context,
+                              'work_settings_section',
+                            ),
+                          ),
+                          GovernorateScopeCard(
+                            token: widget.token,
+                            initialEnabled: _governorateLevel,
+                            isProvider: true,
+                            governorateName: _user.governorate.trim().isNotEmpty
+                                ? _user.governorate
+                                : _user.area,
+                            onChanged: (enabled) {
+                              setState(() => _governorateLevel = enabled);
+                              // The server joins the governorate socket room only
+                              // when the setting is enabled; reconnect to apply it.
+                              SocketService.instance.connect(
+                                token: widget.token,
+                                area: ApiConfig.detectedArea,
+                              );
+                              context.read<ProviderBloc>().add(
+                                LoadPendingOrders(token: widget.token),
+                              );
+                              context.read<ProviderBloc>().add(
+                                LoadProviderStats(token: widget.token),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          AppSectionHeader(
+                            title: AppLocalization.get(
+                              context,
+                              'help_and_report_section',
+                            ),
+                          ),
                           AppActionWrap(
                             children: [
                               AppActionTile(

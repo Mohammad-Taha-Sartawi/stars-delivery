@@ -586,6 +586,22 @@ class AppLocalization {
     'logout': {'ar': 'تسجيل الخروج', 'en': 'Log out'},
     'send': {'ar': 'إرسال', 'en': 'Send'},
     'home_quick_actions': {'ar': 'الإجراءات السريعة', 'en': 'Quick actions'},
+    'new_order_subtitle': {
+      'ar': 'أنشئ طلبك وأرسله للسائقين في دقائق.',
+      'en': 'Create your order and send it to drivers in minutes.',
+    },
+    'my_orders_section': {'ar': 'طلباتي', 'en': 'My orders'},
+    'order_settings_section': {'ar': 'إعدادات الطلب', 'en': 'Order settings'},
+    'help_and_report_section': {
+      'ar': 'المساعدة والإبلاغ',
+      'en': 'Help & reporting',
+    },
+    'financial_summary_section': {
+      'ar': 'الأرباح والعمولة',
+      'en': 'Earnings & commission',
+    },
+    'driver_orders_section': {'ar': 'الطلبات', 'en': 'Orders'},
+    'work_settings_section': {'ar': 'إعدادات العمل', 'en': 'Work settings'},
     'support_contact_title': {
       'ar': 'التواصل مع الدعم',
       'en': 'Contact support',

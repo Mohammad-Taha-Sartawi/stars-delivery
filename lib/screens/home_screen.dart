@@ -347,10 +347,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (_pendingOrdersCount > 0) ...[
-                        _buildPendingBanner(context),
-                        const SizedBox(height: AppSpacing.lg),
-                      ],
                       Text(
                         AppLocalization.get(context, 'welcome_back'),
                         style: theme.textTheme.headlineSmall,
@@ -360,48 +356,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         AppLocalization.get(context, 'customer_subtitle'),
                         style: theme.textTheme.bodyMedium,
                       ),
+                      if (_pendingOrdersCount > 0) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _buildPendingBanner(context),
+                      ],
                       const SizedBox(height: AppSpacing.lg),
-                      GovernorateScopeCard(
-                        token: widget.token,
-                        initialEnabled: _governorateLevel,
-                        isProvider: false,
-                        governorateName: _user.governorate.trim().isNotEmpty
-                            ? _user.governorate
-                            : _user.area,
-                        onChanged: (enabled) {
-                          setState(() => _governorateLevel = enabled);
-                          _loadAvailableDriversCount();
-                        },
-                      ),
+                      _buildPrimaryOrderCard(context),
+                      if (_availableDriversCount != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _buildAvailableDriversBanner(context),
+                      ],
                       const SizedBox(height: AppSpacing.lg),
                       AppSectionHeader(
                         title: AppLocalization.get(
                           context,
-                          'home_quick_actions',
+                          'my_orders_section',
                         ),
                       ),
                       AppActionWrap(
                         children: [
-                          AppActionTile(
-                            icon: Icons.add_circle_outline,
-                            title: AppLocalization.get(context, 'new_order'),
-                            tone: AppTone.primary,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider(
-                                    create: (_) => OrderBloc(),
-                                    child: CreateOrderScreen(
-                                      user: _user,
-                                      token: widget.token,
-                                      governorateLevel: _governorateLevel,
-                                    ),
-                                  ),
-                                ),
-                              ).then((_) => _loadOrderCounts());
-                            },
-                          ),
                           AppActionTile(
                             icon: Icons.local_offer_outlined,
                             title: AppLocalization.get(context, 'offers_title'),
@@ -438,11 +411,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                         ],
                       ),
-                      if (_availableDriversCount != null) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        _buildAvailableDriversBanner(context),
-                      ],
                       const SizedBox(height: AppSpacing.lg),
+                      AppSectionHeader(
+                        title: AppLocalization.get(
+                          context,
+                          'order_settings_section',
+                        ),
+                      ),
+                      GovernorateScopeCard(
+                        token: widget.token,
+                        initialEnabled: _governorateLevel,
+                        isProvider: false,
+                        governorateName: _user.governorate.trim().isNotEmpty
+                            ? _user.governorate
+                            : _user.area,
+                        onChanged: (enabled) {
+                          setState(() => _governorateLevel = enabled);
+                          _loadAvailableDriversCount();
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      AppSectionHeader(
+                        title: AppLocalization.get(
+                          context,
+                          'help_and_report_section',
+                        ),
+                      ),
                       AppActionWrap(
                         children: [
                           AppActionTile(
@@ -494,6 +488,98 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openCreateOrder() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (_) => OrderBloc(),
+          child: CreateOrderScreen(
+            user: _user,
+            token: widget.token,
+            governorateLevel: _governorateLevel,
+          ),
+        ),
+      ),
+    ).then((_) => _loadOrderCounts());
+  }
+
+  Widget _buildPrimaryOrderCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final tone = appToneStyle(context, AppTone.primary);
+    final chevron = Directionality.of(context) == TextDirection.rtl
+        ? Icons.chevron_left
+        : Icons.chevron_right;
+
+    return Semantics(
+      button: true,
+      label: AppLocalization.get(context, 'new_order'),
+      onTap: _openCreateOrder,
+      excludeSemantics: true,
+      child: Material(
+        key: const Key('createOrderCta'),
+        color: tone.solid,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadiusDirectional.circular(AppRadius.lg),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _openCreateOrder,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.lg,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: AppSizes.minTouchTarget,
+                  height: AppSizes.minTouchTarget,
+                  decoration: BoxDecoration(
+                    color: tone.onSolid.withValues(alpha: 0.14),
+                    borderRadius: BorderRadiusDirectional.circular(
+                      AppRadius.md,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.add_circle_outline,
+                    color: tone.onSolid,
+                    size: AppSizes.iconLg,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppLocalization.get(context, 'new_order'),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: tone.onSolid,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        AppLocalization.get(context, 'new_order_subtitle'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: tone.onSolid.withValues(alpha: 0.88),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Icon(chevron, color: tone.onSolid),
+              ],
             ),
           ),
         ),

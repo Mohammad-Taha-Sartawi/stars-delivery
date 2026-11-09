@@ -56,6 +56,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     with WidgetsBindingObserver {
   final ProviderService _providerService = ProviderService();
   Timer? _notifTimer;
+  Timer? _dashboardRefreshTimer;
   Timer? _unblockTimer;
   StreamSubscription? _newOrderSub;
   StreamSubscription? _notifCountSub;
@@ -161,6 +162,15 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       _loadSupportUnreadCount();
     });
 
+    // Keep earnings, commission and order counters in sync with the server
+    // (for example after test data is removed from the database).
+    _dashboardRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
+      context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
+      context.read<ProviderBloc>().add(LoadOfferedOrders(token: widget.token));
+    });
+
     _newOrderSub = SocketService.instance.onNewOrder.listen((_) {
       if (!mounted) return;
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
@@ -262,6 +272,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _notifTimer?.cancel();
+    _dashboardRefreshTimer?.cancel();
     _unblockTimer?.cancel();
     _newOrderSub?.cancel();
     _notifCountSub?.cancel();

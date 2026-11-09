@@ -36,6 +36,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   List<Map<String, dynamic>>? _orders;
   bool _loading = true;
   Timer? _clockTimer;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -46,11 +47,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         setState(() {});
       }
     });
+    // Reflect server-side deletions (reports) without closing the screen.
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        _loadOrders();
+      }
+    });
   }
 
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 

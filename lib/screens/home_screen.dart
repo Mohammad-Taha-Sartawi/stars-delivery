@@ -100,6 +100,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         LoadNotifications(token: widget.token),
       );
       _loadSupportUnreadCount();
+      _loadOrderCounts();
+      _loadAvailableDriversCount();
     });
 
     _newOfferSub = SocketService.instance.onNewOffer.listen((data) {

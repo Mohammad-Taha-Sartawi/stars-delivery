@@ -30,7 +30,7 @@ class AppLocalization {
     },
 
     // Roles
-    'customer': {'ar': 'عميل', 'en': 'Customer'},
+    'customer': {'ar': 'زبون', 'en': 'Customer'},
     'provider': {'ar': 'سائق', 'en': 'Provider'},
     'customer_subtitle': {'ar': 'أحتاج توصيل', 'en': 'Need delivery'},
     'provider_subtitle': {'ar': 'أقدم خدمة التوصيل', 'en': 'Offer delivery'},

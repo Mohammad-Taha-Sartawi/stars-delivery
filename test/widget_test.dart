@@ -68,7 +68,7 @@ void main() {
 
     expect(find.text('ستارز دليفري'), findsOneWidget);
 
-    expect(find.text('عميل'), findsOneWidget);
+    expect(find.text('زبون'), findsOneWidget);
 
     expect(find.text('سائق'), findsOneWidget);
 

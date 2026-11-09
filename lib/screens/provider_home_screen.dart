@@ -24,6 +24,7 @@ import '../services/support_chat_service.dart';
 import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
 import '../widgets/ui/app_action_tile.dart';
+import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_section_header.dart';
 import '../widgets/ui/app_state_views.dart';
@@ -435,7 +436,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                     end: 6,
                     top: 6,
                     child: Semantics(
-                      label: '$unread',
+                      label: AppLocalization.get(
+                        context,
+                        'unread_notifications',
+                      ).replaceAll('%d', '$unread'),
                       excludeSemantics: true,
                       child: Container(
                         padding: const EdgeInsetsDirectional.all(AppSpacing.xs),
@@ -483,7 +487,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
         IconButton(
           tooltip: AppLocalization.get(context, 'logout'),
           icon: Icon(Icons.logout, color: scheme.error),
-          onPressed: () {
+          onPressed: () async {
+            final confirmed = await showLogoutConfirmation(context);
+            if (!confirmed || !context.mounted) {
+              return;
+            }
+
             SocketService.instance.disconnect();
             context.read<AuthBloc>().add(LogoutEvent());
             Navigator.pushAndRemoveUntil(
@@ -809,10 +818,14 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                 ),
               ),
             ),
-            AppStatusBadge(
-              label: '$total',
-              tone: AppTone.warning,
-              icon: Icons.notifications_active_outlined,
+            // The banner text already announces the count; keep the badge
+            // visual but exclude it from the semantics tree.
+            ExcludeSemantics(
+              child: AppStatusBadge(
+                label: '$total',
+                tone: AppTone.warning,
+                icon: Icons.notifications_active_outlined,
+              ),
             ),
           ],
         ),

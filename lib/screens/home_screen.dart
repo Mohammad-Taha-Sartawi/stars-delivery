@@ -18,6 +18,7 @@ import '../services/location_service.dart';
 import '../services/order_service.dart';
 import '../services/support_chat_service.dart';
 import '../widgets/ui/app_action_tile.dart';
+import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_section_header.dart';
 import '../widgets/ui/app_tone.dart';
@@ -530,7 +531,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     end: 6,
                     top: 6,
                     child: Semantics(
-                      label: '$unread',
+                      label: AppLocalization.get(
+                        context,
+                        'unread_notifications',
+                      ).replaceAll('%d', '$unread'),
                       excludeSemantics: true,
                       child: Container(
                         padding: const EdgeInsetsDirectional.all(AppSpacing.xs),
@@ -578,7 +582,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         IconButton(
           tooltip: AppLocalization.get(context, 'logout'),
           icon: Icon(Icons.logout, color: scheme.error),
-          onPressed: () {
+          onPressed: () async {
+            final confirmed = await showLogoutConfirmation(context);
+            if (!confirmed || !context.mounted) {
+              return;
+            }
+
             SocketService.instance.disconnect();
             context.read<AuthBloc>().add(LogoutEvent());
             Navigator.pushAndRemoveUntil(
@@ -656,6 +665,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Semantics(
       container: true,
       label: message,
+      excludeSemantics: true,
       child: Material(
         color: tone.background,
         shape: RoundedRectangleBorder(

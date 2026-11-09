@@ -9,6 +9,10 @@ import '../models/user_model.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
+import '../services/theme_service.dart';
+import '../widgets/ui/app_button_loading_indicator.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_tone.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   final UserModel user;
@@ -39,11 +43,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _pickImage() async {
     if (_images.length >= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalization.get(context, 'max_3_photos')),
-          backgroundColor: Colors.orange,
-        ),
+      AppFeedback.warning(
+        context,
+        AppLocalization.get(context, 'max_3_photos'),
       );
       return;
     }
@@ -58,194 +60,190 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tone = appToneStyle(context, AppTone.accent);
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          AppLocalization.get(context, 'new_order'),
-          style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text(AppLocalization.get(context, 'new_order')),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.paddingHorizontal(context),
-              vertical: Responsive.paddingVertical(context),
-            ),
-            child: Column(
-              children: [
-                _OptionCard(
-                  icon: Icons.shopping_bag_outlined,
-                  label: AppLocalization.get(context, 'product'),
-                  isSelected: _selectedType == 'product',
-                  onTap: () => setState(() => _selectedType = 'product'),
-                ),
-                const SizedBox(height: 12),
-                _OptionCard(
-                  icon: Icons.people_outline,
-                  label: AppLocalization.get(context, 'people'),
-                  isSelected: _selectedType == 'people',
-                  onTap: () => setState(() => _selectedType = 'people'),
-                ),
-                const SizedBox(height: 12),
-                _OptionCard(
-                  icon: Icons.inventory_2_outlined,
-                  label: AppLocalization.get(context, 'goods'),
-                  isSelected: _selectedType == 'goods',
-                  onTap: () => setState(() => _selectedType = 'goods'),
-                ),
-                if (_selectedType != null) ...[
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextFormField(
-                            controller: _descController,
-                            maxLines: 4,
-                            decoration: InputDecoration(
-                              alignLabelWithHint: true,
-                              hint: Text(
-                                AppLocalization.get(context, 'desc_hint'),
-                              ),
-                              labelText: _selectedType == 'product'
-                                  ? AppLocalization.get(
-                                      context,
-                                      'product_label',
-                                    )
-                                  : _selectedType == 'people'
-                                  ? AppLocalization.get(context, 'people_label')
-                                  : AppLocalization.get(context, 'goods_label'),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            validator: (v) => v!.isEmpty
-                                ? AppLocalization.get(context, 'required')
-                                : null,
-                          ),
-                          const SizedBox(height: 14),
-                          TextFormField(
-                            controller: _locationController,
-                            decoration: InputDecoration(
-                              labelText: AppLocalization.get(context, 'delivery_location'),
-                              hintText: AppLocalization.get(context, 'location_hint'),
-                              prefixIcon: const Icon(Icons.location_on_outlined),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            maxLines: 2,
-                            validator: (v) => v!.isEmpty ? AppLocalization.get(context, 'required') : null,
-                          ),
-                          const SizedBox(height: 14),
-                          _buildPhotoPicker(),
-                          const SizedBox(height: 14),
-                          TextFormField(
-                            controller: _phoneController,
-                            decoration: InputDecoration(
-                              hint: Text(
-                                AppLocalization.get(context, 'phone_hint'),
-                              ),
-
-                              labelText: AppLocalization.get(
-                                context,
-                                'phone_label',
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            keyboardType: TextInputType.phone,
-                            validator: (v) => v!.isEmpty
-                                ? AppLocalization.get(context, 'required')
-                                : null,
-                          ),
-                          const SizedBox(height: 20),
-                          BlocConsumer<OrderBloc, OrderState>(
-                            listener: (context, state) {
-                              if (state is OrderSuccess) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      AppLocalization.get(
-                                        context,
-                                        'order_sent',
-                                      ),
-                                    ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                                Navigator.pop(context);
-                              }
-                              if (state is OrderError) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(state.message),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
-                            builder: (context, state) {
-                              final isLoading = state is OrderLoading;
-                              return ElevatedButton(
-                                onPressed: isLoading ? null : _submit,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.paddingHorizontal(context),
+                vertical: Responsive.paddingVertical(context),
+              ),
+              child: Column(
+                children: [
+                  _OptionCard(
+                    icon: Icons.shopping_bag_outlined,
+                    label: AppLocalization.get(context, 'product'),
+                    isSelected: _selectedType == 'product',
+                    onTap: () => setState(() => _selectedType = 'product'),
+                  ),
+                  const SizedBox(height: 12),
+                  _OptionCard(
+                    icon: Icons.people_outline,
+                    label: AppLocalization.get(context, 'people'),
+                    isSelected: _selectedType == 'people',
+                    onTap: () => setState(() => _selectedType = 'people'),
+                  ),
+                  const SizedBox(height: 12),
+                  _OptionCard(
+                    icon: Icons.inventory_2_outlined,
+                    label: AppLocalization.get(context, 'goods'),
+                    isSelected: _selectedType == 'goods',
+                    onTap: () => setState(() => _selectedType = 'goods'),
+                  ),
+                  if (_selectedType != null) ...[
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
+                        borderRadius: BorderRadiusDirectional.circular(
+                          AppRadius.lg,
+                        ),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              controller: _descController,
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                alignLabelWithHint: true,
+                                hint: Text(
+                                  AppLocalization.get(context, 'desc_hint'),
                                 ),
-                                child: isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
+                                labelText: _selectedType == 'product'
+                                    ? AppLocalization.get(
+                                        context,
+                                        'product_label',
                                       )
-                                    : Text(
-                                        AppLocalization.get(
-                                          context,
-                                          'submit_order',
-                                        ),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    : _selectedType == 'people'
+                                    ? AppLocalization.get(
+                                        context,
+                                        'people_label',
+                                      )
+                                    : AppLocalization.get(
+                                        context,
+                                        'goods_label',
                                       ),
-                              );
-                            },
-                          ),
-                        ],
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              validator: (v) => v!.isEmpty
+                                  ? AppLocalization.get(context, 'required')
+                                  : null,
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _locationController,
+                              decoration: InputDecoration(
+                                labelText: AppLocalization.get(
+                                  context,
+                                  'delivery_location',
+                                ),
+                                hintText: AppLocalization.get(
+                                  context,
+                                  'location_hint',
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.location_on_outlined,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              maxLines: 2,
+                              validator: (v) => v!.isEmpty
+                                  ? AppLocalization.get(context, 'required')
+                                  : null,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildPhotoPicker(),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _phoneController,
+                              decoration: InputDecoration(
+                                hint: Text(
+                                  AppLocalization.get(context, 'phone_hint'),
+                                ),
+
+                                labelText: AppLocalization.get(
+                                  context,
+                                  'phone_label',
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              keyboardType: TextInputType.phone,
+                              textDirection: TextDirection.ltr,
+                              validator: (v) => v!.isEmpty
+                                  ? AppLocalization.get(context, 'required')
+                                  : null,
+                            ),
+                            const SizedBox(height: 20),
+                            BlocConsumer<OrderBloc, OrderState>(
+                              listener: (context, state) {
+                                if (state is OrderSuccess) {
+                                  AppFeedback.success(
+                                    context,
+                                    AppLocalization.get(context, 'order_sent'),
+                                  );
+                                  Navigator.pop(context);
+                                }
+                                if (state is OrderError) {
+                                  AppFeedback.error(context, state.message);
+                                }
+                              },
+                              builder: (context, state) {
+                                final isLoading = state is OrderLoading;
+                                return ElevatedButton(
+                                  onPressed: isLoading ? null : _submit,
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    backgroundColor: tone.solid,
+                                    foregroundColor: tone.onSolid,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: isLoading
+                                      ? const AppButtonLoadingIndicator()
+                                      : Text(
+                                          AppLocalization.get(
+                                            context,
+                                            'submit_order',
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -254,6 +252,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   Widget _buildPhotoPicker() {
+    final scheme = Theme.of(context).colorScheme;
+    final tone = appToneStyle(context, AppTone.accent);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -278,21 +279,28 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           fit: BoxFit.cover,
                         ),
                       ),
-                      Positioned(
+                      PositionedDirectional(
                         top: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: () => setState(() => _images.removeAt(index)),
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
+                        end: 0,
+                        child: IconButton(
+                          tooltip: AppLocalization.get(context, 'remove_photo'),
+                          constraints: const BoxConstraints.tightFor(
+                            width: AppSizes.minTouchTarget,
+                            height: AppSizes.minTouchTarget,
+                          ),
+                          padding: EdgeInsets.zero,
+                          onPressed: () =>
+                              setState(() => _images.removeAt(index)),
+                          icon: Container(
+                            padding: const EdgeInsets.all(AppSpacing.xs),
+                            decoration: BoxDecoration(
+                              color: scheme.error,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.close,
                               size: 16,
-                              color: Colors.white,
+                              color: scheme.onError,
                             ),
                           ),
                         ),
@@ -307,15 +315,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: _pickImage,
-            icon: const Icon(Icons.camera_alt_outlined, color: Colors.orange),
+            icon: Icon(Icons.camera_alt_outlined, color: tone.solid),
             label: Text(
               _images.isEmpty
                   ? AppLocalization.get(context, 'add_photos')
                   : '${AppLocalization.get(context, 'add_more_photos')} (${_images.length}/3)',
-              style: const TextStyle(color: Colors.orange),
+              style: TextStyle(color: tone.solid),
             ),
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: Colors.orange.withValues(alpha: 0.5)),
+              side: BorderSide(color: tone.solid.withValues(alpha: 0.5)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -358,37 +366,62 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final scheme = Theme.of(context).colorScheme;
+    final foreground = isSelected
+        ? scheme.onSecondaryContainer
+        : scheme.onSurface;
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      excludeSemantics: true,
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.orange : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? scheme.secondaryContainer
+              : scheme.surfaceContainerLow,
+          borderRadius: BorderRadiusDirectional.circular(AppRadius.md),
           border: Border.all(
-            color: isSelected ? Colors.orange : Colors.grey[300]!,
+            color: isSelected ? scheme.secondary : scheme.outlineVariant,
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.grey[700],
-              size: 28,
-            ),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : Colors.grey[800],
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.symmetric(
+                vertical: 18,
+                horizontal: 20,
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, color: foreground, size: AppSizes.iconLg),
+                  const SizedBox(width: AppSpacing.lg),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: foreground),
+                    ),
+                  ),
+                  if (isSelected)
+                    Icon(
+                      Icons.check_circle,
+                      size: AppSizes.iconMd,
+                      color: scheme.secondary,
+                    ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

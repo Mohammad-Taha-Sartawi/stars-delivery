@@ -25,6 +25,12 @@ class MockApi {
 
   int statsRequests = 0;
 
+  /// Optional artificial latency so tests can observe genuine loading states.
+  Duration responseDelay = Duration.zero;
+
+  /// Notifications served by `/api/notifications`.
+  List<Map<String, dynamic>> notifications = [];
+
   final List<Map<String, dynamic>> availabilityCalls = [];
 
   final List<Map<String, dynamic>> contactCalls = [];
@@ -43,6 +49,8 @@ class MockApi {
     offeredOrders = [];
     supportUnreadCount = 0;
     statsRequests = 0;
+    responseDelay = Duration.zero;
+    notifications = [];
     availabilityCalls.clear();
     contactCalls.clear();
     contactDelay = Duration.zero;
@@ -78,6 +86,10 @@ class _MockApiAdapter implements HttpClientAdapter {
     Stream<Uint8List>? bodyStream,
     Future<void>? cancelToken,
   ) async {
+    if (_api.responseDelay > Duration.zero) {
+      await Future<void>.delayed(_api.responseDelay);
+    }
+
     final body =
         await (bodyStream?.expand((chunk) => chunk).toList() ??
             Future<List<int>>.value(const []));
@@ -108,7 +120,7 @@ class _MockApiAdapter implements HttpClientAdapter {
       case '/api/provider/offered-orders':
         data = _api.offeredOrders;
       case '/api/notifications':
-        data = <Map<String, dynamic>>[];
+        data = _api.notifications;
       case '/api/notifications/unread-count':
         data = {'count': 0};
       case '/api/chat/unread-count':

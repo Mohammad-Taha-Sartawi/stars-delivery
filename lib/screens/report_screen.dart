@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/report_service.dart';
 import '../services/responsive.dart';
+import '../services/theme_service.dart';
+import '../widgets/ui/app_button_loading_indicator.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_status_chip.dart';
+import '../widgets/ui/app_tone.dart';
 
 class ReportScreen extends StatefulWidget {
   final String token;
@@ -61,21 +66,11 @@ class _ReportScreenState extends State<ReportScreen> {
       if (!mounted) return;
       _idController.clear();
       _contentController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم إرسال البلاغ بنجاح'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppFeedback.success(context, 'تم إرسال البلاغ بنجاح');
       _loadHistory();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -83,21 +78,31 @@ class _ReportScreenState extends State<ReportScreen> {
 
   String _statusLabel(String? s) {
     switch (s) {
-      case 'in-review': return 'قيد المراجعة';
-      case 'in-progress': return 'قيد المعالجة';
-      case 'resolved': return 'تم الحل';
-      case 'rejected': return 'مرفوض';
-      default: return s ?? '';
+      case 'in-review':
+        return 'قيد المراجعة';
+      case 'in-progress':
+        return 'قيد المعالجة';
+      case 'resolved':
+        return 'تم الحل';
+      case 'rejected':
+        return 'مرفوض';
+      default:
+        return s ?? '';
     }
   }
 
-  Color _statusColor(String? s) {
+  AppTone _statusTone(String? s) {
     switch (s) {
-      case 'in-review': return Colors.orange;
-      case 'in-progress': return Colors.blue;
-      case 'resolved': return Colors.green;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
+      case 'in-review':
+        return AppTone.warning;
+      case 'in-progress':
+        return AppTone.info;
+      case 'resolved':
+        return AppTone.success;
+      case 'rejected':
+        return AppTone.danger;
+      default:
+        return AppTone.neutral;
     }
   }
 
@@ -110,181 +115,224 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dangerTone = appToneStyle(context, AppTone.danger);
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          widget.title,
-          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.paddingHorizontal(context),
-              vertical: Responsive.paddingVertical(context),
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _idController,
-                    decoration: const InputDecoration(
-                      labelText: 'ID',
-                      hintText: 'أدخل ID الشخص المراد الإبلاغ عنه',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person_search),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _contentController,
-                    decoration: const InputDecoration(
-                      labelText: 'وصف المشكلة',
-                      hintText: 'اشرح المشكلة التي تواجهها',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.description),
-                    ),
-                    maxLines: 4,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _sending ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      appBar: AppBar(title: Text(widget.title), centerTitle: true),
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.paddingHorizontal(context),
+                vertical: Responsive.paddingVertical(context),
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _idController,
+                      textDirection: TextDirection.ltr,
+                      decoration: const InputDecoration(
+                        labelText: 'ID',
+                        hintText: 'أدخل ID الشخص المراد الإبلاغ عنه',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_search),
                       ),
-                      child: _sending
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('إرسال البلاغ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      keyboardType: TextInputType.number,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'آخر البلاغات',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_loadingHistory)
-                    const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
-                  else if (_history.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text('لا توجد بلاغات سابقة', style: TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _contentController,
+                      decoration: const InputDecoration(
+                        labelText: 'وصف المشكلة',
+                        hintText: 'اشرح المشكلة التي تواجهها',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.description),
                       ),
-                    )
-                  else
-                    ..._history.map((r) {
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      maxLines: 4,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _sending ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: dangerTone.solid,
+                          foregroundColor: dangerTone.onSolid,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadiusDirectional.circular(
+                              AppRadius.sm,
+                            ),
+                          ),
+                        ),
+                        child: _sending
+                            ? const AppButtonLoadingIndicator()
+                            : const Text(
+                                'إرسال البلاغ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    const Text(
+                      'آخر البلاغات',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_loadingHistory)
+                      const Center(
                         child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '#${r['reportedPublicId'] ?? ''}',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                          padding: EdgeInsets.all(24),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (_history.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'لا توجد بلاغات سابقة',
+                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          ),
+                        ),
+                      )
+                    else
+                      ..._history.map((r) {
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '#${r['reportedPublicId'] ?? ''}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
+                                    AppStatusChip(
+                                      label: _statusLabel(r['status']),
+                                      tone: _statusTone(r['status']),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  r['content'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: scheme.onSurfaceVariant,
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: _statusColor(r['status']).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      _statusLabel(r['status']),
-                                      style: TextStyle(fontSize: 12, color: _statusColor(r['status']), fontWeight: FontWeight.bold),
+                                ),
+                                if (r['date'] != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    r['date'].toString(),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: scheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                r['content'] ?? '',
-                                style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                              ),
-                              if (r['date'] != null) ...[
-                                const SizedBox(height: 4),
-                                Text(r['date'].toString(), style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                              ],
-                              if (r['replies'] is List && (r['replies'] as List).isNotEmpty) ...[
-                                const Divider(height: 20),
-                                ...(r['replies'] as List).map((reply) {
-                                  final isAdmin = reply['sender'] == 'admin';
-                                  return Container(
-                                    margin: const EdgeInsets.only(top: 6),
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: isAdmin ? Colors.blue[50] : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: isAdmin ? Colors.blue[200]! : Colors.grey[300]!),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              isAdmin ? Icons.admin_panel_settings : Icons.person,
-                                              size: 14,
-                                              color: isAdmin ? Colors.blue[700] : Colors.grey[700],
+                                if (r['replies'] is List &&
+                                    (r['replies'] as List).isNotEmpty) ...[
+                                  const Divider(height: 20),
+                                  ...(r['replies'] as List).map((reply) {
+                                    final isAdmin = reply['sender'] == 'admin';
+                                    final replyTone = appToneStyle(
+                                      context,
+                                      isAdmin ? AppTone.info : AppTone.neutral,
+                                    );
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(top: 6),
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: replyTone.background,
+                                        borderRadius:
+                                            BorderRadiusDirectional.circular(
+                                              AppRadius.xs,
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isAdmin ? 'الدعم الفني' : 'أنت',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: isAdmin ? Colors.blue[700] : Colors.grey[700],
+                                        border: Border.all(
+                                          color: replyTone.border,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                isAdmin
+                                                    ? Icons.admin_panel_settings
+                                                    : Icons.person,
+                                                size: 14,
+                                                color: replyTone.foreground,
                                               ),
-                                            ),
-                                            const Spacer(),
-                                            if (reply['time'] != null)
+                                              const SizedBox(width: 4),
                                               Text(
-                                                reply['time'].toString(),
-                                                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                                                isAdmin ? 'الدعم الفني' : 'أنت',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: replyTone.foreground,
+                                                ),
                                               ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          reply['text'] ?? '',
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
+                                              const Spacer(),
+                                              if (reply['time'] != null)
+                                                Text(
+                                                  reply['time'].toString(),
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: replyTone.foreground,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            reply['text'] ?? '',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    }),
-                ],
+                        );
+                      }),
+                  ],
+                ),
               ),
             ),
           ),

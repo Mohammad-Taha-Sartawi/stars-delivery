@@ -4,7 +4,11 @@ import '../bloc/app/app_bloc.dart';
 import '../services/api_config.dart';
 import '../services/localization_service.dart';
 import '../services/responsive.dart';
+import '../services/theme_service.dart';
 import '../widgets/image_preview.dart';
+import '../widgets/ui/app_image_thumbnail.dart';
+import '../widgets/ui/app_status_chip.dart';
+import '../widgets/ui/app_tone.dart';
 
 class OfferedOrdersScreen extends StatelessWidget {
   final List<Map<String, dynamic>> orders;
@@ -42,53 +46,56 @@ class OfferedOrdersScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: RefreshIndicator(
-          onRefresh: () async {
-            onRefresh?.call();
-          },
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: orders.isEmpty
-                  ? ListView(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(40),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.local_offer_outlined,
-                                size: 48,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                AppLocalization.get(
-                                  context,
-                                  'no_offered_orders',
-                                ),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 16,
+        body: SafeArea(
+          top: false,
+          child: RefreshIndicator(
+            onRefresh: () async {
+              onRefresh?.call();
+            },
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: orders.isEmpty
+                    ? ListView(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.local_offer_outlined,
+                                  size: 48,
                                   color: scheme.onSurfaceVariant,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 12),
+                                Text(
+                                  AppLocalization.get(
+                                    context,
+                                    'no_offered_orders',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                        ],
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.paddingHorizontal(context),
+                          vertical: Responsive.paddingVertical(context),
                         ),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Responsive.paddingHorizontal(context),
-                        vertical: Responsive.paddingVertical(context),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          final o = orders[index];
+                          return _buildOrderCard(context, o, scheme);
+                        },
                       ),
-                      itemCount: orders.length,
-                      itemBuilder: (context, index) {
-                        final o = orders[index];
-                        return _buildOrderCard(context, o, scheme);
-                      },
-                    ),
+              ),
             ),
           ),
         ),
@@ -114,15 +121,16 @@ class OfferedOrdersScreen extends StatelessWidget {
       _ => Icons.local_shipping_outlined,
     };
     final customer = o['customerId'];
-    final customerName =
-        customer is Map ? (customer['fullName'] ?? '').toString() : '';
-    final customerPublicId =
-        customer is Map ? (customer['publicId'] ?? '').toString() : '';
+    final customerName = customer is Map
+        ? (customer['fullName'] ?? '').toString()
+        : '';
+    final customerPublicId = customer is Map
+        ? (customer['publicId'] ?? '').toString()
+        : '';
     final phone = (o['phone'] ?? '').toString();
     final area = (o['area'] ?? '').toString();
     final description = (o['description'] ?? '').toString();
-    final images =
-        o['images'] is List ? (o['images'] as List) : const [];
+    final images = o['images'] is List ? (o['images'] as List) : const [];
     final offeredPrice = (o['offeredPrice'] as num?)?.toDouble() ?? 0;
     final offeredTime = (o['offeredTime'] as num?)?.toInt() ?? 0;
 
@@ -165,23 +173,9 @@ class OfferedOrdersScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: scheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    AppLocalization.get(context, 'awaiting_response'),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: scheme.onTertiaryContainer,
-                    ),
-                  ),
+                AppStatusChip(
+                  label: AppLocalization.get(context, 'awaiting_response'),
+                  tone: AppTone.info,
                 ),
               ],
             ),
@@ -305,26 +299,12 @@ class OfferedOrdersScreen extends StatelessWidget {
                     final imageUrl = img.startsWith('http')
                         ? img
                         : '${ApiConfig.serverUrl}$img';
-                    return GestureDetector(
+                    return AppImageThumbnail(
+                      imageUrl: imageUrl,
+                      semanticLabel: AppLocalization.get(context, 'view_image'),
                       onTap: () => ImagePreview.show(context, imageUrl),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          imageUrl,
-                          width: 84,
-                          height: 84,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
-                            width: 84,
-                            height: 84,
-                            color: scheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.image_not_supported,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ),
+                      size: 84,
+                      borderRadius: AppRadius.sm,
                     );
                   },
                 ),

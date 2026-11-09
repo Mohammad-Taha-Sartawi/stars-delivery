@@ -6,6 +6,8 @@ import '../services/localization_service.dart';
 import '../services/offer_service.dart';
 import '../services/order_service.dart';
 import '../services/responsive.dart';
+import '../widgets/ui/app_status_chip.dart';
+import '../widgets/ui/app_tone.dart';
 
 class OrderReportScreen extends StatefulWidget {
   final String token;
@@ -42,18 +44,12 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     });
 
     try {
-      final order = await _orderService.getOrder(
-        widget.token,
-        widget.orderId,
-      );
+      final order = await _orderService.getOrder(widget.token, widget.orderId);
 
       var offers = <OfferModel>[];
 
       try {
-        offers = await _offerService.getOffers(
-          widget.token,
-          widget.orderId,
-        );
+        offers = await _offerService.getOffers(widget.token, widget.orderId);
       } catch (_) {}
 
       if (!mounted) {
@@ -90,7 +86,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     }
   }
 
-  ({String key, Color color, IconData icon}) _outcome(
+  ({String key, AppTone tone, IconData icon}) _outcome(
     Map<String, dynamic> order,
   ) {
     final status = order['status']?.toString() ?? '';
@@ -101,7 +97,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     if (status == 'completed') {
       return (
         key: 'status_completed',
-        color: Colors.green,
+        tone: AppTone.success,
         icon: Icons.check_circle_outline,
       );
     }
@@ -109,7 +105,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     if (status == 'cancelled') {
       return (
         key: 'status_cancelled',
-        color: Colors.red,
+        tone: AppTone.danger,
         icon: Icons.cancel_outlined,
       );
     }
@@ -119,7 +115,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
         suspendedUntil.isAfter(DateTime.now())) {
       return (
         key: 'order_suspended',
-        color: Colors.orange,
+        tone: AppTone.warning,
         icon: Icons.hourglass_bottom,
       );
     }
@@ -127,7 +123,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     if (status == 'expired') {
       return (
         key: 'order_rejected_by_drivers',
-        color: Colors.red,
+        tone: AppTone.danger,
         icon: Icons.cancel_outlined,
       );
     }
@@ -135,7 +131,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     if (status == 'pending' && order['offerWindowExpiredAt'] != null) {
       return (
         key: 'order_rejected_by_drivers',
-        color: Colors.red,
+        tone: AppTone.danger,
         icon: Icons.cancel_outlined,
       );
     }
@@ -143,7 +139,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     if (status == 'accepted' || status == 'fulfilling') {
       return (
         key: 'status_fulfilling',
-        color: Colors.orange,
+        tone: AppTone.warning,
         icon: Icons.delivery_dining,
       );
     }
@@ -151,14 +147,14 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     if (status == 'offered') {
       return (
         key: 'status_offered',
-        color: Colors.blue,
+        tone: AppTone.info,
         icon: Icons.local_offer_outlined,
       );
     }
 
     return (
       key: 'status_pending',
-      color: Colors.orange,
+      tone: AppTone.warning,
       icon: Icons.hourglass_empty,
     );
   }
@@ -174,14 +170,14 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     }
   }
 
-  Color _offerStatusColor(String status) {
+  AppTone _offerStatusTone(String status) {
     switch (status) {
       case 'accepted':
-        return Colors.green;
+        return AppTone.success;
       case 'rejected':
-        return Colors.red;
+        return AppTone.danger;
       default:
-        return Colors.blue;
+        return AppTone.info;
     }
   }
 
@@ -219,20 +215,27 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
+          Icon(
+            icon,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 6),
           Text(
             '$label: ',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ),
         ],
@@ -248,25 +251,16 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Text(
-            AppLocalization.get(context, 'order_report'),
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          title: Text(AppLocalization.get(context, 'order_report')),
           centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: _buildBody(context),
+        body: SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: _buildBody(context),
+            ),
           ),
         ),
       ),
@@ -285,7 +279,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
           child: Text(
             _error!,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ),
       );
@@ -298,6 +292,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     }
 
     final outcome = _outcome(order);
+    final outcomeTone = appToneStyle(context, outcome.tone);
     final price = (order['price'] as num?)?.toDouble() ?? 0;
     final area = order['area']?.toString() ?? '';
     final orderCompleted = order['status'] == 'completed';
@@ -322,7 +317,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(outcome.icon, color: outcome.color, size: 34),
+                Icon(outcome.icon, color: outcomeTone.foreground, size: 34),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -330,7 +325,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: outcome.color,
+                      color: outcomeTone.foreground,
                     ),
                   ),
                 ),
@@ -386,7 +381,10 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                         'order_suspended_report_in',
                       ).replaceAll('%d', '$suspensionSeconds'),
                       style: TextStyle(
-                        color: Colors.orange[800],
+                        color: appToneStyle(
+                          context,
+                          AppTone.warning,
+                        ).foreground,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -399,10 +397,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
         const SizedBox(height: 16),
         Text(
           AppLocalization.get(context, 'offers_history'),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
         ),
         const SizedBox(height: 8),
         if (_offers.isEmpty)
@@ -410,7 +405,9 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Text(
               AppLocalization.get(context, 'no_offers'),
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           )
         else
@@ -418,8 +415,8 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
             final displayPhone = offer.providerPhone.isEmpty
                 ? ''
                 : (orderCompleted && offer.status == 'accepted'
-                    ? offer.providerPhone
-                    : _maskPhone(offer.providerPhone));
+                      ? offer.providerPhone
+                      : _maskPhone(offer.providerPhone));
 
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
@@ -433,10 +430,10 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.person_outline,
                           size: 16,
-                          color: Colors.orange,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -448,24 +445,9 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                             ),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _offerStatusColor(offer.status)
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            _offerStatusLabel(offer.status),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _offerStatusColor(offer.status),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        AppStatusChip(
+                          label: _offerStatusLabel(offer.status),
+                          tone: _offerStatusTone(offer.status),
                         ),
                       ],
                     ),
@@ -476,14 +458,18 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                           Icon(
                             Icons.phone,
                             size: 13,
-                            color: Colors.grey[600],
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             displayPhone,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[700],
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -497,7 +483,7 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                       '${AppLocalization.get(context, 'est_time').replaceAll('%d', '${offer.estimatedTime}')}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[700],
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],

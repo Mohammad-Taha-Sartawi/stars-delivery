@@ -7,6 +7,12 @@ import '../bloc/app/app_bloc.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
+import '../services/theme_service.dart';
+import '../widgets/image_preview.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_image_thumbnail.dart';
+import '../widgets/ui/app_status_chip.dart';
+import '../widgets/ui/app_tone.dart';
 
 class ProviderActiveOrdersScreen extends StatefulWidget {
   final String token;
@@ -77,7 +83,11 @@ class _ProviderActiveOrdersScreenState
     }
     return Row(
       children: [
-        const Icon(Icons.person_outline, size: 14, color: Colors.orange),
+        Icon(
+          Icons.person_outline,
+          size: 14,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         const SizedBox(width: 4),
         Text(
           name.isNotEmpty ? name : AppLocalization.get(context, 'unknown'),
@@ -88,13 +98,16 @@ class _ProviderActiveOrdersScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
-              color: Colors.orange[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange[200]!),
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadiusDirectional.circular(AppRadius.xs),
             ),
             child: Text(
               '#$pid',
-              style: TextStyle(fontSize: 11, color: Colors.orange[800], fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -102,16 +115,16 @@ class _ProviderActiveOrdersScreenState
     );
   }
 
-  Color _statusColor(String? s) {
+  AppTone _statusTone(String? s) {
     switch (s) {
       case 'accepted':
-        return Colors.teal;
+        return AppTone.primary;
       case 'fulfilling':
-        return Colors.purple;
+        return AppTone.accent;
       case 'completed':
-        return Colors.green;
+        return AppTone.success;
       default:
-        return Colors.grey;
+        return AppTone.neutral;
     }
   }
 
@@ -123,20 +136,16 @@ class _ProviderActiveOrdersScreenState
         context.read<ProviderBloc>().add(
           LoadProviderStats(token: widget.token),
         );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalization.get(context, 'status_updated')),
-            backgroundColor: Colors.green,
-          ),
+        AppFeedback.success(
+          context,
+          AppLocalization.get(context, 'status_updated'),
         );
       }
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.red,
-          ),
+        AppFeedback.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
         );
     }
   }
@@ -149,20 +158,16 @@ class _ProviderActiveOrdersScreenState
         context.read<ProviderBloc>().add(
           LoadProviderStats(token: widget.token),
         );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalization.get(context, 'order_completed_msg')),
-            backgroundColor: Colors.green,
-          ),
+        AppFeedback.success(
+          context,
+          AppLocalization.get(context, 'order_completed_msg'),
         );
       }
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.red,
-          ),
+        AppFeedback.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
         );
     }
   }
@@ -170,241 +175,277 @@ class _ProviderActiveOrdersScreenState
   @override
   Widget build(BuildContext context) {
     final isAr = context.watch<AppBloc>().state.locale.languageCode == 'ar';
+    final scheme = Theme.of(context).colorScheme;
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Text(
-            AppLocalization.get(context, 'active_orders_btn'),
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          title: Text(AppLocalization.get(context, 'active_orders_btn')),
           centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? Center(
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  )
-                : _orders == null || _orders!.isEmpty
-                ? Center(
-                    child: Text(
-                      AppLocalization.get(context, 'no_orders'),
-                      style: const TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: () => _loadOrders(),
-                    child: ListView.builder(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Responsive.paddingHorizontal(context),
-                        vertical: Responsive.paddingVertical(context),
+        body: SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                  ? Center(
+                      child: Text(
+                        _error!,
+                        style: TextStyle(color: scheme.error),
                       ),
-                      itemCount: _orders!.length,
-                      itemBuilder: (_, i) {
-                        final o = _orders![i];
-                        final typeLabels = {
-                          'product': AppLocalization.get(context, 'product'),
-                          'people': AppLocalization.get(context, 'people'),
-                          'goods': AppLocalization.get(context, 'goods'),
-                        };
-                        final isActive =
-                            o['status'] == 'accepted' ||
-                            o['status'] == 'fulfilling';
-                        if (!isActive) return const SizedBox.shrink();
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        typeLabels[o['type']] ??
-                                            o['type'] ??
-                                            '',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _statusColor(
-                                          o['status'],
-                                        ).withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        _statusLabel(o['status']),
-                                        style: TextStyle(
-                                          color: _statusColor(o['status']),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                _buildCustomerRow(context, o),
-                                const SizedBox(height: 6),
-                                Text(
-                                  o['description'] ?? '',
-                                  style: TextStyle(color: Colors.grey[700]),
-                                ),
-                                if (o['status'] == 'fulfilling' || o['status'] == 'completed') ...[
-                                  if (o['phone'] != null) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.phone, size: 14, color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          o['phone'].toString(),
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[700],
-                                            fontWeight: FontWeight.w500,
+                    )
+                  : _orders == null || _orders!.isEmpty
+                  ? Center(
+                      child: Text(
+                        AppLocalization.get(context, 'no_orders'),
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () => _loadOrders(),
+                      child: ListView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.paddingHorizontal(context),
+                          vertical: Responsive.paddingVertical(context),
+                        ),
+                        itemCount: _orders!.length,
+                        itemBuilder: (_, i) {
+                          final o = _orders![i];
+                          final typeLabels = {
+                            'product': AppLocalization.get(context, 'product'),
+                            'people': AppLocalization.get(context, 'people'),
+                            'goods': AppLocalization.get(context, 'goods'),
+                          };
+                          final isActive =
+                              o['status'] == 'accepted' ||
+                              o['status'] == 'fulfilling';
+                          if (!isActive) return const SizedBox.shrink();
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          typeLabels[o['type']] ??
+                                              o['type'] ??
+                                              '',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (o['area'] != null) ...[
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          o['area'].toString(),
-                                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (o['images'] is List && (o['images'] as List).isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    SizedBox(
-                                      height: 60,
-                                      child: ListView.separated(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: (o['images'] as List).length,
-                                        separatorBuilder: (_, __) => const SizedBox(width: 6),
-                                        itemBuilder: (_, i) {
-                                          final img = (o['images'] as List)[i].toString();
-                                          final url = img.startsWith('http') ? img : '${ApiConfig.serverUrl}$img';
-                                          return ClipRRect(
-                                            borderRadius: BorderRadius.circular(6),
-                                            child: Image.network(url, height: 60, width: 60, fit: BoxFit.cover),
-                                          );
-                                        },
                                       ),
-                                    ),
-                                  ],
-                                ],
-                                if (o['price'] != null) ...[
+                                      AppStatusChip(
+                                        label: _statusLabel(o['status']),
+                                        tone: _statusTone(o['status']),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  _buildCustomerRow(context, o),
                                   const SizedBox(height: 6),
                                   Text(
-                                    '${AppLocalization.get(context, 'price')}: ${o['price']} ${AppLocalization.get(context, 'shekel')}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
+                                    o['description'] ?? '',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
-                                ],
-                                if (o['status'] == 'accepted') ...[
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: () => _markFulfilling(
-                                        o['_id']?.toString() ?? '',
+                                  if (o['status'] == 'fulfilling' ||
+                                      o['status'] == 'completed') ...[
+                                    if (o['phone'] != null) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.phone,
+                                            size: 14,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            o['phone'].toString(),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.purple,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
+                                    ],
+                                    if (o['area'] != null) ...[
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.location_on,
+                                            size: 14,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            o['area'].toString(),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                    if (o['images'] is List &&
+                                        (o['images'] as List).isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: 60,
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount:
+                                              (o['images'] as List).length,
+                                          separatorBuilder: (_, __) =>
+                                              const SizedBox(width: 6),
+                                          itemBuilder: (_, i) {
+                                            final img = (o['images'] as List)[i]
+                                                .toString();
+                                            final url = img.startsWith('http')
+                                                ? img
+                                                : '${ApiConfig.serverUrl}$img';
+                                            return AppImageThumbnail(
+                                              imageUrl: url,
+                                              semanticLabel:
+                                                  AppLocalization.get(
+                                                    context,
+                                                    'view_image',
+                                                  ),
+                                              onTap: () => ImagePreview.show(
+                                                context,
+                                                url,
+                                              ),
+                                              size: 60,
+                                              borderRadius: AppRadius.xs,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                  if (o['price'] != null) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      '${AppLocalization.get(context, 'price')}: ${o['price']} ${AppLocalization.get(context, 'shekel')}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: appToneStyle(
+                                          context,
+                                          AppTone.success,
+                                        ).foreground,
+                                      ),
+                                    ),
+                                  ],
+                                  if (o['status'] == 'accepted') ...[
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: () => _markFulfilling(
+                                          o['_id']?.toString() ?? '',
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: appToneStyle(
+                                            context,
+                                            AppTone.info,
+                                          ).solid,
+                                          foregroundColor: appToneStyle(
+                                            context,
+                                            AppTone.info,
+                                          ).onSolid,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadiusDirectional.circular(
+                                                  AppRadius.xs,
+                                                ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          AppLocalization.get(
+                                            context,
+                                            'start_delivery',
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-                                      child: Text(
-                                        AppLocalization.get(
-                                          context,
-                                          'start_delivery',
-                                        ),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
                                     ),
-                                  ),
-                                ],
-                                if (o['status'] == 'fulfilling') ...[
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: () => _markComplete(
-                                        o['_id']?.toString() ?? '',
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
+                                  ],
+                                  if (o['status'] == 'fulfilling') ...[
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: () => _markComplete(
+                                          o['_id']?.toString() ?? '',
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: appToneStyle(
+                                            context,
+                                            AppTone.success,
+                                          ).solid,
+                                          foregroundColor: appToneStyle(
+                                            context,
+                                            AppTone.success,
+                                          ).onSolid,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadiusDirectional.circular(
+                                                  AppRadius.xs,
+                                                ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          AppLocalization.get(
+                                            context,
+                                            'confirm_delivery',
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-                                      child: Text(
-                                        AppLocalization.get(
-                                          context,
-                                          'confirm_delivery',
-                                        ),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
+            ),
           ),
         ),
       ),

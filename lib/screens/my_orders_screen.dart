@@ -8,6 +8,10 @@ import '../services/order_service.dart';
 import '../services/offer_service.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
+import '../widgets/ui/app_confirm_dialog.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_status_chip.dart';
+import '../widgets/ui/app_tone.dart';
 import '../bloc/app/app_bloc.dart';
 
 class MyOrdersScreen extends StatefulWidget {
@@ -57,8 +61,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       final filtered = statuses == null
           ? orders
           : orders
-              .where((order) => statuses.contains(order['status']?.toString()))
-              .toList();
+                .where(
+                  (order) => statuses.contains(order['status']?.toString()),
+                )
+                .toList();
       setState(() {
         _orders = filtered;
         _loading = false;
@@ -69,32 +75,16 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _cancelOrder(String orderId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(AppLocalization.get(context, 'cancel_order')),
-        content: Text(
-          AppLocalization.get(context, 'cancel_order_confirm'),
-          textDirection: TextDirection.rtl,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(AppLocalization.get(context, 'cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(
-              AppLocalization.get(context, 'confirm'),
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: AppLocalization.get(context, 'cancel_order'),
+      message: AppLocalization.get(context, 'cancel_order_confirm'),
+      confirmLabel: AppLocalization.get(context, 'confirm'),
+      cancelLabel: AppLocalization.get(context, 'cancel'),
+      destructive: true,
     );
 
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
 
@@ -106,24 +96,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalization.get(context, 'order_cancelled')),
-          backgroundColor: Colors.orange,
-        ),
+      AppFeedback.info(
+        context,
+        AppLocalization.get(context, 'order_cancelled'),
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
-          ),
-          backgroundColor: Colors.red,
-        ),
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -137,24 +121,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalization.get(context, 'order_resent')),
-          backgroundColor: Colors.green,
-        ),
+      AppFeedback.success(
+        context,
+        AppLocalization.get(context, 'order_resent'),
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
-          ),
-          backgroundColor: Colors.red,
-        ),
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -176,395 +154,427 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
-  Color _statusColor(String? status) {
+  AppTone _statusTone(String? status) {
     switch (status) {
       case 'pending':
-        return Colors.orange;
+        return AppTone.warning;
       case 'offered':
-        return Colors.blue;
+        return AppTone.info;
       case 'accepted':
-        return Colors.teal;
+        return AppTone.primary;
       case 'fulfilling':
-        return Colors.purple;
+        return AppTone.accent;
       case 'completed':
-        return Colors.green;
+        return AppTone.success;
       default:
-        return Colors.grey;
+        return AppTone.neutral;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isAr = context.watch<AppBloc>().state.locale.languageCode == 'ar';
+    final scheme = Theme.of(context).colorScheme;
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Text(
-            AppLocalization.get(context, widget.titleKey),
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          title: Text(AppLocalization.get(context, widget.titleKey)),
           centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _orders == null || _orders!.isEmpty
-                ? Center(
-                    child: Text(
-                      AppLocalization.get(context, 'no_orders'),
-                      style: const TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadOrders,
-                    child: ListView.builder(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Responsive.paddingHorizontal(context),
-                        vertical: Responsive.paddingVertical(context),
+        body: SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _orders == null || _orders!.isEmpty
+                  ? Center(
+                      child: Text(
+                        AppLocalization.get(context, 'no_orders'),
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 16,
+                        ),
                       ),
-                      itemCount: _orders!.length,
-                      itemBuilder: (_, i) {
-                        final o = _orders![i];
-                        final typeLabels = {
-                          'product': AppLocalization.get(context, 'product'),
-                          'people': AppLocalization.get(context, 'people'),
-                          'goods': AppLocalization.get(context, 'goods'),
-                        };
-                        final status = o['status']?.toString() ?? '';
-                        final offerSuspendedUntil = DateTime.tryParse(
-                          o['offerSuspendedUntil']?.toString() ?? '',
-                        );
-                        final suspensionRemaining = offerSuspendedUntil == null
-                            ? 0
-                            : offerSuspendedUntil
-                                .difference(DateTime.now())
-                                .inSeconds;
-                        final isOfferSuspended =
-                            status == 'pending' && suspensionRemaining > 0;
-                        final isOfferExpired =
-                            status == 'expired' ||
-                            (status == 'pending' &&
-                                o['offerWindowExpiredAt'] != null &&
-                                !isOfferSuspended);
-                        final statusLabel = isOfferSuspended
-                            ? AppLocalization.get(context, 'order_suspended')
-                            : isOfferExpired
-                                ? AppLocalization.get(
-                                    context,
-                                    'offer_window_expired_short',
-                                  )
-                                : _statusLabel(status);
-                        final statusColor = isOfferSuspended
-                            ? Colors.orange
-                            : isOfferExpired
-                                ? Colors.red
-                                : _statusColor(status);
-                        final acceptedAt = DateTime.tryParse(
-                          o['acceptedAt']?.toString() ?? '',
-                        );
-                        final estimatedMinutes =
-                            (o['estimatedTime'] as num?)?.toInt() ?? 0;
-                        final showDeliveryClock =
-                            (status == 'accepted' || status == 'fulfilling') &&
-                                acceptedAt != null &&
-                                estimatedMinutes > 0;
-                        final elapsed = acceptedAt == null
-                            ? Duration.zero
-                            : DateTime.now().difference(acceptedAt);
-                        final elapsedMinutes = elapsed.inMinutes;
-                        final remainingMinutes =
-                            estimatedMinutes - elapsedMinutes;
-                        final overdue =
-                            showDeliveryClock && remainingMinutes <= 0;
-                        final progress = showDeliveryClock
-                            ? (elapsed.inSeconds / (estimatedMinutes * 60))
-                                .clamp(0.0, 1.0)
-                                .toDouble()
-                            : 0.0;
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            title: Text(
-                              typeLabels[o['type']] ?? o['type'] ?? '',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(
-                              o['description'] ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                statusLabel,
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            onTap: () {
-                              if (widget.readOnlyReport) {
-                                Navigator.push(
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadOrders,
+                      child: ListView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.paddingHorizontal(context),
+                          vertical: Responsive.paddingVertical(context),
+                        ),
+                        itemCount: _orders!.length,
+                        itemBuilder: (_, i) {
+                          final o = _orders![i];
+                          final typeLabels = {
+                            'product': AppLocalization.get(context, 'product'),
+                            'people': AppLocalization.get(context, 'people'),
+                            'goods': AppLocalization.get(context, 'goods'),
+                          };
+                          final status = o['status']?.toString() ?? '';
+                          final offerSuspendedUntil = DateTime.tryParse(
+                            o['offerSuspendedUntil']?.toString() ?? '',
+                          );
+                          final suspensionRemaining =
+                              offerSuspendedUntil == null
+                              ? 0
+                              : offerSuspendedUntil
+                                    .difference(DateTime.now())
+                                    .inSeconds;
+                          final isOfferSuspended =
+                              status == 'pending' && suspensionRemaining > 0;
+                          final isOfferExpired =
+                              status == 'expired' ||
+                              (status == 'pending' &&
+                                  o['offerWindowExpiredAt'] != null &&
+                                  !isOfferSuspended);
+                          final statusLabel = isOfferSuspended
+                              ? AppLocalization.get(context, 'order_suspended')
+                              : isOfferExpired
+                              ? AppLocalization.get(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) => OrderReportScreen(
-                                      token: widget.token,
-                                      orderId: o['_id']?.toString() ?? '',
+                                  'offer_window_expired_short',
+                                )
+                              : _statusLabel(status);
+                          final statusTone = isOfferExpired
+                              ? AppTone.danger
+                              : isOfferSuspended
+                              ? AppTone.warning
+                              : _statusTone(status);
+                          final acceptedAt = DateTime.tryParse(
+                            o['acceptedAt']?.toString() ?? '',
+                          );
+                          final estimatedMinutes =
+                              (o['estimatedTime'] as num?)?.toInt() ?? 0;
+                          final showDeliveryClock =
+                              (status == 'accepted' ||
+                                  status == 'fulfilling') &&
+                              acceptedAt != null &&
+                              estimatedMinutes > 0;
+                          final elapsed = acceptedAt == null
+                              ? Duration.zero
+                              : DateTime.now().difference(acceptedAt);
+                          final elapsedMinutes = elapsed.inMinutes;
+                          final remainingMinutes =
+                              estimatedMinutes - elapsedMinutes;
+                          final overdue =
+                              showDeliveryClock && remainingMinutes <= 0;
+                          final progress = showDeliveryClock
+                              ? (elapsed.inSeconds / (estimatedMinutes * 60))
+                                    .clamp(0.0, 1.0)
+                                    .toDouble()
+                              : 0.0;
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  title: Text(
+                                    typeLabels[o['type']] ?? o['type'] ?? '',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ).then((_) => _loadOrders());
-                                return;
-                              }
+                                  subtitle: Text(
+                                    o['description'] ?? '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: AppStatusChip(
+                                    label: statusLabel,
+                                    tone: statusTone,
+                                  ),
+                                  onTap: () {
+                                    if (widget.readOnlyReport) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => OrderReportScreen(
+                                            token: widget.token,
+                                            orderId: o['_id']?.toString() ?? '',
+                                          ),
+                                        ),
+                                      ).then((_) => _loadOrders());
+                                      return;
+                                    }
 
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider(
-                                    create: (_) => OfferBloc(),
-                                    child: OrderOffersScreen(
-                                      token: widget.token,
-                                      orderId: o['_id']?.toString() ?? '',
-                                    ),
-                                  ),
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => BlocProvider(
+                                          create: (_) => OfferBloc(),
+                                          child: OrderOffersScreen(
+                                            token: widget.token,
+                                            orderId: o['_id']?.toString() ?? '',
+                                          ),
+                                        ),
+                                      ),
+                                    ).then((_) => _loadOrders());
+                                  },
                                 ),
-                              ).then((_) => _loadOrders());
-                            },
-                          ),
-                          if (isOfferSuspended)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.hourglass_bottom,
-                                    size: 14,
-                                    color: Colors.orange[800],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      AppLocalization.get(
-                                        context,
-                                        'order_suspended_report_in',
-                                      ).replaceAll(
-                                        '%d',
-                                        '$suspensionRemaining',
-                                      ),
-                                      style: TextStyle(
-                                        color: Colors.orange[800],
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                if (isOfferSuspended)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      8,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else if (isOfferExpired)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.timer_off_outlined,
-                                    size: 14,
-                                    color: Colors.red,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      AppLocalization.get(
-                                        context,
-                                        'offer_window_expired',
-                                      ),
-                                      style: TextStyle(
-                                        color: Colors.red[700],
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (showDeliveryClock)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.timer_outlined,
-                                        size: 16,
-                                        color: Colors.orange,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          AppLocalization.get(
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.hourglass_bottom,
+                                          size: 14,
+                                          color: appToneStyle(
                                             context,
-                                            'delivery_progress',
-                                          )
-                                              .replaceAll(
-                                                '%t',
-                                                '$estimatedMinutes',
-                                              )
-                                              .replaceAll(
-                                                '%d',
-                                                '$elapsedMinutes',
-                                              ),
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[800],
-                                          ),
+                                            AppTone.warning,
+                                          ).foreground,
                                         ),
-                                      ),
-                                      Text(
-                                        overdue
-                                            ? AppLocalization.get(
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            AppLocalization.get(
+                                              context,
+                                              'order_suspended_report_in',
+                                            ).replaceAll(
+                                              '%d',
+                                              '$suspensionRemaining',
+                                            ),
+                                            style: TextStyle(
+                                              color: appToneStyle(
                                                 context,
-                                                'delivery_overdue',
-                                              )
-                                            : AppLocalization.get(
+                                                AppTone.warning,
+                                              ).foreground,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else if (isOfferExpired)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.timer_off_outlined,
+                                          size: 14,
+                                          color: scheme.error,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            AppLocalization.get(
+                                              context,
+                                              'offer_window_expired',
+                                            ),
+                                            style: TextStyle(
+                                              color: scheme.error,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (showDeliveryClock)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      12,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.timer_outlined,
+                                              size: 16,
+                                              color: appToneStyle(
                                                 context,
-                                                'delivery_remaining',
-                                              ).replaceAll(
-                                                '%d',
-                                                '${remainingMinutes < 0 ? 0 : remainingMinutes}',
+                                                AppTone.info,
+                                              ).solid,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                AppLocalization.get(
+                                                      context,
+                                                      'delivery_progress',
+                                                    )
+                                                    .replaceAll(
+                                                      '%t',
+                                                      '$estimatedMinutes',
+                                                    )
+                                                    .replaceAll(
+                                                      '%d',
+                                                      '$elapsedMinutes',
+                                                    ),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color:
+                                                      scheme.onSurfaceVariant,
+                                                ),
                                               ),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: overdue
-                                              ? Colors.red
-                                              : Colors.orange,
+                                            ),
+                                            Text(
+                                              overdue
+                                                  ? AppLocalization.get(
+                                                      context,
+                                                      'delivery_overdue',
+                                                    )
+                                                  : AppLocalization.get(
+                                                      context,
+                                                      'delivery_remaining',
+                                                    ).replaceAll(
+                                                      '%d',
+                                                      '${remainingMinutes < 0 ? 0 : remainingMinutes}',
+                                                    ),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: overdue
+                                                    ? scheme.error
+                                                    : appToneStyle(
+                                                        context,
+                                                        AppTone.info,
+                                                      ).solid,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: LinearProgressIndicator(
-                                      value: progress,
-                                      minHeight: 6,
-                                      backgroundColor: Colors.grey[200],
-                                      valueColor:
-                                          AlwaysStoppedAnimation<Color>(
-                                        overdue ? Colors.red : Colors.orange,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (o['status'] == 'pending' &&
-                              !widget.readOnlyReport)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                              child: Column(
-                                children: [
-                                  if (widget.titleKey == 'offers_title' &&
-                                      o['offerWindowExpiredAt'] != null) ...[
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () => _resendOrder(
-                                          o['_id']?.toString() ?? '',
-                                        ),
-                                        icon: const Icon(
-                                          Icons.refresh,
-                                          size: 18,
-                                        ),
-                                        label: Text(
-                                          AppLocalization.get(
-                                            context,
-                                            'resend_order',
+                                        const SizedBox(height: 6),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          child: LinearProgressIndicator(
+                                            value: progress,
+                                            minHeight: 6,
+                                            backgroundColor:
+                                                scheme.surfaceContainerHighest,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  overdue
+                                                      ? scheme.error
+                                                      : appToneStyle(
+                                                          context,
+                                                          AppTone.info,
+                                                        ).solid,
+                                                ),
                                           ),
                                         ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.orange,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                  ],
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => _cancelOrder(
-                                        o['_id']?.toString() ?? '',
-                                      ),
-                                      icon: const Icon(
-                                        Icons.cancel_outlined,
-                                        size: 18,
-                                      ),
-                                      label: Text(
-                                        AppLocalization.get(
-                                          context,
-                                          'cancel_order',
-                                        ),
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                        side: const BorderSide(
-                                          color: Colors.red,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                      ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
+                                if (o['status'] == 'pending' &&
+                                    !widget.readOnlyReport)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      12,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        if (widget.titleKey == 'offers_title' &&
+                                            o['offerWindowExpiredAt'] !=
+                                                null) ...[
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () => _resendOrder(
+                                                o['_id']?.toString() ?? '',
+                                              ),
+                                              icon: const Icon(
+                                                Icons.refresh,
+                                                size: 18,
+                                              ),
+                                              label: Text(
+                                                AppLocalization.get(
+                                                  context,
+                                                  'resend_order',
+                                                ),
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: appToneStyle(
+                                                  context,
+                                                  AppTone.accent,
+                                                ).solid,
+                                                foregroundColor: appToneStyle(
+                                                  context,
+                                                  AppTone.accent,
+                                                ).onSolid,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                        ],
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: OutlinedButton.icon(
+                                            onPressed: () => _cancelOrder(
+                                              o['_id']?.toString() ?? '',
+                                            ),
+                                            icon: const Icon(
+                                              Icons.cancel_outlined,
+                                              size: 18,
+                                            ),
+                                            label: Text(
+                                              AppLocalization.get(
+                                                context,
+                                                'cancel_order',
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: scheme.error,
+                                              side: BorderSide(
+                                                color: scheme.error,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
-                            ],
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
+            ),
           ),
         ),
       ),

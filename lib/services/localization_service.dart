@@ -543,5 +543,27 @@ class AppLocalization {
           'Agreeing to the Terms of Service and Privacy Policy is a required part of using this app. You cannot create an account without agreeing to them.',
     },
     'ok': {'ar': 'حسناً', 'en': 'OK'},
+
+    // UX-03 shared UI foundation.
+    'logout_confirm_title': {'ar': 'تسجيل الخروج؟', 'en': 'Log out?'},
+    'logout_confirm_message': {
+      'ar': 'ستحتاج إلى تسجيل الدخول مجدداً لاستخدام التطبيق.',
+      'en': 'You will need to sign in again to use the app.',
+    },
+    'unread_notifications': {
+      'ar': '%d إشعارات غير مقروءة',
+      'en': '%d unread notifications',
+    },
+    'unread': {'ar': 'غير مقروء', 'en': 'Unread'},
+    'pinned': {'ar': 'مثبت', 'en': 'Pinned'},
+    'remove_photo': {'ar': 'إزالة الصورة', 'en': 'Remove photo'},
+    'view_image': {'ar': 'عرض الصورة', 'en': 'View image'},
+    'send_message': {'ar': 'إرسال الرسالة', 'en': 'Send message'},
+    'message_failed': {
+      'ar': 'فشل إرسال الرسالة',
+      'en': 'Message failed to send',
+    },
+    'add_phone': {'ar': 'إضافة رقم هاتف', 'en': 'Add phone number'},
+    'delete': {'ar': 'حذف', 'en': 'Delete'},
   };
 }

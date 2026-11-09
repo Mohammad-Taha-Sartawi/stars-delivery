@@ -7,6 +7,8 @@ import '../bloc/password_recovery/password_recovery_event.dart';
 import '../bloc/password_recovery/password_recovery_state.dart';
 import '../services/localization_service.dart';
 import '../services/validators.dart';
+import '../widgets/ui/app_button_loading_indicator.dart';
+import '../widgets/ui/app_feedback.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {
   final String initialEmail;
@@ -129,12 +131,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
               child: BlocConsumer<PasswordRecoveryBloc, PasswordRecoveryState>(
                 listener: (context, state) {
                   if (state.errorCode != null || state.errorMessage != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: Colors.red,
-                        content: Text(_errorMessage(context, state)),
-                      ),
-                    );
+                    AppFeedback.error(context, _errorMessage(context, state));
                   }
 
                   if (state.completed) {
@@ -174,7 +171,11 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(Icons.lock_reset, size: 72, color: Color(0xFF1a237e)),
+        Icon(
+          Icons.lock_reset,
+          size: 72,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         const SizedBox(height: 24),
         Text(
           AppLocalization.get(context, 'password_recovery'),
@@ -193,6 +194,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
           key: const Key('recoveryEmailField'),
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
+          textDirection: TextDirection.ltr,
           autofillHints: const [AutofillHints.email],
           decoration: InputDecoration(
             labelText: AppLocalization.get(context, 'email'),
@@ -206,11 +208,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
           key: const Key('sendRecoveryCodeButton'),
           onPressed: state.isLoading ? null : () => _requestCode(context),
           child: state.isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const AppButtonLoadingIndicator()
               : Text(AppLocalization.get(context, 'send_recovery_code')),
         ),
       ],
@@ -221,10 +219,10 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(
+        Icon(
           Icons.mark_email_read_outlined,
           size: 72,
-          color: Color(0xFF1a237e),
+          color: Theme.of(context).colorScheme.primary,
         ),
         const SizedBox(height: 20),
         Text(
@@ -305,11 +303,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
               ? null
               : () => _resetPassword(context, state.email),
           child: state.isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const AppButtonLoadingIndicator()
               : Text(AppLocalization.get(context, 'reset_password')),
         ),
         const SizedBox(height: 8),

@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('customer offers screen shows a per-offer expiry countdown', () {
-    final source = File('lib/screens/order_offers_screen.dart').readAsStringSync();
+    final source = File(
+      'lib/screens/order_offers_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains('expiresAt'));
 
@@ -24,7 +26,9 @@ void main() {
   });
 
   test('submit offer screen enforces the provider cooldown countdown', () {
-    final source = File('lib/screens/submit_offer_screen.dart').readAsStringSync();
+    final source = File(
+      'lib/screens/submit_offer_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains('_cooldownSeconds'));
 
@@ -38,7 +42,9 @@ void main() {
   });
 
   test('pending orders block opening another offer during cooldown', () {
-    final source = File('lib/screens/pending_orders_screen.dart').readAsStringSync();
+    final source = File(
+      'lib/screens/pending_orders_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains('_cooldownActive'));
 
@@ -50,7 +56,9 @@ void main() {
   });
 
   test('order detail blocks its offer action during cooldown', () {
-    final source = File('lib/screens/order_detail_screen.dart').readAsStringSync();
+    final source = File(
+      'lib/screens/order_detail_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains("_order?['offerCooldownUntil']"));
 
@@ -72,7 +80,9 @@ void main() {
 
     expect(source, contains("'order_suspended_report_in'"));
 
-    expect(source, contains('Colors.red'));
+    // Expired windows use the shared danger semantic tone (UX-03 contrast
+    // migration), which preserves the previous red failure meaning.
+    expect(source, contains('AppTone.danger'));
   });
 
   test('offer service reads the cooldown retry delay', () {

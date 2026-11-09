@@ -7,7 +7,12 @@ import '../services/localization_service.dart';
 import '../services/order_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
+import '../services/theme_service.dart';
 import '../widgets/image_preview.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_image_thumbnail.dart';
+import '../widgets/ui/app_status_chip.dart';
+import '../widgets/ui/app_tone.dart';
 import 'submit_offer_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
@@ -89,20 +94,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  Color _statusColor(String? status) {
+  AppTone _statusTone(String? status) {
     switch (status) {
       case 'pending':
-        return Colors.orange;
+        return AppTone.warning;
       case 'offered':
-        return Colors.blue;
+        return AppTone.info;
       case 'accepted':
-        return Colors.teal;
+        return AppTone.primary;
       case 'fulfilling':
-        return Colors.purple;
+        return AppTone.accent;
       case 'completed':
-        return Colors.green;
+        return AppTone.success;
       default:
-        return Colors.grey;
+        return AppTone.neutral;
     }
   }
 
@@ -111,21 +116,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       await _providerService.markFulfilling(widget.token, widget.orderId);
       await _load();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalization.get(context, 'status_updated')),
-          backgroundColor: Colors.green,
-        ),
+      AppFeedback.success(
+        context,
+        AppLocalization.get(context, 'status_updated'),
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
-          ),
-          backgroundColor: Colors.red,
-        ),
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -135,23 +134,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       await _providerService.markComplete(widget.token, widget.orderId);
       await _load();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalization.get(context, 'order_completed_msg'),
-          ),
-          backgroundColor: Colors.green,
-        ),
+      AppFeedback.success(
+        context,
+        AppLocalization.get(context, 'order_completed_msg'),
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
-          ),
-          backgroundColor: Colors.red,
-        ),
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -164,14 +155,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (cooldownUntil != null && cooldownUntil.isAfter(DateTime.now())) {
       final seconds = cooldownUntil.difference(DateTime.now()).inSeconds;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${AppLocalization.get(context, 'offer_cooldown_active')} - '
-            '${AppLocalization.get(context, 'cooldown_remaining').replaceAll('%d', '$seconds')}',
-          ),
-          backgroundColor: Colors.red,
-        ),
+      AppFeedback.warning(
+        context,
+        '${AppLocalization.get(context, 'offer_cooldown_active')} - '
+        '${AppLocalization.get(context, 'cooldown_remaining').replaceAll('%d', '$seconds')}',
       );
       return;
     }
@@ -201,25 +188,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Text(
-            AppLocalization.get(context, 'order_details'),
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          title: Text(AppLocalization.get(context, 'order_details')),
           centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: _buildBody(context),
+        body: SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: _buildBody(context),
+            ),
           ),
         ),
       ),
@@ -238,7 +216,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           child: Text(
             _error!,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ),
       );
@@ -258,8 +236,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final area = order['area']?.toString() ?? '';
     final location = order['location']?.toString() ?? '';
     final customer = order['customerId'];
-    final customerName = customer is Map ? (customer['fullName'] ?? '').toString() : '';
-    final customerPublicId = customer is Map ? (customer['publicId'] ?? '').toString() : '';
+    final customerName = customer is Map
+        ? (customer['fullName'] ?? '').toString()
+        : '';
+    final customerPublicId = customer is Map
+        ? (customer['publicId'] ?? '').toString()
+        : '';
     final images = order['images'] is List
         ? (order['images'] as List).map((image) => image.toString()).toList()
         : <String>[];
@@ -290,39 +272,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _statusColor(status).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _statusLabel(status),
-                        style: TextStyle(
-                          color: _statusColor(status),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
+                    AppStatusChip(
+                      label: _statusLabel(status),
+                      tone: _statusTone(status),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   order['description']?.toString() ?? '',
-                  style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 14,
+                  ),
                 ),
                 if (customerName.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.person_outline,
                         size: 15,
-                        color: Colors.orange,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -338,7 +309,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           '#$customerPublicId',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.orange[700],
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -349,13 +322,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.phone, size: 14, color: Colors.grey),
+                      Icon(
+                        Icons.phone,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         phone,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey[700],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -365,18 +342,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on,
                         size: 14,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          [area, location].where((value) => value.isNotEmpty).join(' - '),
+                          [
+                            area,
+                            location,
+                          ].where((value) => value.isNotEmpty).join(' - '),
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[700],
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -396,26 +378,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         final url = image.startsWith('http')
                             ? image
                             : '${ApiConfig.serverUrl}$image';
-                        return GestureDetector(
-                          onTap: () => ImagePreview.show(context, url),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              url,
-                              width: 70,
-                              height: 70,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(
-                                width: 70,
-                                height: 70,
-                                color: Colors.grey[200],
-                                child: const Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
+                        return AppImageThumbnail(
+                          imageUrl: url,
+                          semanticLabel: AppLocalization.get(
+                            context,
+                            'view_image',
                           ),
+                          onTap: () => ImagePreview.show(context, url),
+                          size: 70,
                         );
                       },
                     ),
@@ -425,9 +395,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   const SizedBox(height: 10),
                   Text(
                     '${AppLocalization.get(context, 'price')}: $price ${AppLocalization.get(context, 'shekel')}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                      color: appToneStyle(context, AppTone.success).foreground,
                     ),
                   ),
                 ],
@@ -437,18 +407,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(10),
+                      color: appToneStyle(context, AppTone.warning).background,
+                      borderRadius: BorderRadiusDirectional.circular(
+                        AppRadius.sm,
+                      ),
                     ),
                     child: Text(
                       '${AppLocalization.get(context, 'your_price')}: '
                       '${myOffer['price']} ${AppLocalization.get(context, 'shekel')}'
                       ' · '
                       '${AppLocalization.get(context, 'est_time').replaceAll('%d', '${myOffer['estimatedTime'] ?? 0}')}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Colors.orange,
+                        color: appToneStyle(
+                          context,
+                          AppTone.warning,
+                        ).foreground,
                       ),
                     ),
                   ),
@@ -457,9 +432,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   const SizedBox(height: 10),
                   Text(
                     AppLocalization.get(context, 'rejected'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                      color: Theme.of(context).colorScheme.error,
                     ),
                   ),
                 ],
@@ -475,8 +450,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               child: ElevatedButton(
                 onPressed: _submitOffer,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
+                  backgroundColor: appToneStyle(context, AppTone.accent).solid,
+                  foregroundColor: appToneStyle(
+                    context,
+                    AppTone.accent,
+                  ).onSolid,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -495,8 +473,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             child: ElevatedButton(
               onPressed: _markFulfilling,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
-                foregroundColor: Colors.white,
+                backgroundColor: appToneStyle(context, AppTone.info).solid,
+                foregroundColor: appToneStyle(context, AppTone.info).onSolid,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -514,8 +492,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             child: ElevatedButton(
               onPressed: _markComplete,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
+                backgroundColor: appToneStyle(context, AppTone.success).solid,
+                foregroundColor: appToneStyle(context, AppTone.success).onSolid,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

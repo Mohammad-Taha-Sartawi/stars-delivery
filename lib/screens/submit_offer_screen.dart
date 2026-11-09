@@ -6,7 +6,11 @@ import '../bloc/offer/offer_event.dart';
 import '../bloc/offer/offer_state.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
+import '../services/theme_service.dart';
 import '../bloc/app/app_bloc.dart';
+import '../widgets/ui/app_button_loading_indicator.dart';
+import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_tone.dart';
 
 class SubmitOfferScreen extends StatefulWidget {
   final String token, orderId;
@@ -74,241 +78,271 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
   @override
   Widget build(BuildContext context) {
     final isAr = context.watch<AppBloc>().state.locale.languageCode == 'ar';
-    final times = [5, 10, 15, 20];
-    // Arabic: right-to-left button order (5 left, 20 right), English: left-to-right
-    final orderedTimes = isAr ? times.reversed.toList() : times;
+    final scheme = Theme.of(context).colorScheme;
+    final dangerTone = appToneStyle(context, AppTone.danger);
+    final accentTone = appToneStyle(context, AppTone.accent);
+    const times = [5, 10, 15, 20];
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Text(
-            AppLocalization.get(context, 'submit_offer'),
-            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-          ),
+          title: Text(AppLocalization.get(context, 'submit_offer')),
           centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: Responsive.paddingHorizontal(context),
-                vertical: Responsive.paddingVertical(context),
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_cooldownSeconds > 0) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red[200]!),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.timer_off_outlined,
-                              color: Colors.red,
+        body: SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Responsive.paddingHorizontal(context),
+                  vertical: Responsive.paddingVertical(context),
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_cooldownSeconds > 0) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: dangerTone.background,
+                            borderRadius: BorderRadiusDirectional.circular(
+                              AppRadius.md,
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    AppLocalization.get(
-                                      context,
-                                      'offer_cooldown_active',
-                                    ),
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    AppLocalization.get(
-                                      context,
-                                      'cooldown_remaining',
-                                    ).replaceAll('%d', '$_cooldownSeconds'),
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+                            border: Border.all(color: dangerTone.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.timer_off_outlined,
+                                color: dangerTone.foreground,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      AppLocalization.get(
+                                        context,
+                                        'offer_cooldown_active',
+                                      ),
+                                      style: TextStyle(
+                                        color: dangerTone.foreground,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      AppLocalization.get(
+                                        context,
+                                        'cooldown_remaining',
+                                      ).replaceAll('%d', '$_cooldownSeconds'),
+                                      style: TextStyle(
+                                        color: dangerTone.foreground,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(height: 12),
+                      ],
+                      // ChoiceChip provides native selected semantics and a
+                      // checkmark, so selection is not color-only.
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [5, 10, 15, 20]
+                            .map(
+                              (p) => ChoiceChip(
+                                label: Text('$p ILS'),
+                                selected: _quickPrice == p,
+                                onSelected: (_) => _setPrice(p),
+                              ),
+                            )
+                            .toList(),
                       ),
                       const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        textDirection: TextDirection.ltr,
+                        decoration: InputDecoration(
+                          labelText: AppLocalization.get(
+                            context,
+                            'delivery_price',
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.monetization_on_outlined,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return AppLocalization.get(
+                              context,
+                              'price_required',
+                            );
+                          }
+                          final p = double.tryParse(v);
+                          if (p == null || p <= 0) {
+                            return AppLocalization.get(
+                              context,
+                              'invalid_price',
+                            );
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        AppLocalization.get(context, 'delivery_time'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: times
+                            .map(
+                              (t) => ChoiceChip(
+                                label: Text(
+                                  '$t ${AppLocalization.get(context, 'minutes_suffix')}',
+                                ),
+                                selected: _estimatedTime == t,
+                                onSelected: (_) => _setTime(t),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _timeController,
+                        keyboardType: TextInputType.number,
+                        textDirection: TextDirection.ltr,
+                        decoration: InputDecoration(
+                          labelText: AppLocalization.get(
+                            context,
+                            'custom_time',
+                          ),
+                          prefixIcon: const Icon(Icons.timer_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onChanged: (v) {
+                          final t = int.tryParse(v);
+                          if (t != null) setState(() => _estimatedTime = t);
+                        },
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return AppLocalization.get(
+                              context,
+                              'time_required',
+                            );
+                          }
+
+                          final t = int.tryParse(v.trim());
+
+                          if (t == null || t <= 0) {
+                            return AppLocalization.get(context, 'invalid_time');
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      BlocConsumer<OfferBloc, OfferState>(
+                        listener: (context, state) {
+                          if (state is OfferCooldown) {
+                            _startCooldown(state.seconds);
+                          }
+                          if (state is OfferProviderBusy) {
+                            AppFeedback.error(
+                              context,
+                              AppLocalization.get(
+                                context,
+                                'provider_busy_offer',
+                              ),
+                            );
+                          }
+                          if (state is OfferAlreadySubmitted) {
+                            AppFeedback.warning(
+                              context,
+                              AppLocalization.get(
+                                context,
+                                'offer_already_submitted',
+                              ),
+                            );
+                            Navigator.pop(context, true);
+                          }
+                          if (state is OfferSuccess) {
+                            AppFeedback.success(
+                              context,
+                              AppLocalization.get(context, 'offer_sent'),
+                            );
+                            Navigator.pop(context, true);
+                          }
+                          if (state is OfferError) {
+                            AppFeedback.error(context, state.message);
+                          }
+                        },
+                        builder: (context, state) {
+                          final loading = state is OfferLoading;
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: loading || _cooldownSeconds > 0
+                                  ? null
+                                  : _submit,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                backgroundColor: accentTone.solid,
+                                foregroundColor: accentTone.onSolid,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadiusDirectional.circular(
+                                        AppRadius.md,
+                                      ),
+                                ),
+                              ),
+                              child: loading
+                                  ? const AppButtonLoadingIndicator()
+                                  : Text(
+                                      AppLocalization.get(
+                                        context,
+                                        'send_offer',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
                     ],
-                    // Quick price buttons
-                    Row(
-                      children: [5, 10, 15, 20].map((p) => Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: OutlinedButton(
-                            onPressed: () => _setPrice(p),
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: _quickPrice == p ? Colors.green : null,
-                              foregroundColor: _quickPrice == p ? Colors.white : Colors.green,
-                              side: const BorderSide(color: Colors.green),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
-                            child: Text('$p ILS', style: const TextStyle(fontSize: 13)),
-                          ),
-                        ),
-                      )).toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _priceController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: AppLocalization.get(context, 'delivery_price'),
-                        prefixIcon: const Icon(Icons.monetization_on_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return AppLocalization.get(context, 'price_required');
-                        final p = double.tryParse(v);
-                        if (p == null || p <= 0) return AppLocalization.get(context, 'invalid_price');
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      AppLocalization.get(context, 'delivery_time'),
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[800]),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: orderedTimes.map((t) => Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: OutlinedButton(
-                            onPressed: () => _setTime(t),
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: _estimatedTime == t ? Colors.orange : null,
-                              foregroundColor: _estimatedTime == t ? Colors.white : Colors.orange,
-                              side: const BorderSide(color: Colors.orange),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
-                            child: Text('${t}د', style: const TextStyle(fontSize: 13)),
-                          ),
-                        ),
-                      )).toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _timeController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: AppLocalization.get(context, 'custom_time'),
-                        prefixIcon: const Icon(Icons.timer_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onChanged: (v) {
-                        final t = int.tryParse(v);
-                        if (t != null) setState(() => _estimatedTime = t);
-                      },
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return AppLocalization.get(context, 'time_required');
-                        }
-
-                        final t = int.tryParse(v.trim());
-
-                        if (t == null || t <= 0) {
-                          return AppLocalization.get(context, 'invalid_time');
-                        }
-
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    BlocConsumer<OfferBloc, OfferState>(
-                      listener: (context, state) {
-                        if (state is OfferCooldown) {
-                          _startCooldown(state.seconds);
-                        }
-                        if (state is OfferProviderBusy) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                AppLocalization.get(
-                                  context,
-                                  'provider_busy_offer',
-                                ),
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                        if (state is OfferAlreadySubmitted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                AppLocalization.get(
-                                  context,
-                                  'offer_already_submitted',
-                                ),
-                              ),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                          Navigator.pop(context, true);
-                        }
-                        if (state is OfferSuccess) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(AppLocalization.get(context, 'offer_sent')), backgroundColor: Colors.green),
-                          );
-                          Navigator.pop(context, true);
-                        }
-                        if (state is OfferError) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-                          );
-                        }
-                      },
-                      builder: (context, state) {
-                        final loading = state is OfferLoading;
-                        return SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: loading || _cooldownSeconds > 0
-                                ? null
-                                : _submit,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.orange,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: loading
-                                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : Text(AppLocalization.get(context, 'send_offer'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

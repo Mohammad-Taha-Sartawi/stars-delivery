@@ -8,6 +8,8 @@ import '../services/api_config.dart';
 import '../services/mobile_api_client.dart';
 import '../services/validators.dart';
 import '../services/responsive.dart';
+import '../services/localization_service.dart';
+import '../widgets/ui/app_feedback.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -53,10 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       final list = res.data['phones'] ?? [];
       setState(() {
-        _phones = List<Map<String, dynamic>>.from(list.map((p) {
-          if (p is Map) return p;
-          return {'number': p.toString(), 'primary': false};
-        }));
+        _phones = List<Map<String, dynamic>>.from(
+          list.map((p) {
+            if (p is Map) return p;
+            return {'number': p.toString(), 'primary': false};
+          }),
+        );
         _loadingPhones = false;
       });
     } catch (_) {
@@ -95,10 +99,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final dio = _client();
       await dio.put('/users/profile', data: {'fullName': name});
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث الاسم'), backgroundColor: Colors.green));
+      AppFeedback.success(context, 'تم تحديث الاسم');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      AppFeedback.error(context, e.toString());
     }
   }
 
@@ -148,36 +152,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveEmail() async {
-    final email =
-        _emailCtrl.text.trim().toLowerCase();
+    final email = _emailCtrl.text.trim().toLowerCase();
 
-    final validationError =
-        Validators.email(email);
+    final validationError = Validators.email(email);
 
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(validationError),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, validationError);
       return;
     }
 
-    if (
-      email
-      == widget.user.email.trim().toLowerCase()
-    ) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('البريد لم يتغير'),
-        ),
-      );
+    if (email == widget.user.email.trim().toLowerCase()) {
+      AppFeedback.info(context, 'البريد لم يتغير');
       return;
     }
 
-    final currentPassword =
-        await _promptCurrentPasswordForEmailChange();
+    final currentPassword = await _promptCurrentPasswordForEmailChange();
 
     if (!mounted || currentPassword == null) {
       return;
@@ -199,27 +188,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // this screen before the HTTP response returns.
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'تم تحديث البريد. سجّل الدخول مجدداً بالبريد الجديد.',
-          ),
-          backgroundColor: Colors.green,
-        ),
+      AppFeedback.success(
+        context,
+        'تم تحديث البريد. سجّل الدخول مجدداً بالبريد الجديد.',
       );
 
-      context.read<AuthBloc>().add(
-        LogoutEvent(),
-      );
+      context.read<AuthBloc>().add(LogoutEvent());
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, e.toString());
     }
   }
 
@@ -229,45 +207,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final confirmPassword = _confirmPassCtrl.text;
 
     if (currentPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('أدخل كلمة المرور الحالية'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, 'أدخل كلمة المرور الحالية');
       return;
     }
 
     final validationError = Validators.password(newPassword);
 
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(validationError),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, validationError);
       return;
     }
 
     if (newPassword != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('كلمتا المرور غير متطابقتين'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, 'كلمتا المرور غير متطابقتين');
       return;
     }
 
     try {
       final dio = _client();
 
-      await dio.put('/users/password', data: {
-        'currentPassword': currentPassword,
-        'newPassword': newPassword,
-        'confirmPassword': confirmPassword,
-      });
+      await dio.put(
+        '/users/password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+      );
 
       // Socket revocation may remove this screen before
       // the HTTP password-change request returns.
@@ -279,21 +245,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم تغيير كلمة المرور'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppFeedback.success(context, 'تم تغيير كلمة المرور');
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, e.toString());
     }
   }
 
@@ -310,77 +266,219 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final isProvider = widget.user.role == 'provider';
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('الملف الشخصي', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black87), onPressed: () => Navigator.pop(context)),
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: Responsive.paddingHorizontal(context), vertical: 20),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Column(
-            children: [
-              CircleAvatar(radius: 45, backgroundColor: isProvider ? Colors.orange : Colors.blue, child: Text(widget.user.fullName[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold))),
-              const SizedBox(height: 12),
-              Text(widget.user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              Text(widget.user.email, style: TextStyle(color: Colors.grey[600])),
-              Text('#${widget.user.publicId}', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-              const SizedBox(height: 24),
-              _buildSection('الاسم', _nameCtrl, onSave: _saveName),
-              _buildSection('البريد الإلكتروني', _emailCtrl, onSave: _saveEmail),
-              const SizedBox(height: 12),
-              const Text('أرقام الهاتف', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: TextField(controller: _phoneCtrl, decoration: const InputDecoration(hintText: 'أضف رقم هاتف', border: OutlineInputBorder()), keyboardType: TextInputType.phone, onSubmitted: (_) => _addPhone())),
-                const SizedBox(width: 8),
-                IconButton(onPressed: _addPhone, icon: const Icon(Icons.add_circle, color: Colors.green)),
-              ]),
-              const SizedBox(height: 8),
-              if (_loadingPhones) const SizedBox(height: 20, child: Center(child: CircularProgressIndicator(strokeWidth: 2))) else ..._phones.map((p) {
-                final number = (p['number'] ?? '').toString();
-                final isPrimary = p['primary'] == true;
-                return ListTile(
-                  dense: true,
-                  leading: isPrimary ? const Icon(Icons.star, color: Colors.amber, size: 20) : const SizedBox(width: 20),
-                  title: Text(number, style: const TextStyle(fontSize: 14)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!isPrimary) TextButton(onPressed: () => _setPrimaryPhone(number), child: const Text('أساسي', style: TextStyle(fontSize: 11))),
-                      if (!isPrimary) IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: () => _removePhone(number)),
-                    ],
+      appBar: AppBar(title: const Text('الملف الشخصي'), centerTitle: true),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: Responsive.paddingHorizontal(context),
+            vertical: 20,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 45,
+                  backgroundColor: isProvider
+                      ? scheme.secondaryContainer
+                      : scheme.primaryContainer,
+                  child: Text(
+                    widget.user.fullName[0].toUpperCase(),
+                    style: TextStyle(
+                      color: isProvider
+                          ? scheme.onSecondaryContainer
+                          : scheme.onPrimaryContainer,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                );
-              }),
-              const SizedBox(height: 12),
-              const Text('تغيير كلمة المرور', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              TextField(controller: _currentPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة المرور الحالية', border: OutlineInputBorder())),
-              const SizedBox(height: 8),
-              TextField(controller: _newPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة مرور جديدة', border: OutlineInputBorder())),
-              const SizedBox(height: 8),
-              TextField(controller: _confirmPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'تأكيد كلمة المرور', border: OutlineInputBorder())),
-              const SizedBox(height: 8),
-              SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _changePassword, child: const Text('تغيير كلمة المرور'))),
-            ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.user.fullName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  widget.user.email,
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+                Text(
+                  '#${widget.user.publicId}',
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildSection('الاسم', _nameCtrl, onSave: _saveName),
+                _buildSection(
+                  'البريد الإلكتروني',
+                  _emailCtrl,
+                  onSave: _saveEmail,
+                  latin: true,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'أرقام الهاتف',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _phoneCtrl,
+                        textDirection: TextDirection.ltr,
+                        decoration: const InputDecoration(
+                          hintText: 'أضف رقم هاتف',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        onSubmitted: (_) => _addPhone(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: AppLocalization.get(context, 'add_phone'),
+                      onPressed: _addPhone,
+                      icon: Icon(Icons.add_circle, color: scheme.primary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_loadingPhones)
+                  const Padding(
+                    padding: EdgeInsetsDirectional.symmetric(vertical: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else
+                  ..._phones.map((p) {
+                    final number = (p['number'] ?? '').toString();
+                    final isPrimary = p['primary'] == true;
+                    return ListTile(
+                      dense: true,
+                      leading: isPrimary
+                          ? Icon(
+                              Icons.star,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            )
+                          : const SizedBox(width: 20),
+                      title: Text(number, style: const TextStyle(fontSize: 14)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!isPrimary)
+                            TextButton(
+                              onPressed: () => _setPrimaryPhone(number),
+                              child: const Text(
+                                'أساسي',
+                                style: TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          if (!isPrimary)
+                            IconButton(
+                              tooltip: AppLocalization.get(context, 'delete'),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: scheme.error,
+                              ),
+                              onPressed: () => _removePhone(number),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                const SizedBox(height: 12),
+                const Text(
+                  'تغيير كلمة المرور',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _currentPassCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'كلمة المرور الحالية',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _newPassCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'كلمة مرور جديدة',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _confirmPassCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'تأكيد كلمة المرور',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _changePassword,
+                    child: const Text('تغيير كلمة المرور'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSection(String label, TextEditingController ctrl, {VoidCallback? onSave}) {
+  Widget _buildSection(
+    String label,
+    TextEditingController ctrl, {
+    VoidCallback? onSave,
+    bool latin = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsetsDirectional.only(bottom: 12),
       child: Row(
         children: [
-          Expanded(child: TextField(controller: ctrl, decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()))),
-          if (onSave != null) ...[const SizedBox(width: 8), IconButton(onPressed: onSave, icon: const Icon(Icons.check_circle, color: Colors.green))],
+          Expanded(
+            child: TextField(
+              controller: ctrl,
+              textDirection: latin ? TextDirection.ltr : null,
+              decoration: InputDecoration(
+                labelText: label,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ),
+          if (onSave != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: AppLocalization.get(context, 'save'),
+              onPressed: onSave,
+              icon: Icon(
+                Icons.check_circle,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
         ],
       ),
     );

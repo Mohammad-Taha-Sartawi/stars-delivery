@@ -277,6 +277,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  textDirection: TextDirection.ltr,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.telephoneNumber],
                   decoration: _inputDecoration(
@@ -360,6 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                textDirection: TextDirection.ltr,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
                 decoration: _inputDecoration(

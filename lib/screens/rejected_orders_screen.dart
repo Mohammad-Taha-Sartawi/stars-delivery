@@ -4,6 +4,8 @@ import '../bloc/app/app_bloc.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
+import '../widgets/ui/app_status_chip.dart';
+import '../widgets/ui/app_tone.dart';
 
 class RejectedOrdersScreen extends StatefulWidget {
   final String token;
@@ -68,34 +70,23 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Text(
-            AppLocalization.get(context, 'rejected_orders_btn'),
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-          ),
+          title: Text(AppLocalization.get(context, 'rejected_orders_btn')),
           centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
-        body: RefreshIndicator(
-          onRefresh: _load,
-          child: _buildBody(context, typeLabels),
+        body: SafeArea(
+          top: false,
+          child: RefreshIndicator(
+            onRefresh: _load,
+            child: _buildBody(context, typeLabels),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    Map<String, String> typeLabels,
-  ) {
+  Widget _buildBody(BuildContext context, Map<String, String> typeLabels) {
+    final scheme = Theme.of(context).colorScheme;
+
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -108,7 +99,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
             child: Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: scheme.error),
             ),
           ),
         ],
@@ -123,7 +114,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
             child: Text(
               AppLocalization.get(context, 'no_rejected_orders'),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -164,27 +155,15 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                       ),
                     ),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
+                    AppStatusChip(
+                      label: AppLocalization.get(
+                        context,
+                        delivered ? 'status_completed' : 'rejected',
                       ),
-                      decoration: BoxDecoration(
-                        color: delivered ? Colors.green[50] : Colors.red[50],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        AppLocalization.get(
-                          context,
-                          delivered ? 'status_completed' : 'rejected',
-                        ),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: delivered
-                              ? Colors.green[700]
-                              : Colors.red[700],
-                        ),
-                      ),
+                      tone: delivered ? AppTone.success : AppTone.danger,
+                      icon: delivered
+                          ? Icons.check_circle_outline
+                          : Icons.cancel_outlined,
                     ),
                   ],
                 ),
@@ -192,10 +171,10 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.person_outline,
                         size: 13,
-                        color: Colors.orange,
+                        color: scheme.primary,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -211,7 +190,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                           '#$pid',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.orange[700],
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -225,14 +204,14 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                       Icon(
                         Icons.phone,
                         size: 13,
-                        color: Colors.grey[600],
+                        color: scheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         phone,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[700],
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -241,17 +220,16 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                 const SizedBox(height: 6),
                 Text(
                   order['description'] ?? '',
-                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
                 ),
                 if (!delivered) ...[
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 13,
-                        color: Colors.red[600],
-                      ),
+                      Icon(Icons.info_outline, size: 13, color: scheme.error),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -263,7 +241,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                           ),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.red[700],
+                            color: scheme.error,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -276,17 +254,17 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on,
                         size: 13,
-                        color: Colors.grey,
+                        color: scheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         order['area'].toString(),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                     ],

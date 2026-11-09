@@ -5,6 +5,7 @@ const path = require('path');
 
 const {
   canonicalGovernorate,
+  governorateKey,
   isValidAreaForGovernorate,
 } = require('../src/services/registrationLocation');
 const {
@@ -19,6 +20,8 @@ function source(file) {
 
 test('profile area validation matches the bundled city catalog', () => {
   assert.equal(canonicalGovernorate('رام الله'), 'رام الله والبيرة');
+  assert.equal(governorateKey({ area: 'Al-Dawha' }), 'بيت لحم');
+  assert.equal(governorateKey({ area: 'بيت لحم' }), 'بيت لحم');
   assert.equal(CITIES_BY_GOVERNORATE['بيت لحم'].includes('Beit Jala'), true);
   assert.equal(
     CITIES_BY_GOVERNORATE['رام الله والبيرة'].includes('Al-Bireh'),

@@ -1,4 +1,7 @@
-const { CITIES_BY_GOVERNORATE } = require('./palestineCities');
+const {
+  CITIES_BY_GOVERNORATE,
+  CITY_TO_GOVERNORATE,
+} = require('./palestineCities');
 
 const PRIMARY_GOVERNORATES = [
   'القدس',
@@ -79,9 +82,21 @@ function governorateKey(record = {}) {
   return (
     canonicalGovernorate(record.governorate)
     || canonicalGovernorate(record.area)
+    || CITY_TO_GOVERNORATE[normalizeValue(record.area)]
     || normalizeValue(record.governorate)
     || ''
   );
+}
+
+function legacyAreasForGovernorate(governorate) {
+  const canonical =
+    canonicalGovernorate(governorate) || normalizeValue(governorate);
+  if (!canonical) return [];
+
+  return [
+    canonical,
+    ...(CITIES_BY_GOVERNORATE[canonical] || []),
+  ];
 }
 
 function isValidAreaForGovernorate(governorate, area) {
@@ -238,6 +253,7 @@ module.exports = {
   PRIMARY_GOVERNORATES,
   canonicalGovernorate,
   governorateKey,
+  legacyAreasForGovernorate,
   isValidAreaForGovernorate,
   resolveRegistrationLocation,
   buildGovernorateStats,

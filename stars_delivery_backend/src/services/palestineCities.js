@@ -167,4 +167,15 @@ const CITIES_BY_GOVERNORATE = {
   ],
 };
 
-module.exports = { CITIES_BY_GOVERNORATE };
+const CITY_TO_GOVERNORATE = {};
+
+for (const [governorate, cities] of Object.entries(CITIES_BY_GOVERNORATE)) {
+  for (const city of cities) {
+    CITY_TO_GOVERNORATE[city] = governorate;
+  }
+}
+
+module.exports = {
+  CITIES_BY_GOVERNORATE,
+  CITY_TO_GOVERNORATE,
+};

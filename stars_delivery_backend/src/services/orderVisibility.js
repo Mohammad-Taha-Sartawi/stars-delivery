@@ -1,4 +1,7 @@
-const { governorateKey } = require('./registrationLocation');
+const {
+  governorateKey,
+  legacyAreasForGovernorate,
+} = require('./registrationLocation');
 
 function normalizeArea(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -69,8 +72,11 @@ function orderResponderConditions(order = {}) {
 
   if (order.governorateLevel === true && governorate) {
     conditions.push({
-      governorate,
       governorateLevel: true,
+      $or: [
+        { governorate },
+        { area: { $in: legacyAreasForGovernorate(governorate) } },
+      ],
     });
   }
 
@@ -95,8 +101,11 @@ function customerProviderVisibilityFilter(customer = {}) {
 
   if (customer.governorateLevel === true && governorate) {
     conditions.push({
-      governorate,
       governorateLevel: true,
+      $or: [
+        { governorate },
+        { area: { $in: legacyAreasForGovernorate(governorate) } },
+      ],
     });
   }
 

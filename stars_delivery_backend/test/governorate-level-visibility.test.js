@@ -77,23 +77,49 @@ test('provider feed exposes the governorate clause only when enabled', () => {
   assert.deepEqual(disabled.$or, [{ area: 'Beit Jala' }]);
 });
 
-test('responder and customer filters use the same governorate rules', () => {
-  assert.deepEqual(orderResponderFilter(crossAreaOrder).$or, [
-    { area: 'Bethlehem' },
+test('legacy provider area still matches governorate-level orders', () => {
+  const legacyProvider = {
+    area: 'بيت لحم',
+    governorateLevel: true,
+  };
+  const order = {
+    area: 'Al-Dawha',
+    governorate: 'بيت لحم',
+    governorateLevel: true,
+  };
+
+  assert.equal(canProviderSeeOrder(legacyProvider, order), true);
+  assert.deepEqual(providerVisibilityFilter(legacyProvider).$or, [
+    { area: 'بيت لحم' },
     { governorate: 'بيت لحم', governorateLevel: true },
   ]);
 
-  assert.deepEqual(
-    customerProviderVisibilityFilter({
-      area: 'Bethlehem',
-      governorate: 'بيت لحم',
-      governorateLevel: true,
-    }).$or,
-    [
-      { area: 'Bethlehem' },
-      { governorate: 'بيت لحم', governorateLevel: true },
-    ],
+  const responders = orderResponderFilter(order);
+  assert.ok(responders.$or[1].$or[1].area.$in.includes('بيت لحم'));
+  assert.ok(responders.$or[1].$or[1].area.$in.includes('Al-Dawha'));
+});
+
+test('responder and customer filters use the same governorate rules', () => {
+  const responderFilter = orderResponderFilter(crossAreaOrder);
+  assert.deepEqual(responderFilter.$or[0], { area: 'Bethlehem' });
+  assert.equal(responderFilter.$or[1].governorateLevel, true);
+  assert.deepEqual(responderFilter.$or[1].$or[0], {
+    governorate: 'بيت لحم',
+  });
+  assert.ok(
+    responderFilter.$or[1].$or[1].area.$in.includes('بيت لحم'),
   );
+
+  const customerFilter = customerProviderVisibilityFilter({
+    area: 'Bethlehem',
+    governorate: 'بيت لحم',
+    governorateLevel: true,
+  });
+  assert.deepEqual(customerFilter.$or[0], { area: 'Bethlehem' });
+  assert.equal(customerFilter.$or[1].governorateLevel, true);
+  assert.deepEqual(customerFilter.$or[1].$or[0], {
+    governorate: 'بيت لحم',
+  });
 });
 
 test('orders store governorate scope and socket rooms follow the setting', () => {

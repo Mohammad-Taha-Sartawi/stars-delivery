@@ -20,6 +20,7 @@ const {
 const {
   isValidAreaForGovernorate,
   canonicalGovernorate,
+  governorateKey,
 } = require('../services/registrationLocation');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
@@ -116,12 +117,15 @@ router.get('/location', async (req, res) => {
 router.put('/governorate-level', async (req, res) => {
   try {
     const enabled = req.body.enabled === true;
-    const user = await User.findByIdAndUpdate(
-      req.userId,
-      { governorateLevel: enabled },
-      { new: true },
-    );
+    const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const derivedGovernorate = governorateKey(user);
+    if (!user.governorate && derivedGovernorate) {
+      user.governorate = derivedGovernorate;
+    }
+    user.governorateLevel = enabled;
+    await user.save();
 
     res.json({
       success: true,

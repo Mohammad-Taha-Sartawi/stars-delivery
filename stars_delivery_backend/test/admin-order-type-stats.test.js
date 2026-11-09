@@ -32,16 +32,16 @@ test('order counters split today and the full current month', () => {
 
 test('order type counters always include every customer order type', () => {
   const counts = normalizeOrderTypeCounts([
-    { _id: 'product', today: 3, month: 12 },
-    { _id: 'people', today: 1, month: 4 },
-    { _id: 'goods', today: 0, month: 7 },
-    { _id: 'unknown', today: 9, month: 9 },
+    { _id: 'product', today: 3, month: 12, accepted: 8 },
+    { _id: 'people', today: 1, month: 4, accepted: 4 },
+    { _id: 'goods', today: 0, month: 7, accepted: 2 },
+    { _id: 'unknown', today: 9, month: 9, accepted: 9 },
   ]);
 
   assert.deepEqual(counts, {
-    product: { today: 3, month: 12 },
-    people: { today: 1, month: 4 },
-    goods: { today: 0, month: 7 },
+    product: { today: 3, month: 12, accepted: 8, notAccepted: 4 },
+    people: { today: 1, month: 4, accepted: 4, notAccepted: 0 },
+    goods: { today: 0, month: 7, accepted: 2, notAccepted: 5 },
   });
 });
 
@@ -53,6 +53,8 @@ test('admin stats aggregate customer orders by type and period', () => {
   assert.match(adminApi, /createdAt: \{ \$gte: startOfMonth \}/);
   assert.match(adminApi, /\$cond: \[\{ \$gte: \['\$createdAt', startOfToday\] \}, 1, 0\]/);
   assert.match(adminApi, /orderTypeCounts/);
+  assert.match(adminApi, /'accepted', 'fulfilling', 'completed'/);
+  assert.match(adminApi, /accepted: \{/);
 });
 
 test('dashboard shows monthly totals with today counts and no fake data', () => {
@@ -62,10 +64,16 @@ test('dashboard shows monthly totals with today counts and no fake data', () => 
   for (const id of [
     'prodCount',
     'prodToday',
+    'prodAccepted',
+    'prodNotAccepted',
     'passCount',
     'passToday',
+    'passAccepted',
+    'passNotAccepted',
     'cargoCount',
     'cargoToday',
+    'cargoAccepted',
+    'cargoNotAccepted',
   ]) {
     assert.match(index, new RegExp(`id="${id}"`));
   }
@@ -76,6 +84,12 @@ test('dashboard shows monthly totals with today counts and no fake data', () => 
   assert.match(main, /prodToday/);
   assert.match(main, /passToday/);
   assert.match(main, /cargoToday/);
+  assert.match(main, /prodAccepted/);
+  assert.match(main, /prodNotAccepted/);
+  assert.match(main, /passAccepted/);
+  assert.match(main, /passNotAccepted/);
+  assert.match(main, /cargoAccepted/);
+  assert.match(main, /cargoNotAccepted/);
 
   // The previous fake percentages, wait times and active counts are gone.
   assert.doesNotMatch(index, /\+12%/);

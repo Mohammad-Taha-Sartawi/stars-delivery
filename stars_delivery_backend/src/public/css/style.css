@@ -163,6 +163,12 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .card-cargo .value { color: #2ecc71; }
 .metric-card .sub-info { display: flex; gap: 20px; font-size: 13px; color: #8892a8; border-top: 1px solid #1e2733; padding-top: 12px; margin-top: 5px; }
 .metric-card .sub-info i { margin-left: 6px; }
+.metric-card .metric-split { display: flex; gap: 10px; margin: 12px 0; }
+.metric-card .split-item { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #0f141c; border: 1px solid #1e2733; }
+.metric-card .split-label { font-size: 12px; font-weight: 600; color: #8892a8; }
+.metric-card .split-value { font-size: 20px; font-weight: 800; }
+.metric-card .split-item.accepted .split-value { color: #2ecc71; }
+.metric-card .split-item.not-accepted .split-value { color: #e74c3c; }
 
 /* Bottom Grid */
 .bottom-grid { display: grid; grid-template-columns: 1fr; gap: 25px; margin-top: 10px; }

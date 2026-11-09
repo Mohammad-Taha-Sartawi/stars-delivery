@@ -58,6 +58,20 @@ router.get('/stats', async (req, res) => {
               $cond: [{ $gte: ['$createdAt', startOfToday] }, 1, 0],
             },
           },
+          accepted: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    '$status',
+                    ['accepted', 'fulfilling', 'completed'],
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
         },
       },
     ]);

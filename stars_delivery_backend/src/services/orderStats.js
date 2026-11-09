@@ -21,7 +21,7 @@ function orderStatBoundaries(now = new Date()) {
 function normalizeOrderTypeCounts(rows = []) {
   const counts = {};
   for (const type of ORDER_TYPES) {
-    counts[type] = { today: 0, month: 0 };
+    counts[type] = { today: 0, month: 0, accepted: 0, notAccepted: 0 };
   }
 
   for (const row of rows) {
@@ -29,9 +29,14 @@ function normalizeOrderTypeCounts(rows = []) {
       continue;
     }
 
+    const month = Number(row.month) || 0;
+    const accepted = Math.min(Number(row.accepted) || 0, month);
+
     counts[row._id] = {
       today: Number(row.today) || 0,
-      month: Number(row.month) || 0,
+      month,
+      accepted,
+      notAccepted: month - accepted,
     };
   }
 

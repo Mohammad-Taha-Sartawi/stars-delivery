@@ -449,7 +449,7 @@ void main() {
     expect(provider, contains('OfferedOrdersScreen('));
     expect(provider, contains('RejectedOrdersScreen('));
     expect(provider, contains('_scheduleUnblockRefresh'));
-    expect(provider, contains('SwitchListTile'));
+    expect(provider, contains('providerAvailabilityToggle'));
   });
 
   test(

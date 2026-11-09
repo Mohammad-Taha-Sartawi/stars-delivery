@@ -280,7 +280,15 @@ class AppLocalization {
     },
     'driver_availability': {
       'ar': 'متاح لاستقبال الطلبات',
-      'en': 'Available for orders',
+      'en': 'Available to receive orders',
+    },
+    'driver_availability_off': {
+      'ar': 'غير متاح لاستقبال الطلبات',
+      'en': 'Unavailable to receive orders',
+    },
+    'availability_tap_hint': {
+      'ar': 'اضغط على البطاقة لتفعيل أو إيقاف استقبال الطلبات.',
+      'en': 'Tap the card to enable or pause receiving orders.',
     },
     'driver_available': {
       'ar': 'متاح - تصلك طلبات جديدة',

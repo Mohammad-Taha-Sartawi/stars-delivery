@@ -12,7 +12,9 @@ void main() {
   });
 
   test('provider home refreshes available orders when the block expires', () {
-    final source = File('lib/screens/provider_home_screen.dart').readAsStringSync();
+    final source = File(
+      'lib/screens/provider_home_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains('_unblockTimer'));
 
@@ -21,20 +23,30 @@ void main() {
     expect(source, contains('state.stats.blockedUntil'));
   });
 
-  test('provider home exposes an availability switch', () {
-    final home = File('lib/screens/provider_home_screen.dart').readAsStringSync();
+  test('provider home exposes a tappable availability card', () {
+    final home = File(
+      'lib/screens/provider_home_screen.dart',
+    ).readAsStringSync();
 
     expect(home, contains('_setAvailability'));
 
-    expect(home, contains('SwitchListTile'));
+    expect(home, contains('providerAvailabilityToggle'));
+
+    expect(home, contains('ListTile('));
+
+    expect(home, isNot(contains('SwitchListTile')));
 
     expect(home, contains("'driver_availability'"));
+
+    expect(home, contains("'driver_availability_off'"));
 
     expect(home, contains("'driver_available'"));
 
     expect(home, contains("'driver_unavailable'"));
 
-    final service = File('lib/services/provider_service.dart').readAsStringSync();
+    final service = File(
+      'lib/services/provider_service.dart',
+    ).readAsStringSync();
 
     expect(service, contains("'/provider/availability'"));
 
@@ -42,7 +54,9 @@ void main() {
 
     expect(stats, contains('isAvailable'));
 
-    final localization = File('lib/services/localization_service.dart').readAsStringSync();
+    final localization = File(
+      'lib/services/localization_service.dart',
+    ).readAsStringSync();
 
     expect(localization, contains("'availability_updated'"));
   });

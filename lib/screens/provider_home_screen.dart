@@ -933,39 +933,70 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       context,
       s.isAvailable ? AppTone.success : AppTone.danger,
     );
+    final title = AppLocalization.get(
+      context,
+      s.isAvailable ? 'driver_availability' : 'driver_availability_off',
+    );
+    final subtitle = AppLocalization.get(
+      context,
+      s.isAvailable ? 'driver_available' : 'driver_unavailable',
+    );
 
-    return Material(
-      color: tone.background,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadiusDirectional.circular(AppRadius.lg),
-        side: BorderSide(color: tone.border),
-      ),
-      child: SwitchListTile(
-        contentPadding: const EdgeInsetsDirectional.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs,
+    return Semantics(
+      button: true,
+      toggled: s.isAvailable,
+      enabled: !_updatingAvailability,
+      label: title,
+      hint: AppLocalization.get(context, 'availability_tap_hint'),
+      excludeSemantics: true,
+      child: Material(
+        color: tone.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadiusDirectional.circular(AppRadius.lg),
+          side: BorderSide(color: tone.border),
         ),
-        value: s.isAvailable,
-        onChanged: _updatingAvailability
-            ? null
-            : (value) => _setAvailability(value),
-        title: Text(
-          AppLocalization.get(context, 'driver_availability'),
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: tone.foreground,
-            fontWeight: FontWeight.bold,
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          key: const Key('providerAvailabilityToggle'),
+          contentPadding: const EdgeInsetsDirectional.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
           ),
-        ),
-        subtitle: Text(
-          s.isAvailable
-              ? AppLocalization.get(context, 'driver_available')
-              : AppLocalization.get(context, 'driver_unavailable'),
-          style: theme.textTheme.bodySmall?.copyWith(color: tone.foreground),
-        ),
-        secondary: Icon(
-          s.isAvailable ? Icons.toggle_on : Icons.toggle_off,
-          color: tone.foreground,
-          size: AppSizes.iconLg,
+          leading: Icon(
+            s.isAvailable ? Icons.toggle_on : Icons.toggle_off,
+            color: tone.foreground,
+            size: AppSizes.iconLg,
+          ),
+          title: Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: tone.foreground,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                subtitle,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: tone.foreground,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                AppLocalization.get(context, 'availability_tap_hint'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: tone.foreground.withValues(alpha: 0.82),
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
+          ),
+          onTap: _updatingAvailability
+              ? null
+              : () => _setAvailability(!s.isAvailable),
         ),
       ),
     );

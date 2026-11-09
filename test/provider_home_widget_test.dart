@@ -135,7 +135,7 @@ void main() {
   }
 
   group('UX01-005 initial rendering', () {
-    testWidgets('shows greeting, tiles with counts, and availability switch', (
+    testWidgets('shows greeting, tiles with counts, and availability card', (
       tester,
     ) async {
       mockApi.statsJson = <String, dynamic>{
@@ -162,7 +162,7 @@ void main() {
       expect(mockApi.statsRequests, 1);
       // The user greeting and dashboard header are localized English text.
       expect(find.text('Ann Provider'), findsOneWidget);
-      expect(find.text('Available for orders'), findsOneWidget);
+      expect(find.text('Available to receive orders'), findsOneWidget);
 
       // The loaded stats must survive the concurrent pending/offered loads.
       // Bloc 9 runs event handlers concurrently, and a stale pre-await state
@@ -171,11 +171,12 @@ void main() {
       expect(find.text('4'), findsOneWidget);
       expect(find.text('2'), findsOneWidget);
 
-      // Availability switch reflects the loaded stats.
-      final switchTile = tester.widget<SwitchListTile>(
-        find.byType(SwitchListTile),
+      // Availability card reflects the loaded stats without a small switch.
+      expect(
+        find.byKey(const Key('providerAvailabilityToggle')),
+        findsOneWidget,
       );
-      expect(switchTile.value, isTrue);
+      expect(find.byType(SwitchListTile), findsNothing);
     });
   });
 
@@ -203,6 +204,8 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Order reception is paused'), findsOneWidget);
+        expect(find.text('Unavailable to receive orders'), findsOneWidget);
+        expect(find.byType(SwitchListTile), findsNothing);
         expect(
           find.textContaining('4 order(s) are waiting for a price offer'),
           findsOneWidget,
@@ -275,16 +278,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final switchTile = find.byType(SwitchListTile);
-      expect(switchTile, findsOneWidget);
+      final availabilityTile = find.byKey(
+        const Key('providerAvailabilityToggle'),
+      );
+      expect(availabilityTile, findsOneWidget);
 
       // Regression guard for:
       // "ListTile background color or ink splashes may be invisible."
       // The nearest structural surface must be a Material that owns the
-      // availability background, never a decorated Container. SwitchListTile
-      // builds an internal ListTile which paints its ink on that Material.
+      // availability background, never a decorated Container.
       Element? surface;
-      tester.element(switchTile).visitAncestorElements((element) {
+      tester.element(availabilityTile).visitAncestorElements((element) {
         if (element.widget is Material || element.widget is DecoratedBox) {
           surface = element;
           return false;
@@ -302,12 +306,15 @@ void main() {
       );
       expect(
         (surface!.widget as Material).color,
-        appToneStyle(tester.element(switchTile), AppTone.success).background,
+        appToneStyle(
+          tester.element(availabilityTile),
+          AppTone.success,
+        ).background,
       );
 
-      await tester.ensureVisible(switchTile);
+      await tester.ensureVisible(availabilityTile);
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.tap(switchTile);
+      await tester.tap(availabilityTile);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
@@ -335,12 +342,14 @@ void main() {
       await tester.pumpAndSettle();
       final initialStatsRequests = mockApi.statsRequests;
 
-      final switchFinder = find.byType(SwitchListTile);
-      await tester.ensureVisible(switchFinder);
+      final availabilityTile = find.byKey(
+        const Key('providerAvailabilityToggle'),
+      );
+      await tester.ensureVisible(availabilityTile);
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
       final beforeCalls = mockApi.availabilityCalls.length;
-      await tester.tap(switchFinder);
+      await tester.tap(availabilityTile);
       await tester.pumpAndSettle();
 
       // The provider service PUT becomes exactly one availability call.
@@ -475,7 +484,7 @@ void main() {
       );
       try {
         await tester.pumpAndSettle();
-        expect(find.text('Available for orders'), findsOneWidget);
+        expect(find.text('Available to receive orders'), findsOneWidget);
         expect(tester.takeException(), isNull);
       } finally {
         tester.platformDispatcher.clearAllTestValues();

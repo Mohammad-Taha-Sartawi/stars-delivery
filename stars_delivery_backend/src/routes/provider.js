@@ -111,10 +111,26 @@ router.get('/stats', async (req, res) => {
         ],
       }).distinct('orderId'),
       RejectedOrder.find({ providerId: req.userId }).distinct('orderId'),
-      RejectedOrder.countDocuments({
-        providerId: req.userId,
-        createdAt: { $lte: now },
-      }),
+      // Count only rejections whose order still exists, so deleting orders
+      // removes them from the provider's report counter too.
+      RejectedOrder.aggregate([
+        {
+          $match: {
+            providerId: new mongoose.Types.ObjectId(req.userId),
+            createdAt: { $lte: now },
+          },
+        },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: '_id',
+            as: 'order',
+          },
+        },
+        { $match: { 'order.0': { $exists: true } } },
+        { $count: 'count' },
+      ]).then((rows) => rows[0]?.count || 0),
     ]);
     const excludedIds = [...offeredIds, ...rejectedIds];
     if (excludedIds.length > 0) areaFilter._id = { $nin: excludedIds };
@@ -145,13 +161,19 @@ router.get('/stats', async (req, res) => {
       console.warn(`[SLOW] /stats took ${totalTime}ms (queries: ${dbTime}ms, count: ${countTime}ms)`);
     }
 
+    const commissionPaid = user.commissionPaid === true;
+
     res.json({
       dailyEarnings: dailyOrders.reduce((s, o) => s + (o.providerEarning || 0), 0),
       monthlyEarnings: monthlyOrders.reduce((s, o) => s + (o.providerEarning || 0), 0),
       totalSuccessful,
       dailyOrderCount,
-      dailyCommission: dailyOrders.reduce((s, o) => s + (o.platformCommission || 0), 0),
-      monthlyCommission: monthlyOrders.reduce((s, o) => s + (o.platformCommission || 0), 0),
+      dailyCommission: commissionPaid
+        ? 0
+        : dailyOrders.reduce((s, o) => s + (o.platformCommission || 0), 0),
+      monthlyCommission: commissionPaid
+        ? 0
+        : monthlyOrders.reduce((s, o) => s + (o.platformCommission || 0), 0),
       pendingOrdersCount,
       offeredOrdersCount,
       ordersReportCount,

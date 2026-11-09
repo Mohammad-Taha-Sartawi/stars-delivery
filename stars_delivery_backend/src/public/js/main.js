@@ -829,10 +829,15 @@ async function loadCommissions() {
     let rows = '';
     data.driverRows.forEach(driver => {
       const isPaid = driver.paymentStatus === 'paid';
-      const statusText = isPaid ? '<span class="status-paid">مدفوع</span>' : `<span class="status-unpaid">غير مدفوع (${escapeHtml(driver.commission)} )</span>`;
-      const actionHtml = !isPaid ?
+      const hasDue = Number(driver.commission) > 0;
+      const statusText = hasDue
+        ? `<span class="status-unpaid">غير مدفوع (${escapeHtml(driver.commission)} )</span>`
+        : isPaid
+          ? '<span class="status-paid">مدفوع</span>'
+          : '<span class="status-paid">لا توجد مستحقات</span>';
+      const actionHtml = hasDue ?
         `<button class="action-btn pay-now" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="markPaid" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}" data-presentation="p020">تحديد كمدفوع</button>` :
-        '<span data-presentation="p021">مدفوع</span>';
+        '<span data-presentation="p021">—</span>';
       rows += `<tr><td><strong>${escapeHtml(driver.name)}</strong><br><small data-presentation="p008">${escapeHtml(driver.driverId)}</small></td><td>${escapeHtml(driver.phone || 'غير متوفر')}</td><td>${escapeHtml(driver.serviceType)}</td><td>${escapeHtml(driver.commission)}</td><td>${statusText}</td><td>${actionHtml}</td></tr>`;
     });
 

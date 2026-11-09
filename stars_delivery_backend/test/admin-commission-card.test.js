@@ -83,7 +83,8 @@ test('pending payout card uses clear wording and real unpaid commissions', () =>
 
   // The card now reflects unpaid driver commissions, not blocked users or
   // pending order prices.
-  assert.match(adminApi, /provider\.commissionPaid': \{ \$ne: true \}/);
+  assert.match(adminApi, /provider\.commissionPaidAt/);
+  assert.match(adminApi, /\$expr: \{ \$gt: \['\$dueAt', '\$cutoff'\] \}/);
   assert.match(adminApi, /unpaid: \{ \$sum: '\$platformCommission' \}/);
   assert.match(adminApi, /unpaid: \{ \$gt: 0 \}/);
   assert.doesNotMatch(adminApi, /pendingDrivers: totalBlocked/);
@@ -117,6 +118,7 @@ test('paying dues is available from the dashboard card and driver details', () =
   // Driver search reports the real payment status.
   assert.match(
     adminDrivers,
-    /paymentStatus: match\.commissionPaid === true \? 'paid' : 'unpaid'/,
+    /splitCommission\(\s*orders,\s*match,?\s*\)/,
   );
+  assert.match(adminDrivers, /paymentStatus: unpaidCommission > 0/);
 });

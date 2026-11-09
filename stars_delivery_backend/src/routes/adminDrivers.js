@@ -11,6 +11,7 @@ const {
 } = require('../services/providerDocumentStorage');
 const { executeTransaction } = require('../services/transaction');
 const { serviceTypesFromAdminLabel, serviceTypesLabel } = require('../services/providerServiceTypes');
+const { splitCommission } = require('../services/commissionLedger');
 const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
 const express = require('express');
 const router = express.Router();
@@ -200,7 +201,11 @@ router.get('/search', async (req, res) => {
     }).lean();
     const orderCount = orders.length;
     const netProfit = orders.reduce((s, o) => s + (o.providerEarning || 0), 0);
-    const totalCommission = orders.reduce((s, o) => s + (o.platformCommission || 0), 0);
+    const { unpaid: unpaidCommission, paid: paidCommission } = splitCommission(
+      orders,
+      match,
+    );
+    const totalCommission = unpaidCommission + paidCommission;
 
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const recentOrders = orders.filter(o => new Date(o.createdAt) >= thirtyDaysAgo);
@@ -225,7 +230,9 @@ router.get('/search', async (req, res) => {
       area: match.area || 'غير محدد',
       status: match.status === 'blocked' ? 'inactive' : match.status,
       financial: {
-        paymentStatus: match.commissionPaid === true ? 'paid' : 'unpaid',
+        paymentStatus: unpaidCommission > 0
+          ? 'unpaid'
+          : (paidCommission > 0 ? 'paid' : 'unpaid'),
         transactions: orders.map(o => ({
           id: o._id.toString(),
           desc: `طلب #${o._id.toString().slice(-8)}`,
@@ -235,7 +242,15 @@ router.get('/search', async (req, res) => {
       }
     };
 
-    res.json({ driver, orderCount, commission: totalCommission, netProfit, last30Profit, totalCommission });
+    res.json({
+      driver,
+      orderCount,
+      commission: unpaidCommission,
+      paidCommission,
+      netProfit,
+      last30Profit,
+      totalCommission,
+    });
   } catch (err) {
     sendInternalServerError(res);
   }

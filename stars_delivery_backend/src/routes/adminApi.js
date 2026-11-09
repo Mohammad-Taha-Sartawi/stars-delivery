@@ -38,6 +38,10 @@ router.get('/stats', async (req, res) => {
     const totalCommission = commissionAgg[0]?.total || 0;
 
     // Drivers who still have unpaid platform commission and the amount due.
+    // Commission accrued after the driver's last payment timestamp is unpaid;
+    // legacy commissionPaid accounts without a timestamp are fully settled.
+    const legacyPaidCutoff = new Date('9999-12-31T23:59:59.999Z');
+    const noPaymentCutoff = new Date(0);
     const unpaidCommissionAgg = await Order.aggregate([
       {
         $match: {
@@ -46,27 +50,46 @@ router.get('/stats', async (req, res) => {
         },
       },
       {
+        $lookup: {
+          from: 'users',
+          localField: 'providerId',
+          foreignField: '_id',
+          as: 'provider',
+        },
+      },
+      { $unwind: '$provider' },
+      { $match: { 'provider.role': 'provider' } },
+      {
+        $addFields: {
+          dueAt: { $ifNull: ['$acceptedAt', '$createdAt'] },
+          cutoff: {
+            $cond: [
+              {
+                $ne: [
+                  { $ifNull: ['$provider.commissionPaidAt', null] },
+                  null,
+                ],
+              },
+              '$provider.commissionPaidAt',
+              {
+                $cond: [
+                  { $eq: ['$provider.commissionPaid', true] },
+                  legacyPaidCutoff,
+                  noPaymentCutoff,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      { $match: { $expr: { $gt: ['$dueAt', '$cutoff'] } } },
+      {
         $group: {
           _id: '$providerId',
           unpaid: { $sum: '$platformCommission' },
         },
       },
       { $match: { unpaid: { $gt: 0 } } },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'provider',
-        },
-      },
-      { $unwind: '$provider' },
-      {
-        $match: {
-          'provider.role': 'provider',
-          'provider.commissionPaid': { $ne: true },
-        },
-      },
       {
         $group: {
           _id: null,

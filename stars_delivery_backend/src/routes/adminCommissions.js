@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Order = require('../models/Order');
+const { splitCommission } = require('../services/commissionLedger');
 
 router.get('/', async (req, res) => {
   try {
@@ -15,12 +16,17 @@ router.get('/', async (req, res) => {
         providerId: driver._id,
         status: { $in: ['accepted', 'fulfilling', 'completed'] },
       }).lean();
-      const totalCommission = orders.reduce((s, o) => s + (o.platformCommission || 0), 0);
+      const { unpaid, paid } = splitCommission(orders, driver);
       const totalEarnings = orders.reduce((s, o) => s + (o.providerEarning || 0), 0);
 
-      const isPaid = driver.commissionPaid === true;
-      if (isPaid) { totalPaid += totalCommission; paidDrivers++; }
-      else { totalUnpaid += totalCommission; unpaidDrivers++; }
+      if (unpaid > 0) {
+        totalUnpaid += unpaid;
+        unpaidDrivers++;
+      }
+      if (paid > 0) {
+        totalPaid += paid;
+        paidDrivers++;
+      }
 
       driverRows.push({
         _id: driver._id.toString(),
@@ -28,9 +34,10 @@ router.get('/', async (req, res) => {
         name: driver.fullName || driver.name,
         phone: driver.phone,
         serviceType: 'توصيل',
-        commission: totalCommission,
+        commission: unpaid,
+        paidCommission: paid,
         earnings: totalEarnings,
-        paymentStatus: isPaid ? 'paid' : 'unpaid'
+        paymentStatus: unpaid > 0 ? 'unpaid' : (paid > 0 ? 'paid' : 'unpaid')
       });
     }
 
@@ -46,6 +53,7 @@ router.put('/pay/:id', async (req, res) => {
     const driver = await User.findById(req.params.id);
     if (!driver || driver.role !== 'provider') return res.json({ success: false, message: 'السائق غير موجود' });
     driver.commissionPaid = true;
+    driver.commissionPaidAt = new Date();
     await driver.save();
     res.json({ success: true, message: `تم تحديث حالة السائق (${driver.fullName}) إلى مدفوع` });
   } catch (err) {

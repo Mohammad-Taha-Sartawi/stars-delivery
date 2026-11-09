@@ -9,6 +9,7 @@ const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
 const { normalizeServiceTypes } = require('../services/providerServiceTypes');
+const { splitCommission } = require('../services/commissionLedger');
 
 const router = express.Router();
 router.use(auth, requireRole('provider'));
@@ -161,19 +162,19 @@ router.get('/stats', async (req, res) => {
       console.warn(`[SLOW] /stats took ${totalTime}ms (queries: ${dbTime}ms, count: ${countTime}ms)`);
     }
 
-    const commissionPaid = user.commissionPaid === true;
+    const { unpaid: dailyCommissionDue } = splitCommission(dailyOrders, user);
+    const { unpaid: monthlyCommissionDue } = splitCommission(
+      monthlyOrders,
+      user,
+    );
 
     res.json({
       dailyEarnings: dailyOrders.reduce((s, o) => s + (o.providerEarning || 0), 0),
       monthlyEarnings: monthlyOrders.reduce((s, o) => s + (o.providerEarning || 0), 0),
       totalSuccessful,
       dailyOrderCount,
-      dailyCommission: commissionPaid
-        ? 0
-        : dailyOrders.reduce((s, o) => s + (o.platformCommission || 0), 0),
-      monthlyCommission: commissionPaid
-        ? 0
-        : monthlyOrders.reduce((s, o) => s + (o.platformCommission || 0), 0),
+      dailyCommission: dailyCommissionDue,
+      monthlyCommission: monthlyCommissionDue,
       pendingOrdersCount,
       offeredOrdersCount,
       ordersReportCount,

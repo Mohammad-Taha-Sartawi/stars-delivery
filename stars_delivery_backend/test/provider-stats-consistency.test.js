@@ -12,9 +12,10 @@ function source(file) {
 test('provider stats stop showing due commission after payment', () => {
   const provider = source('src/routes/provider.js');
 
-  assert.match(provider, /const commissionPaid = user\.commissionPaid === true;/);
-  assert.match(provider, /dailyCommission: commissionPaid\s*\? 0/);
-  assert.match(provider, /monthlyCommission: commissionPaid\s*\? 0/);
+  assert.match(provider, /splitCommission\(dailyOrders,\s*user\)/);
+  assert.match(provider, /splitCommission\(\s*monthlyOrders,\s*user,?\s*\)/);
+  assert.match(provider, /dailyCommission: dailyCommissionDue/);
+  assert.match(provider, /monthlyCommission: monthlyCommissionDue/);
 });
 
 test('provider report counter ignores rejections whose order was deleted', () => {

@@ -32,7 +32,7 @@ const Offer = require('../models/Offer');
 const Notification = require('../models/Notification');
 const PendingProvider = require('../models/PendingProvider');
 const CommissionPayment = require('../models/CommissionPayment');
-const { generatePublicId, isValidPublicId } = require('../utils/publicId');
+const { generatePublicId, isValidAdminPublicId } = require('../utils/publicId');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
   MAX_MOBILE_PASSWORD_LENGTH,
@@ -345,6 +345,7 @@ router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
       driverLicenseType,
       driverGovernorate,
       driverArea,
+      driverCustomId,
       driverPassword,
       driverPasswordConfirm,
     } = req.body;
@@ -452,6 +453,31 @@ router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
       }
     }
 
+    const requestedPublicId = String(driverCustomId || '').trim();
+
+    if (
+      requestedPublicId
+      && !isValidAdminPublicId(requestedPublicId)
+    ) {
+      return res.json({
+        success: false,
+        message: 'ID السائق يجب أن يتكون من أرقام فقط.',
+      });
+    }
+
+    if (requestedPublicId) {
+      const idExists = await User.exists({
+        publicId: requestedPublicId,
+      });
+
+      if (idExists) {
+        return res.json({
+          success: false,
+          message: 'ID السائق مستخدم بالفعل.',
+        });
+      }
+    }
+
     const hashedPassword =
       await bcrypt.hash(
         password,
@@ -459,7 +485,7 @@ router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
       );
 
     const publicId =
-      await generatePublicId();
+      requestedPublicId || await generatePublicId();
 
     const user =
       new User({
@@ -495,6 +521,12 @@ router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
   } catch (err) {
     if (providerDocuments.length > 0) {
       await deleteProviderDocuments(providerDocuments).catch(() => {});
+    }
+    if (err?.code === 11000) {
+      return res.json({
+        success: false,
+        message: 'ID السائق أو البريد الإلكتروني مستخدم بالفعل.',
+      });
     }
     sendInternalServerFailure(res);
   }
@@ -600,11 +632,10 @@ router.put('/:id/profile', async (req, res) => {
       });
     }
 
-    if (!isValidPublicId(publicId)) {
+    if (!isValidAdminPublicId(publicId)) {
       return res.json({
         success: false,
-        message:
-          'ID السائق يجب أن يكون أرقاماً فقط بحد أقصى 12 رقماً، وألا يكون متكرراً أو نمطياً.',
+        message: 'ID السائق يجب أن يتكون من أرقام فقط.',
       });
     }
 

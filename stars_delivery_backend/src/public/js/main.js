@@ -511,6 +511,10 @@ async function addNewDriver() {
     payload.append('driverEmail', email);
     payload.append('driverPhone', phone);
     payload.append(
+      'driverCustomId',
+      String(formData.get('driverCustomId') || '').trim(),
+    );
+    payload.append(
       'driverServiceType',
       String(formData.get('driverServiceType') || ''),
     );

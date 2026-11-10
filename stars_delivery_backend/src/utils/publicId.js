@@ -67,6 +67,11 @@ function isValidPublicId(value) {
   return !isSpecialPublicId(id);
 }
 
+function isValidAdminPublicId(value) {
+  const id = String(value ?? '').trim();
+  return /^\d{1,50}$/.test(id);
+}
+
 function randomPublicId() {
   const length =
     GENERATED_MIN_LENGTH
@@ -98,6 +103,7 @@ module.exports = {
   GENERATED_MIN_LENGTH,
   isSpecialPublicId,
   isValidPublicId,
+  isValidAdminPublicId,
   randomPublicId,
   generatePublicId,
 };

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   isValidPublicId,
+  isValidAdminPublicId,
   isSpecialPublicId,
   randomPublicId,
   MAX_PUBLIC_ID_LENGTH,
@@ -23,6 +24,16 @@ test('public IDs follow the numeric and uniqueness-safe format rules', () => {
   assert.equal(isValidPublicId('1234567890123'), false);
   assert.equal(isValidPublicId('12A456'), false);
   assert.equal(isSpecialPublicId('482915730164'), false);
+});
+
+test('admin dashboard may assign special, repeated, and leading-zero IDs', () => {
+  assert.equal(isValidAdminPublicId('1'), true);
+  assert.equal(isValidAdminPublicId('111111'), true);
+  assert.equal(isValidAdminPublicId('123456'), true);
+  assert.equal(isValidAdminPublicId('000001'), true);
+  assert.equal(isValidAdminPublicId('9'.repeat(50)), true);
+  assert.equal(isValidAdminPublicId('12A456'), false);
+  assert.equal(isValidAdminPublicId(''), false);
 });
 
 test('generated public IDs are random numeric IDs up to twelve digits', () => {

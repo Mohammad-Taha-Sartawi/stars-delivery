@@ -18,6 +18,8 @@ test('admin can update every driver profile field', () => {
   assert.match(route, /phoneNumbers:\s*\[\{\s*number:\s*phone,\s*primary:\s*true\s*\}\]/s);
   assert.match(route, /isValidAreaForGovernorate/);
   assert.match(route, /normalizeServiceTypes/);
+  assert.match(route, /isValidAdminPublicId/);
+  assert.match(route, /driverCustomId/);
   assert.match(route, /commissionDue/);
   assert.match(route, /commissionAdjustment/);
   assert.match(route, /licenseNotAvailable/);

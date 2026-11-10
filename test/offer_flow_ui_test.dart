@@ -22,6 +22,30 @@ void main() {
     );
   });
 
+  test('customer offers screen shows the driver rating summary', () {
+    final screen = File(
+      'lib/screens/order_offers_screen.dart',
+    ).readAsStringSync();
+    final model = File('lib/models/offer_model.dart').readAsStringSync();
+    final localization = File(
+      'lib/services/localization_service.dart',
+    ).readAsStringSync();
+
+    expect(screen, contains('_buildProviderRating'));
+    expect(screen, contains("'rating_average'"));
+    expect(screen, contains("'positive_ratings_count'"));
+    expect(screen, contains('providerRatingAverage'));
+    expect(screen, contains('providerPositiveRatingCount'));
+
+    expect(model, contains('providerRatingAverage'));
+    expect(model, contains('providerRatingCount'));
+    expect(model, contains('providerPositiveRatingCount'));
+    expect(model, contains("json['providerRating']"));
+
+    expect(localization, contains("'rating_average'"));
+    expect(localization, contains("'positive_ratings_count'"));
+  });
+
   test(
     'offer submission treats duplicate submissions as already submitted',
     () {

@@ -41,6 +41,16 @@ test('provider stats expose the average rating and count', () => {
   assert.match(provider, /ratingStars/);
 });
 
+test('customer offer cards receive provider rating summary and positive count', () => {
+  const offers = source('src/routes/offers.js');
+
+  assert.match(offers, /Rating\.aggregate/);
+  assert.match(offers, /providerRating/);
+  assert.match(offers, /positiveCount/);
+  assert.match(offers, /providerIds/);
+  assert.match(offers, /\$gte:\s*\['\$rating',\s*4\]/);
+});
+
 test('rating notifications are persisted and indexed at startup', () => {
   const notification = source('src/models/Notification.js');
   const index = source('src/index.js');

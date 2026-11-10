@@ -276,6 +276,11 @@ class AppLocalization {
     'no_ratings_yet': {'ar': 'لا توجد تقييمات بعد', 'en': 'No ratings yet'},
     'rating_count': {'ar': '%d تقييم', 'en': '%d ratings'},
     'rating_stars_total': {'ar': '%d نجمة', 'en': '%d stars'},
+    'rating_average': {'ar': '%s من 5', 'en': '%s out of 5'},
+    'positive_ratings_count': {
+      'ar': 'أعجب به %d زبون',
+      'en': '%d customers liked the service',
+    },
     'rating_prompt_title': {
       'ar': 'كيف ترى أداء هذا السائق؟',
       'en': "How was this driver's performance?",

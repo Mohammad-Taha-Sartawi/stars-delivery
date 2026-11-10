@@ -18,6 +18,9 @@ class OfferModel {
   final String providerArea;
   final String providerCity;
   final String providerGovernorate;
+  final double providerRatingAverage;
+  final int providerRatingCount;
+  final int providerPositiveRatingCount;
 
   OfferModel({
     required this.id,
@@ -39,12 +42,17 @@ class OfferModel {
     this.providerArea = '',
     this.providerCity = '',
     this.providerGovernorate = '',
+    this.providerRatingAverage = 0,
+    this.providerRatingCount = 0,
+    this.providerPositiveRatingCount = 0,
   });
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
     final p = json['providerId'];
     final o = json['orderId'];
     final provider = p is Map ? p : const {};
+    final rating = json['providerRating'];
+    final providerRating = rating is Map ? rating : const {};
     return OfferModel(
       id: json['_id']?.toString() ?? '',
       orderId: json['orderId']?.toString() ?? '',
@@ -67,6 +75,11 @@ class OfferModel {
       providerGovernorate:
           (json['providerGovernorate'] ?? provider['governorate'] ?? '')
               .toString(),
+      providerRatingAverage:
+          (providerRating['average'] as num?)?.toDouble() ?? 0,
+      providerRatingCount: (providerRating['count'] as num?)?.toInt() ?? 0,
+      providerPositiveRatingCount:
+          (providerRating['positiveCount'] as num?)?.toInt() ?? 0,
     );
   }
 }

@@ -561,6 +561,8 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                             ),
                                           ],
                                         ),
+                                        const SizedBox(height: 8),
+                                        _buildProviderRating(context, o),
                                         if (o.outsideArea) ...[
                                           const SizedBox(height: 10),
                                           _buildOutsideAreaNotice(context, o),
@@ -729,6 +731,95 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProviderRating(BuildContext context, OfferModel offer) {
+    final scheme = Theme.of(context).colorScheme;
+    final count = offer.providerRatingCount;
+    final average = offer.providerRatingAverage;
+    final stars = <Widget>[];
+
+    if (count > 0) {
+      for (var index = 0; index < 5; index += 1) {
+        final filled = average >= index + 1;
+        final half = !filled && average >= index + 0.5;
+
+        stars.add(
+          Icon(
+            filled
+                ? Icons.star_rounded
+                : half
+                ? Icons.star_half_rounded
+                : Icons.star_border_rounded,
+            size: 16,
+            color: filled || half
+                ? const Color(0xFFFFB300)
+                : scheme.outlineVariant,
+          ),
+        );
+      }
+    } else {
+      stars.add(
+        Icon(
+          Icons.star_border_rounded,
+          size: 16,
+          color: scheme.onSurfaceVariant,
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(mainAxisSize: MainAxisSize.min, children: stars),
+          if (count > 0) ...[
+            Text(
+              AppLocalization.get(
+                context,
+                'rating_average',
+              ).replaceAll('%s', average.toStringAsFixed(1)),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
+            ),
+            Text(
+              AppLocalization.get(
+                context,
+                'rating_count',
+              ).replaceAll('%d', '$count'),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+            if (offer.providerPositiveRatingCount > 0)
+              Text(
+                AppLocalization.get(
+                  context,
+                  'positive_ratings_count',
+                ).replaceAll('%d', '${offer.providerPositiveRatingCount}'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: appToneStyle(context, AppTone.success).foreground,
+                ),
+              ),
+          ] else
+            Text(
+              AppLocalization.get(context, 'no_ratings_yet'),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const Offer = require('../models/Offer');
 const Order = require('../models/Order');
+const Rating = require('../models/Rating');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
@@ -201,11 +202,53 @@ router.get('/order/:orderId', auth, requireRole('customer'), async (req, res) =>
       .sort({ createdAt: -1 })
       .lean();
 
+    const providerIds = offers
+      .map((offer) => offer.providerId?._id)
+      .filter(Boolean);
+
+    const ratingRows = providerIds.length > 0
+      ? await Rating.aggregate([
+          {
+            $match: {
+              providerId: { $in: providerIds },
+            },
+          },
+          {
+            $group: {
+              _id: '$providerId',
+              count: { $sum: 1 },
+              stars: { $sum: '$rating' },
+              positiveCount: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$rating', 4] },
+                    1,
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ])
+      : [];
+
+    const ratingByProvider = new Map(
+      ratingRows.map((row) => [
+        row._id.toString(),
+        row,
+      ]),
+    );
+
     const orderArea = (order.area || '').trim();
     res.json(offers.map((offer) => {
       const provider = offer.providerId || {};
       const providerArea = (provider.area || '').trim();
       const providerLocation = resolveRegistrationLocation(provider);
+      const rating = ratingByProvider.get(
+        provider._id?.toString() || '',
+      ) || {};
+      const ratingCount = rating.count || 0;
+      const ratingStars = rating.stars || 0;
 
       return {
         ...offer,
@@ -217,6 +260,14 @@ router.get('/order/:orderId', auth, requireRole('customer'), async (req, res) =>
         providerArea,
         providerCity: providerLocation.city,
         providerGovernorate: providerLocation.governorate,
+        providerRating: {
+          average: ratingCount > 0
+            ? Math.round((ratingStars / ratingCount) * 10) / 10
+            : 0,
+          count: ratingCount,
+          positiveCount: rating.positiveCount || 0,
+          stars: ratingStars,
+        },
       };
     }));
   } catch (err) {

@@ -259,6 +259,8 @@ const adminActionHandlers = Object.freeze({
   resetDriverCommission,
   openChat,
   openDriverReports,
+  openEditDriver,
+  closeDriverEdit,
   openListModal,
   openOrderDetails,
   selectDriverFromList,
@@ -606,6 +608,206 @@ async function searchDriver() {
   }
 }
 
+async function ensureAdminAreasLoaded() {
+  if (Object.keys(adminAreasByGovernorate).length > 0) return;
+  await loadAreasForDropdown();
+}
+
+function fillEditGovernorateSelect(selected) {
+  const select = document.getElementById('driverEditGovernorate');
+  if (!select) return;
+  select.innerHTML = '<option value="">اختر المحافظة...</option>';
+  Object.keys(adminAreasByGovernorate).sort().forEach((governorate) => {
+    const option = document.createElement('option');
+    option.value = governorate;
+    option.textContent = governorate;
+    select.appendChild(option);
+  });
+  select.value = selected || '';
+}
+
+function fillEditAreaSelect(governorate, selected) {
+  const select = document.getElementById('driverEditArea');
+  if (!select) return;
+  select.innerHTML = '<option value="">اختر القرية أو المدينة...</option>';
+
+  if (!governorate) {
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+  const itself = document.createElement('option');
+  itself.value = governorate;
+  itself.textContent = `من ${governorate} نفسها`;
+  select.appendChild(itself);
+
+  for (const city of adminAreasByGovernorate[governorate] || []) {
+    const option = document.createElement('option');
+    option.value = city;
+    option.textContent = city;
+    select.appendChild(option);
+  }
+
+  if (
+    selected
+    && ![...select.options].some((option) => option.value === selected)
+  ) {
+    const current = document.createElement('option');
+    current.value = selected;
+    current.textContent = selected;
+    select.appendChild(current);
+  }
+
+  select.value = selected || '';
+}
+
+async function openEditDriver(driverId) {
+  try {
+    const res = await adminFetch(
+      `/admin/drivers/search?id=${encodeURIComponent(driverId)}`,
+    );
+    const data = await res.json();
+    if (data.error || !data.driver) {
+      alert(data.error || 'تعذر تحميل بيانات السائق.');
+      return;
+    }
+
+    await ensureAdminAreasLoaded();
+    const driver = data.driver;
+
+    document.getElementById('driverEditId').value = driver._id;
+    document.getElementById('driverEditSub').textContent =
+      `${driver.name} — ${driver.driverId}`;
+    document.getElementById('driverEditName').value = driver.name || '';
+    document.getElementById('driverEditEmail').value = driver.email || '';
+    document.getElementById('driverEditPhone').value = driver.phone || '';
+    document.getElementById('driverEditPublicId').value = driver.publicId || '';
+    document.getElementById('driverEditLicenseType').value =
+      driver.licenseType === 'غير محدد' ? '' : (driver.licenseType || '');
+    document.getElementById('driverEditStatus').value =
+      ['active', 'inactive', 'blocked'].includes(driver.status)
+        ? driver.status
+        : 'active';
+    document.getElementById('driverEditLicenseNotAvailable').checked =
+      driver.licenseNotAvailable === true;
+    document.getElementById('driverEditAvailable').checked =
+      driver.isAvailable !== false;
+    document.getElementById('driverEditGovernorateLevel').checked =
+      driver.governorateLevel === true;
+
+    const serviceTypes = Array.isArray(driver.serviceTypes)
+      ? driver.serviceTypes
+      : [];
+    document.getElementById('driverEditServiceProduct').checked =
+      serviceTypes.includes('product');
+    document.getElementById('driverEditServicePeople').checked =
+      serviceTypes.includes('people');
+    document.getElementById('driverEditServiceGoods').checked =
+      serviceTypes.includes('goods');
+
+    fillEditGovernorateSelect(driver.governorate || '');
+    fillEditAreaSelect(
+      driver.governorate || '',
+      driver.area === 'غير محدد' ? '' : (driver.area || ''),
+    );
+
+    const msg = document.getElementById('driverEditMsg');
+    msg.textContent = '';
+    msg.className = 'msg';
+    document.getElementById('driverEditModal').classList.add('show');
+  } catch (err) {
+    alert('تعذر تحميل بيانات السائق.');
+  }
+}
+
+function closeDriverEdit() {
+  document.getElementById('driverEditModal').classList.remove('show');
+}
+
+async function saveDriverEdits(event) {
+  event.preventDefault();
+  const id = document.getElementById('driverEditId').value;
+  const msg = document.getElementById('driverEditMsg');
+  const serviceTypes = [];
+  if (document.getElementById('driverEditServiceProduct').checked) {
+    serviceTypes.push('product');
+  }
+  if (document.getElementById('driverEditServicePeople').checked) {
+    serviceTypes.push('people');
+  }
+  if (document.getElementById('driverEditServiceGoods').checked) {
+    serviceTypes.push('goods');
+  }
+
+  const payload = {
+    fullName: document.getElementById('driverEditName').value.trim(),
+    email: document.getElementById('driverEditEmail').value.trim(),
+    phone: document.getElementById('driverEditPhone').value.trim(),
+    publicId: document.getElementById('driverEditPublicId').value.trim(),
+    governorate: document.getElementById('driverEditGovernorate').value,
+    area: document.getElementById('driverEditArea').value,
+    status: document.getElementById('driverEditStatus').value,
+    licenseType: document.getElementById('driverEditLicenseType').value.trim(),
+    licenseNotAvailable:
+      document.getElementById('driverEditLicenseNotAvailable').checked,
+    isAvailable: document.getElementById('driverEditAvailable').checked,
+    governorateLevel:
+      document.getElementById('driverEditGovernorateLevel').checked,
+    serviceTypes,
+  };
+
+  try {
+    const res = await adminFetch(
+      `/admin/drivers/${encodeURIComponent(id)}/profile`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+    );
+    const data = await res.json();
+
+    if (!data.success) {
+      msg.textContent = data.message || 'تعذر حفظ التعديلات.';
+      msg.className = 'msg error';
+      return;
+    }
+
+    msg.textContent = data.message || 'تم تحديث بيانات السائق بنجاح.';
+    msg.className = 'msg success';
+
+    setTimeout(() => {
+      closeDriverEdit();
+      searchDriverById(id);
+      loadDriversList();
+      loadDashboardStats();
+    }, 600);
+  } catch (err) {
+    msg.textContent = 'تعذر حفظ التعديلات.';
+    msg.className = 'msg error';
+  }
+}
+
+const driverEditGovernorate = document.getElementById('driverEditGovernorate');
+if (driverEditGovernorate) {
+  driverEditGovernorate.addEventListener('change', () => {
+    fillEditAreaSelect(driverEditGovernorate.value, '');
+  });
+}
+
+const driverEditForm = document.getElementById('driverEditForm');
+if (driverEditForm) {
+  driverEditForm.addEventListener('submit', saveDriverEdits);
+}
+
+const driverEditModal = document.getElementById('driverEditModal');
+if (driverEditModal) {
+  driverEditModal.addEventListener('click', function (event) {
+    if (event.target === this) closeDriverEdit();
+  });
+}
+
 function renderDriverResultFromDB(data) {
   const {
     driver,
@@ -647,6 +849,7 @@ function renderDriverResultFromDB(data) {
     <div class="row"><span class="label">أرباح آخر 30 يوم (صافي)</span><span class="value" data-presentation="p018">${escapeHtml(last30Profit)} </div>
     <div class="row"><span class="label">عمولة المنصة المستحقة</span><span class="value" data-presentation="p019">${escapeHtml(commission)} </div>
     <div class="action-buttons">
+      <button class="action-btn change-password" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openEditDriver" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تعديل بيانات السائق</button>
       <button class="action-btn chat" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openChat" data-admin-arg-count="2" data-admin-arg-1="driver" data-admin-arg-2="${escapeHtml(String(driver._id))}">مراسلة</button>
       <button class="action-btn report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="viewDriverOrdersViaDB" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تقرير الطلبات</button>
       <button class="action-btn orders-report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openDriverReports" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(driver._id))}">تقرير رفض وتسليم الطلبات</button>

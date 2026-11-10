@@ -67,6 +67,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   StreamSubscription? _socketConnectedSub;
   StreamSubscription? _offerAcceptedSub;
   StreamSubscription? _offerNotSelectedSub;
+  StreamSubscription? _providerProfileUpdatedSub;
   StreamSubscription? _deliveryResultSub;
   StreamSubscription? _broadcastSub;
   StreamSubscription? _accountDeletedSub;
@@ -285,6 +286,35 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       }
     });
 
+    _providerProfileUpdatedSub = SocketService.instance.onProviderProfileUpdated
+        .listen((data) {
+          if (!mounted) return;
+
+          final rawUser = data['user'];
+          if (rawUser is Map) {
+            final updated = UserModel.fromJson(
+              Map<String, dynamic>.from(rawUser),
+            );
+            setState(() {
+              _user = updated;
+              _governorateLevel = updated.governorateLevel;
+            });
+          }
+
+          context.read<ProviderBloc>().add(
+            LoadProviderStats(token: widget.token),
+          );
+          context.read<ProviderBloc>().add(
+            LoadPendingOrders(token: widget.token),
+          );
+          context.read<ProviderBloc>().add(
+            LoadOfferedOrders(token: widget.token),
+          );
+          context.read<NotificationBloc>().add(
+            LoadNotifications(token: widget.token),
+          );
+        });
+
     _deliveryResultSub = SocketService.instance.onDeliveryConfirmationResult
         .listen((data) {
           if (!mounted) return;
@@ -412,6 +442,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     _socketConnectedSub?.cancel();
     _offerAcceptedSub?.cancel();
     _offerNotSelectedSub?.cancel();
+    _providerProfileUpdatedSub?.cancel();
     _deliveryResultSub?.cancel();
     _broadcastSub?.cancel();
     _accountDeletedSub?.cancel();
@@ -559,8 +590,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                   radius: AppSizes.avatarSm / 2,
                   backgroundColor: scheme.secondaryContainer,
                   child: Text(
-                    widget.user.fullName.isNotEmpty
-                        ? widget.user.fullName[0].toUpperCase()
+                    _user.fullName.isNotEmpty
+                        ? _user.fullName[0].toUpperCase()
                         : 'P',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: scheme.onSecondaryContainer,
@@ -571,7 +602,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                 const SizedBox(width: AppSpacing.sm),
                 Flexible(
                   child: Text(
-                    widget.user.fullName,
+                    _user.fullName,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium,
                   ),

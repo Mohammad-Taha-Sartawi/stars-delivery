@@ -12,7 +12,7 @@ const {
   providerDocumentDownloadName,
 } = require('../services/providerDocumentStorage');
 const { executeTransaction } = require('../services/transaction');
-const { serviceTypesFromAdminLabel, serviceTypesLabel } = require('../services/providerServiceTypes');
+const { serviceTypesFromAdminLabel, normalizeServiceTypes, serviceTypesLabel } = require('../services/providerServiceTypes');
 const { splitCommission } = require('../services/commissionLedger');
 const { notAcceptedOrderIds } = require('../services/driverOrderStats');
 const {
@@ -42,7 +42,12 @@ const {
 } = require('../security/passwordPolicy');
 const {
   mobileSessionRotationFilter,
+  publicMobileUser,
 } = require('../services/mobileSession');
+const {
+  normalizeMobileEmail,
+  isValidMobileEmail,
+} = require('../security/mobileEmail');
 
 const upload = multer();
 
@@ -290,7 +295,9 @@ router.get('/search', async (req, res) => {
       area: match.area || 'غير محدد',
       governorate: location.governorate,
       city: location.city,
-      status: match.status === 'blocked' ? 'inactive' : match.status,
+      governorateLevel: match.governorateLevel === true,
+      publicId: match.publicId || '',
+      status: match.status || '',
       financial: {
         paymentStatus,
         payments: commissionPayments.map((payment) => ({
@@ -486,6 +493,215 @@ router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
   } catch (err) {
     if (providerDocuments.length > 0) {
       await deleteProviderDocuments(providerDocuments).catch(() => {});
+    }
+    sendInternalServerFailure(res);
+  }
+});
+
+router.put('/:id/profile', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({
+        success: false,
+        message: 'السائق غير موجود',
+      });
+    }
+
+    const driver = await User.findById(req.params.id);
+
+    if (!driver || driver.role !== 'provider' || driver.deleted === true) {
+      return res.status(404).json({
+        success: false,
+        message: 'السائق غير موجود',
+      });
+    }
+
+    const body = req.body || {};
+    const fullName = String(body.fullName || body.name || '').trim();
+    const email = normalizeMobileEmail(body.email);
+    const phone = String(body.phone || '').trim();
+    const requestedGovernorate = String(body.governorate || '').trim();
+    const requestedArea = String(body.area || '').trim();
+    const governorate =
+      canonicalGovernorate(requestedGovernorate)
+      || canonicalGovernorate(requestedArea);
+
+    if (fullName.length < 2 || fullName.length > 120) {
+      return res.json({
+        success: false,
+        message: 'اسم السائق يجب أن يكون بين حرفين و120 حرفاً.',
+      });
+    }
+
+    if (!isValidMobileEmail(email)) {
+      return res.json({
+        success: false,
+        message: 'البريد الإلكتروني غير صالح.',
+      });
+    }
+
+    if (phone.length < 6 || phone.length > 30) {
+      return res.json({
+        success: false,
+        message: 'رقم الجوال غير صالح.',
+      });
+    }
+
+    if (
+      !governorate
+      || !requestedArea
+      || !isValidAreaForGovernorate(governorate, requestedArea)
+    ) {
+      return res.json({
+        success: false,
+        message: 'المحافظة أو القرية/المدينة غير صالحة.',
+      });
+    }
+
+    const serviceTypes = body.serviceTypes === undefined
+      ? (driver.serviceTypes || [])
+      : normalizeServiceTypes(body.serviceTypes);
+
+    const licenseType = String(
+      body.licenseType ?? driver.licenseType ?? '',
+    ).trim().slice(0, 120);
+
+    const licenseNotAvailable =
+      body.licenseNotAvailable === true
+      || body.licenseNotAvailable === 'true';
+
+    const isAvailableRequested =
+      body.isAvailable === undefined
+        ? driver.isAvailable !== false
+        : body.isAvailable === true || body.isAvailable === 'true';
+
+    const status =
+      ['active', 'blocked', 'inactive'].includes(body.status)
+        ? body.status
+        : driver.status;
+
+    const governorateLevel =
+      body.governorateLevel === undefined
+        ? driver.governorateLevel === true
+        : body.governorateLevel === true
+          || body.governorateLevel === 'true';
+
+    const publicId =
+      body.publicId === undefined
+        ? driver.publicId
+        : String(body.publicId || '').trim();
+
+    if (publicId && publicId.length > 50) {
+      return res.json({
+        success: false,
+        message: 'المعرف العام طويل جداً.',
+      });
+    }
+
+    const updates = {
+      fullName,
+      name: fullName,
+      email,
+      phoneNumbers: [{ number: phone, primary: true }],
+      area: requestedArea,
+      governorate,
+      governorateLevel,
+      serviceTypes,
+      licenseType,
+      licenseNotAvailable,
+      isAvailable: status === 'active' ? isAvailableRequested : false,
+      status,
+    };
+
+    if (publicId) {
+      updates.publicId = publicId;
+    }
+
+    const shouldRevokeSession =
+      status !== 'active'
+      && driver.status === 'active';
+
+    const updated = await User.findByIdAndUpdate(
+      driver._id,
+      {
+        $set: updates,
+        ...(shouldRevokeSession ? { $inc: { sessionVersion: 1 } } : {}),
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean();
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'السائق غير موجود',
+      });
+    }
+
+    const io = req.app.get('io');
+
+    if (io && status === 'active') {
+      const payload = {
+        user: publicMobileUser(updated),
+        serviceTypes: updated.serviceTypes || [],
+        licenseType: updated.licenseType || '',
+        licenseNotAvailable: updated.licenseNotAvailable === true,
+        isAvailable: updated.isAvailable !== false,
+        status: updated.status,
+      };
+
+      const sockets = await io
+        .in(`user:${driver._id}`)
+        .fetchSockets();
+
+      for (const socket of sockets) {
+        for (const room of [...socket.rooms]) {
+          if (
+            room.startsWith('area:')
+            || room.startsWith('governorate:')
+          ) {
+            socket.leave(room);
+          }
+        }
+
+        socket.join(`area:${updated.area || ''}`);
+        if (updated.governorateLevel && updated.governorate) {
+          socket.join(`governorate:${updated.governorate}`);
+        }
+
+        socket.emit('provider_profile_updated', payload);
+      }
+    } else if (io && shouldRevokeSession) {
+      io.in(`user:${driver._id}`).disconnectSockets(true);
+    }
+
+    res.json({
+      success: true,
+      message: 'تم تحديث بيانات السائق بنجاح.',
+      driver: {
+        _id: updated._id.toString(),
+        fullName: updated.fullName,
+        email: updated.email,
+        phone,
+        area: updated.area,
+        governorate: updated.governorate,
+        serviceTypes: updated.serviceTypes || [],
+        licenseType: updated.licenseType || '',
+        licenseNotAvailable: updated.licenseNotAvailable === true,
+        isAvailable: updated.isAvailable !== false,
+        governorateLevel: updated.governorateLevel === true,
+        status: updated.status,
+        publicId: updated.publicId || '',
+      },
+    });
+  } catch (err) {
+    if (err?.code === 11000) {
+      return res.json({
+        success: false,
+        message: 'البريد الإلكتروني أو المعرف العام مستخدم بالفعل.',
+      });
     }
     sendInternalServerFailure(res);
   }

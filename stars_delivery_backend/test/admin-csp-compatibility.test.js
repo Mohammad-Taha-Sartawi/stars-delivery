@@ -128,7 +128,7 @@ test('delegated browser actions replace legacy inline handlers', () => {
   // expose pay and reset actions.
   assert.equal(
     clickActions.length,
-    64,
+    66,
   );
 
   assert.equal(
@@ -183,12 +183,12 @@ test('delegated admin actions require the admin session capability', () => {
 
   assert.equal(
     generatedActions.length,
-    41,
+    42,
   );
 
   assert.equal(
     generatedCapabilities.length,
-    41,
+    42,
   );
 
   const generatedActionLines = browserSource

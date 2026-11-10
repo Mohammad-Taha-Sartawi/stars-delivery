@@ -50,6 +50,28 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .settings-message.success { color: #2ecc71; }
 .settings-message.error { color: #e74c3c; }
 
+/* Driver edit modal */
+.driver-edit-modal { max-width: 760px; }
+.driver-edit-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.driver-edit-modal .form-group { display: flex; flex-direction: column; gap: 6px; }
+.driver-edit-modal .form-group.full-width { grid-column: span 2; }
+.driver-edit-modal label { font-size: 13px; font-weight: 700; color: #b0c0d4; }
+.driver-edit-modal input:not([type="checkbox"]), .driver-edit-modal select { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #2a3546; background: #0f141c; color: #fff; font-size: 14px; outline: none; }
+.driver-edit-modal input:focus, .driver-edit-modal select:focus { border-color: #00d4ff; box-shadow: 0 0 0 3px #00d4ff33; }
+.driver-edit-modal .checkbox-line { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #b0c0d4; }
+.driver-edit-modal .checkbox-line input { width: auto; }
+.driver-edit-modal .service-checkboxes { display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 0; }
+.driver-edit-modal small { color: #8892a8; font-size: 12px; }
+.driver-edit-modal .msg { display: none; margin-top: 12px; font-size: 14px; font-weight: 700; }
+.driver-edit-modal .msg.success { display: block; color: #2ecc71; }
+.driver-edit-modal .msg.error { display: block; color: #e74c3c; }
+.driver-edit-modal .btn-submit-driver { width: 100%; margin-top: 16px; padding: 14px; border: none; border-radius: 14px; background: #00d4ff; color: #0b0e14; font-weight: 800; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.driver-edit-modal .btn-submit-driver:hover { background: #00b8e0; }
+@media (max-width: 700px) {
+  .driver-edit-modal .form-grid { grid-template-columns: 1fr; }
+  .driver-edit-modal .form-group.full-width { grid-column: span 1; }
+}
+
 /* Password Modal */
 .password-modal .modal-box { max-width: 480px; }
 .password-modal input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #2a3546; background: #0f141c; color: #fff; font-size: 14px; margin-bottom: 12px; outline: none; transition: 0.3s; }

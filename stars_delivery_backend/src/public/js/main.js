@@ -90,7 +90,7 @@ function adminFetch(input, init = {}) {
 function updateClocks() {
   const now = new Date();
   const str = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  ['clockDisplay', 'clockDisplay2', 'clockDisplay3', 'clockDisplay4', 'clockDisplay5', 'clockDisplay6', 'clockDisplay7', 'clockDisplay8', 'clockDisplay9', 'clockDisplay10', 'clockDisplay11', 'clockDisplay12'].forEach(id => {
+  ['clockDisplay', 'clockDisplay2', 'clockDisplay3', 'clockDisplay4', 'clockDisplay5', 'clockDisplay6', 'clockDisplay7', 'clockDisplay8', 'clockDisplay9', 'clockDisplay10', 'clockDisplay11', 'clockDisplay12', 'clockDisplay13', 'clockDisplay14', 'clockDisplay15'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = str;
   });
@@ -122,6 +122,7 @@ const pages = {
   'support-chat': document.getElementById('page-support-chat'),
   'broadcast-drivers': document.getElementById('page-broadcast-drivers'),
   'broadcast-users': document.getElementById('page-broadcast-users'),
+  ads: document.getElementById('page-ads'),
   areas: document.getElementById('page-areas'),
   settings: document.getElementById('page-settings')
 };
@@ -147,6 +148,7 @@ document.querySelectorAll('.sidebar ul li[data-page]').forEach(item => {
       if (page === 'user-reports') loadUserReports();
       if (page === 'support-chat') initSupportChat();
       if (page === 'areas') loadAreas();
+      if (page === 'ads') loadAds();
       if (page === 'add-driver') {
         document.getElementById('formSuccessMsg').classList.remove('show');
         document.getElementById('formErrorMsg').classList.remove('show');
@@ -251,6 +253,8 @@ const adminActionHandlers = Object.freeze({
   deleteDriver,
   deleteReport,
   deleteUser,
+  deleteAd,
+  editAd,
   freezeDriver,
   freezeUser,
   handleResetPassword,
@@ -279,6 +283,7 @@ const adminActionHandlers = Object.freeze({
   adminEndSuspension,
   adminRejectOffer,
   adminResendOrder,
+  toggleAd,
   toggleDriverAvailability,
   viewDocuments,
   viewPendingProviderDocuments,
@@ -2995,6 +3000,277 @@ async function manageTwoFactor() {
   } catch (err) {
     alert('حدث خطأ في الاتصال');
   }
+}
+
+// ================================================
+// 18. الإعلانات
+// ================================================
+let adsCache = [];
+
+function adAudienceLabel(audience) {
+  switch (audience) {
+    case 'customers':
+      return 'الزبائن';
+    case 'providers':
+      return 'السائقون';
+    default:
+      return 'الجميع';
+  }
+}
+
+function adStatusBadge(isActive) {
+  return isActive
+    ? '<span class="order-status-badge completed">نشط</span>'
+    : '<span class="order-status-badge cancelled">متوقف</span>';
+}
+
+function formatAdDate(value) {
+  if (!value) return 'دائم';
+
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '—';
+
+  return date.toLocaleString('ar-EG', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
+function toDateTimeLocal(value) {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+
+  const pad = (number) => String(number).padStart(2, '0');
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function setAdFormMessage(message, type = '') {
+  const element = document.getElementById('adFormMsg');
+  if (!element) return;
+
+  element.textContent = message || '';
+  element.className = `settings-message ${type}`.trim();
+}
+
+function resetAdForm() {
+  const form = document.getElementById('adForm');
+  if (!form) return;
+
+  form.reset();
+  form.dataset.editingId = '';
+  document.getElementById('adTitle').value = '';
+  document.getElementById('adBody').value = '';
+  document.getElementById('adImageUrl').value = '';
+  document.getElementById('adStartsAt').value = '';
+  document.getElementById('adEndsAt').value = '';
+  document.getElementById('adSortOrder').value = '0';
+  document.getElementById('adAudience').value = 'all';
+  document.getElementById('adIsActive').value = 'true';
+  setAdFormMessage('');
+}
+
+async function loadAds() {
+  const container = document.getElementById('adsList');
+  if (!container) return;
+
+  try {
+    const response = await adminFetch('/admin/ads');
+    const ads = await response.json();
+
+    if (!Array.isArray(ads)) {
+      container.innerHTML = '<p class="settings-message error">تعذر تحميل الإعلانات.</p>';
+      return;
+    }
+
+    adsCache = ads;
+
+    if (ads.length === 0) {
+      container.innerHTML = '<p class="settings-message">لا توجد إعلانات بعد. أضف أول إعلان من النموذج أعلاه.</p>';
+      return;
+    }
+
+    const rows = ads.map((ad) => `
+      <tr>
+        <td><strong>${escapeHtml(ad.title)}</strong><br><small>${escapeHtml(ad.body || '')}</small></td>
+        <td>${escapeHtml(adAudienceLabel(ad.audience))}</td>
+        <td>${adStatusBadge(ad.isActive)}</td>
+        <td>${escapeHtml(formatAdDate(ad.startsAt))}<br><small>${escapeHtml(formatAdDate(ad.endsAt))}</small></td>
+        <td>${escapeHtml(String(ad.sortOrder))}</td>
+        <td>
+          <div class="table-actions">
+            <button class="action-btn info" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="editAd" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(ad._id))}">تعديل</button>
+            <button class="action-btn ${ad.isActive ? 'warning' : 'success'}" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="toggleAd" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(ad._id))}">${ad.isActive ? 'إيقاف' : 'تفعيل'}</button>
+            <button class="action-btn danger" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="deleteAd" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(ad._id))}">حذف</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <h3><i class="fas fa-rectangle-ad"></i> كل الإعلانات</h3>
+      <table class="commissions-table">
+        <thead>
+          <tr>
+            <th>الإعلان</th>
+            <th>الجهة</th>
+            <th>الحالة</th>
+            <th>الفترة</th>
+            <th>الترتيب</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  } catch (err) {
+    container.innerHTML = '<p class="settings-message error">تعذر تحميل الإعلانات.</p>';
+  }
+}
+
+function editAd(id) {
+  const ad = adsCache.find((item) => String(item._id) === String(id));
+  if (!ad) return;
+
+  document.getElementById('adForm').dataset.editingId = String(ad._id);
+  document.getElementById('adTitle').value = ad.title || '';
+  document.getElementById('adBody').value = ad.body || '';
+  document.getElementById('adImageUrl').value = ad.imageUrl || '';
+  document.getElementById('adAudience').value = ad.audience || 'all';
+  document.getElementById('adStartsAt').value = toDateTimeLocal(ad.startsAt);
+  document.getElementById('adEndsAt').value = toDateTimeLocal(ad.endsAt);
+  document.getElementById('adSortOrder').value = String(ad.sortOrder || 0);
+  document.getElementById('adIsActive').value = ad.isActive ? 'true' : 'false';
+
+  setAdFormMessage('أنت تعدّل إعلاناً موجوداً. اضغط حفظ الإعلان لتحديثه.', 'success');
+  document.getElementById('page-ads').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function deleteAd(id) {
+  if (!confirm('هل تريد حذف هذا الإعلان نهائياً؟')) return;
+
+  try {
+    const response = await adminFetch(`/admin/ads/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    const data = await response.json();
+
+    if (!data.success) {
+      alert(data.message || 'تعذر حذف الإعلان');
+      return;
+    }
+
+    resetAdForm();
+    loadAds();
+  } catch (err) {
+    alert('حدث خطأ في الاتصال');
+  }
+}
+
+async function toggleAd(id) {
+  const ad = adsCache.find((item) => String(item._id) === String(id));
+  if (!ad) return;
+
+  try {
+    const response = await adminFetch(`/admin/ads/${encodeURIComponent(id)}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !ad.isActive }),
+    });
+    const data = await response.json();
+
+    if (!data.success) {
+      alert(data.message || 'تعذر تغيير حالة الإعلان');
+      return;
+    }
+
+    loadAds();
+  } catch (err) {
+    alert('حدث خطأ في الاتصال');
+  }
+}
+
+async function saveAd(event) {
+  event.preventDefault();
+
+  const title = document.getElementById('adTitle').value.trim();
+  const body = document.getElementById('adBody').value.trim();
+  const imageUrl = document.getElementById('adImageUrl').value.trim();
+  const audience = document.getElementById('adAudience').value;
+  const startsAtValue = document.getElementById('adStartsAt').value;
+  const endsAtValue = document.getElementById('adEndsAt').value;
+  const sortOrder = Number(document.getElementById('adSortOrder').value || 0);
+  const isActive = document.getElementById('adIsActive').value === 'true';
+
+  if (!title) {
+    setAdFormMessage('عنوان الإعلان مطلوب.', 'error');
+    return;
+  }
+
+  if (imageUrl && !/^(https?:\/\/|\/uploads\/)/i.test(imageUrl)) {
+    setAdFormMessage('رابط الصورة يجب أن يبدأ بـ http/https أو /uploads/.', 'error');
+    return;
+  }
+
+  if (startsAtValue && endsAtValue && new Date(endsAtValue) <= new Date(startsAtValue)) {
+    setAdFormMessage('تاريخ النهاية يجب أن يكون بعد تاريخ البداية.', 'error');
+    return;
+  }
+
+  const payload = {
+    title,
+    body,
+    imageUrl,
+    audience,
+    isActive,
+    startsAt: startsAtValue ? new Date(startsAtValue).toISOString() : null,
+    endsAt: endsAtValue ? new Date(endsAtValue).toISOString() : null,
+    sortOrder,
+  };
+
+  const editingId = document.getElementById('adForm').dataset.editingId || '';
+
+  try {
+    const response = await adminFetch(
+      editingId
+        ? `/admin/ads/${encodeURIComponent(editingId)}`
+        : '/admin/ads',
+      {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+    );
+    const data = await response.json();
+
+    if (!data.success) {
+      setAdFormMessage(data.message || 'تعذر حفظ الإعلان.', 'error');
+      return;
+    }
+
+    resetAdForm();
+    document.getElementById('adForm').dataset.editingId = '';
+    loadAds();
+    setAdFormMessage('تم حفظ الإعلان بنجاح.', 'success');
+  } catch (err) {
+    setAdFormMessage('تعذر حفظ الإعلان.', 'error');
+  }
+}
+
+const adForm = document.getElementById('adForm');
+if (adForm) {
+  adForm.addEventListener('submit', saveAd);
+}
+
+const adCancelEdit = document.getElementById('adCancelEdit');
+if (adCancelEdit) {
+  adCancelEdit.addEventListener('click', () => {
+    const form = document.getElementById('adForm');
+    if (form) form.dataset.editingId = '';
+    resetAdForm();
+  });
 }
 
 // ================================================

@@ -25,6 +25,7 @@ import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/ui/app_action_tile.dart';
+import '../widgets/ui/ad_banner_carousel.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_notification_bell.dart';
@@ -81,6 +82,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   late bool _governorateLevel = _user.governorateLevel;
   String? _openingAcceptedOrderId;
   int _supportUnreadCount = 0;
+  int _adRefreshTick = 0;
   late ChatService _supportChatService;
 
   Future<void> _loadSupportUnreadCount() async {
@@ -696,6 +698,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   }
 
   Future<void> _refreshDashboard() async {
+    if (mounted) {
+      setState(() => _adRefreshTick += 1);
+    }
+
     final bloc = context.read<ProviderBloc>();
     bloc.add(LoadProviderStats(token: widget.token));
     bloc.add(LoadPendingOrders(token: widget.token));
@@ -729,6 +735,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  AdBannerCarousel(
+                    token: widget.token,
+                    refreshTick: _adRefreshTick,
+                  ),
                   AppSectionHeader(
                     title: AppLocalization.get(context, 'provider_dashboard'),
                   ),

@@ -292,6 +292,7 @@ class AppLocalization {
       'ar': 'نوع السائق غير محدد',
       'en': 'Driver type not specified',
     },
+    'ad_label': {'ar': 'إعلان', 'en': 'Ad'},
     'rating_prompt_title': {
       'ar': 'كيف ترى أداء هذا السائق؟',
       'en': "How was this driver's performance?",

@@ -225,6 +225,40 @@
       </div>
     </div>
 
+    <!-- الإعلانات -->
+    <div id="page-ads" class="page-section">
+      <div class="top-header"><h1>الإعلانات <small>شريط إعلاني أعلى شاشة الزبون والسائق</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay15">جاري التحميل...</span></div></div>
+      <div class="add-driver-form">
+        <form id="adForm">
+          <div class="form-grid">
+            <div class="form-group"><label><span class="required">*</span> عنوان الإعلان</label><input type="text" id="adTitle" maxlength="120" placeholder="مثال: خصم خاص على التوصيل" required></div>
+            <div class="form-group"><label>الجهة المستهدفة</label>
+              <select id="adAudience">
+                <option value="all">الزبائن والسائقون</option>
+                <option value="customers">الزبائن فقط</option>
+                <option value="providers">السائقون فقط</option>
+              </select>
+            </div>
+            <div class="form-group full-width"><label>نص الإعلان</label><textarea id="adBody" maxlength="300" placeholder="نص قصير يظهر داخل الشريط الإعلاني"></textarea></div>
+            <div class="form-group full-width"><label>رابط الصورة (اختياري)</label><input type="text" id="adImageUrl" maxlength="1000" placeholder="https://example.com/banner.jpg أو /uploads/banner.jpg"><small>إذا تُرك فارغاً سيظهر شريط ملوّن بالعنوان والنص فقط.</small></div>
+            <div class="form-group"><label>يبدأ في</label><input type="datetime-local" id="adStartsAt"></div>
+            <div class="form-group"><label>ينتهي في</label><input type="datetime-local" id="adEndsAt"></div>
+            <div class="form-group"><label>الترتيب</label><input type="number" id="adSortOrder" min="0" max="9999" step="1" value="0"></div>
+            <div class="form-group"><label>الحالة</label>
+              <select id="adIsActive">
+                <option value="true">نشط</option>
+                <option value="false">متوقف</option>
+              </select>
+            </div>
+            <div id="adFormMsg" class="settings-message full-width"></div>
+            <button type="submit" class="btn-submit-driver"><i class="fas fa-save"></i> حفظ الإعلان</button>
+            <button type="button" id="adCancelEdit" class="btn-cancel-ad"><i class="fas fa-times"></i> إلغاء التعديل</button>
+          </div>
+        </form>
+      </div>
+      <div id="adsList" class="commissions-table-container"><p>جاري تحميل الإعلانات...</p></div>
+    </div>
+
     <!-- المناطق -->
     <div id="page-areas" class="page-section">
       <div class="top-header"><h1>المناطق <small>توزيع المستخدمين والسائقين حسب المحافظات والمدن</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay8">جاري التحميل...</span></div></div>

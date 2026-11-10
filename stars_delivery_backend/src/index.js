@@ -42,6 +42,7 @@ const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
 const chatRoutes = require('./routes/chat');
 const userRoutes = require('./routes/users');
+const adRoutes = require('./routes/ads');
 
 const adminAuthRoutes = require('./routes/adminAuth');
 const adminDriverRoutes = require('./routes/adminDrivers');
@@ -53,6 +54,7 @@ const adminBroadcastRoutes = require('./routes/adminBroadcast');
 const adminChatRoutes = require('./routes/adminChat');
 const adminOrderRoutes = require('./routes/adminOrders');
 const adminApiRoutes = require('./routes/adminApi');
+const adminAdRoutes = require('./routes/adminAds');
 
 const app = express();
 const appConfig = loadAppConfig();
@@ -193,6 +195,7 @@ const Rating = require('./models/Rating');
 const CommissionSetting = require('./models/CommissionSetting');
 const PushToken = require('./models/PushToken');
 const AdminAuditLog = require('./models/AdminAuditLog');
+const Ad = require('./models/Ad');
 const User = require('./models/User');
 
 const MONGO_RETRY_DELAYS_MS = Object.freeze([
@@ -220,6 +223,7 @@ async function ensureMongoIndexes() {
     CommissionSetting.createIndexes(),
     PushToken.createIndexes(),
     AdminAuditLog.createIndexes(),
+    Ad.createIndexes(),
   ]);
   console.log('Indexes ready');
 }
@@ -498,6 +502,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/ads', adRoutes);
 
 app.use('/admin', adminAuthRoutes);
 
@@ -509,6 +514,7 @@ app.use('/admin/areas', requireAdminSession, adminCsrfProtection, adminAreaRoute
 app.use('/admin/broadcast', requireAdminSession, adminCsrfProtection, adminBroadcastRoutes);
 app.use('/admin/chat', requireAdminSession, adminCsrfProtection, adminChatRoutes);
 app.use('/admin/orders', requireAdminSession, adminCsrfProtection, adminOrderRoutes);
+app.use('/admin/ads', requireAdminSession, adminCsrfProtection, adminAdRoutes);
 app.use('/admin/api', requireAdminSession, adminCsrfProtection, adminApiRoutes);
 
 app.get('/admin', requireAdminSession, adminCsrfProtection, (req, res) => {

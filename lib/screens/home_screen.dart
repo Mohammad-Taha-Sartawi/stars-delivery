@@ -21,6 +21,7 @@ import '../services/order_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/support_chat_service.dart';
 import '../widgets/ui/app_action_tile.dart';
+import '../widgets/ui/ad_banner_carousel.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_section_header.dart';
@@ -59,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _inProgressOrdersCount = 0;
   int? _availableDriversCount;
   int _supportUnreadCount = 0;
+  int _adRefreshTick = 0;
   late ChatService _supportChatService;
   StreamSubscription? _newOfferSub;
   StreamSubscription? _deliveryConfirmationSub;
@@ -410,6 +412,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               child: RefreshIndicator(
                 onRefresh: () async {
+                  if (mounted) {
+                    setState(() => _adRefreshTick += 1);
+                  }
                   final bloc = context.read<NotificationBloc>();
                   bloc.add(LoadNotifications(token: widget.token));
                   await bloc.stream.firstWhere(
@@ -425,6 +430,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      AdBannerCarousel(
+                        token: widget.token,
+                        refreshTick: _adRefreshTick,
+                      ),
                       Text(
                         AppLocalization.get(context, 'welcome_back'),
                         style: theme.textTheme.headlineSmall,

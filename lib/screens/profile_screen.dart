@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
+import 'dart:async';
 import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_event.dart';
 import '../models/user_model.dart';
@@ -10,6 +11,7 @@ import '../services/location_catalog.dart';
 import '../services/validators.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
+import '../services/socket_service.dart';
 import '../widgets/ui/app_feedback.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -45,6 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _selectedArea;
   bool _loadingLocation = true;
   bool _savingLocation = false;
+  StreamSubscription? _profileUpdatedSub;
 
   @override
   void initState() {
@@ -53,6 +56,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _emailCtrl.text = widget.user.email;
     _loadPhones();
     _loadLocationOptions();
+    _profileUpdatedSub = SocketService.instance.onProviderProfileUpdated.listen(
+      (data) {
+        if (!mounted) return;
+        final rawUser = data['user'];
+        if (rawUser is! Map) return;
+
+        final updated = UserModel.fromJson(Map<String, dynamic>.from(rawUser));
+        setState(() {
+          _currentUser = updated;
+          _nameCtrl.text = updated.fullName;
+          _emailCtrl.text = updated.email;
+          _selectedGovernorate = updated.governorate;
+          _selectedArea = updated.area;
+        });
+        _loadPhones();
+        widget.onUserUpdated?.call(updated);
+      },
+    );
   }
 
   GovernorateOption? get _currentGovernorate {
@@ -136,6 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _profileUpdatedSub?.cancel();
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _currentPassCtrl.dispose();
@@ -257,7 +279,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    if (email == widget.user.email.trim().toLowerCase()) {
+    if (email == _currentUser.email.trim().toLowerCase()) {
       AppFeedback.info(context, 'البريد لم يتغير');
       return;
     }
@@ -382,7 +404,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? scheme.secondaryContainer
                       : scheme.primaryContainer,
                   child: Text(
-                    widget.user.fullName[0].toUpperCase(),
+                    _currentUser.fullName[0].toUpperCase(),
                     style: TextStyle(
                       color: isProvider
                           ? scheme.onSecondaryContainer
@@ -394,19 +416,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  widget.user.fullName,
+                  _currentUser.fullName,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  widget.user.email,
+                  _currentUser.email,
                   textDirection: TextDirection.ltr,
                   style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
                 Text(
-                  '#${widget.user.publicId}',
+                  '#${_currentUser.publicId}',
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,

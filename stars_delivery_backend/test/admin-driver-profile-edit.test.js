@@ -54,4 +54,8 @@ test('driver edit modal exposes editable fields and save flow', () => {
   assert.match(script, /saveDriverEdits/);
   assert.match(script, /\/profile/);
   assert.match(script, /driverEditForm/);
+  assert.match(script, /openInlineDriverEdit/);
+  assert.match(script, /inlineDriverForm/);
+  assert.match(script, /inlineDriverPublicId/);
+  assert.match(script, /driver-inline-editor/);
 });

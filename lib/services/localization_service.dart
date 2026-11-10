@@ -429,6 +429,10 @@ class AppLocalization {
       'ar': ' شيكل بناء على الطلبات الناجحة',
       'en': ' ILS based on successful orders',
     },
+    'commission_due_note': {
+      'ar': 'تُحتسب على الطلبات الناجحة المكتملة',
+      'en': 'Calculated from completed successful orders',
+    },
     'ils': {'ar': 'ILS', 'en': 'ILS'},
     'shekel': {'ar': 'شيكل', 'en': 'SHE'},
     'successful_orders': {'ar': 'طلب ناجح', 'en': 'Successful Orders'},

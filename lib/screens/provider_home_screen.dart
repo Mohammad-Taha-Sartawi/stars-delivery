@@ -1163,58 +1163,86 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   }
 
   Widget _buildEarnings(BuildContext context, ProviderStats s) {
+    final dailyCard = _buildMetricCard(
+      context,
+      label: AppLocalization.get(context, 'daily_earnings'),
+      value: '${s.dailyEarnings.toStringAsFixed(0)} ILS',
+      tone: AppTone.info,
+      footer: _buildMetricFooter(
+        context,
+        tone: AppTone.info,
+        count: '${s.dailyOrderCount}',
+        labelKey: 'today_orders',
+      ),
+    );
+
+    final monthlyCard = _buildMetricCard(
+      context,
+      label: AppLocalization.get(context, 'monthly_earnings'),
+      value: '${s.monthlyEarnings.toStringAsFixed(0)} ILS',
+      tone: AppTone.success,
+      footer: _buildMetricFooter(
+        context,
+        tone: AppTone.success,
+        count: '${s.totalSuccessful}',
+        labelKey: 'successful_orders',
+      ),
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 560;
-        final cardWidth = isWide
-            ? (constraints.maxWidth - AppSpacing.md) / 2
-            : constraints.maxWidth;
+        if (constraints.maxWidth < 330) {
+          return Column(
+            children: [
+              dailyCard,
+              const SizedBox(height: AppSpacing.md),
+              monthlyCard,
+            ],
+          );
+        }
 
-        return Wrap(
-          spacing: AppSpacing.md,
-          runSpacing: AppSpacing.md,
-          children: [
-            SizedBox(
-              width: cardWidth,
-              child: _buildMetricCard(
-                context,
-                label: AppLocalization.get(context, 'daily_earnings'),
-                value: '${s.dailyEarnings.toStringAsFixed(0)} ILS',
-                tone: AppTone.info,
-                footer: Row(
-                  children: [
-                    Text(
-                      '${s.dailyOrderCount}',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: appToneStyle(context, AppTone.info).foreground,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Flexible(
-                      child: Text(
-                        AppLocalization.get(context, 'today_orders').trim(),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: appToneStyle(context, AppTone.info).foreground,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: _buildMetricCard(
-                context,
-                label: AppLocalization.get(context, 'monthly_earnings'),
-                value: '${s.monthlyEarnings.toStringAsFixed(0)} ILS',
-                tone: AppTone.success,
-              ),
-            ),
-          ],
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: dailyCard),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: monthlyCard),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildMetricFooter(
+    BuildContext context, {
+    required AppTone tone,
+    required String count,
+    required String labelKey,
+  }) {
+    final theme = Theme.of(context);
+    final toneStyle = appToneStyle(context, tone);
+
+    return Row(
+      children: [
+        Text(
+          count,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: toneStyle.foreground,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Flexible(
+          child: Text(
+            AppLocalization.get(context, labelKey).trim(),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: toneStyle.foreground,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1284,13 +1312,19 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                 color: tone.foreground,
               ),
             ),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: AppSpacing.sm),
             Text(
-              '${s.totalCommissionDue.toStringAsFixed(0)}'
-              '${AppLocalization.get(context, 'commission_body').trim()}',
-              style: theme.textTheme.titleLarge?.copyWith(
+              '${s.totalCommissionDue.toStringAsFixed(0)} ILS',
+              style: theme.textTheme.headlineMedium?.copyWith(
                 color: tone.foreground,
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              AppLocalization.get(context, 'commission_due_note'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: tone.foreground.withValues(alpha: 0.84),
               ),
             ),
             if (s.totalCommissionDue > 0) ...[
@@ -1321,9 +1355,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                 ),
               ),
             ],
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.md),
             Divider(height: 1, color: tone.border),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

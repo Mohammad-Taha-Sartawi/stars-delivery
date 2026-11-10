@@ -361,7 +361,7 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '#$customerPublicId',
+                        'ID $customerPublicId',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,

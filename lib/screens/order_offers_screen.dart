@@ -534,7 +534,7 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
                                                       .providerPublicId
                                                       .isNotEmpty)
                                                     Text(
-                                                      '#${o.providerPublicId}',
+                                                      'ID ${o.providerPublicId}',
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         color: Theme.of(context)

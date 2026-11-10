@@ -402,7 +402,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       if (customerPublicId.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Text(
-                          '#$customerPublicId',
+                          'ID $customerPublicId',
                           style: TextStyle(
                             fontSize: 12,
                             color: Theme.of(

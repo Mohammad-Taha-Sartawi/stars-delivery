@@ -217,7 +217,7 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                       if (pid.toString().isNotEmpty) ...[
                         const SizedBox(width: 6),
                         Text(
-                          '#$pid',
+                          'ID $pid',
                           style: TextStyle(
                             fontSize: 11,
                             color: scheme.onSurfaceVariant,

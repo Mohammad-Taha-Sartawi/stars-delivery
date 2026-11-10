@@ -32,7 +32,7 @@ const Offer = require('../models/Offer');
 const Notification = require('../models/Notification');
 const PendingProvider = require('../models/PendingProvider');
 const CommissionPayment = require('../models/CommissionPayment');
-const { generatePublicId } = require('../utils/publicId');
+const { generatePublicId, isValidPublicId } = require('../utils/publicId');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
   MAX_MOBILE_PASSWORD_LENGTH,
@@ -593,10 +593,18 @@ router.put('/:id/profile', async (req, res) => {
         ? driver.publicId
         : String(body.publicId || '').trim();
 
-    if (publicId && publicId.length > 50) {
+    if (!publicId) {
       return res.json({
         success: false,
-        message: 'المعرف العام طويل جداً.',
+        message: 'ID السائق مطلوب.',
+      });
+    }
+
+    if (!isValidPublicId(publicId)) {
+      return res.json({
+        success: false,
+        message:
+          'ID السائق يجب أن يكون أرقاماً فقط بحد أقصى 12 رقماً، وألا يكون متكرراً أو نمطياً.',
       });
     }
 

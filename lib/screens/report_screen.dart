@@ -228,7 +228,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        '#${r['reportedPublicId'] ?? ''}',
+                                        'ID ${r['reportedPublicId'] ?? ''}',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                         ),

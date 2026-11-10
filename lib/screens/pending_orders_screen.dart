@@ -642,7 +642,7 @@ class _PendingOrdersScreenState extends State<PendingOrdersScreen> {
                                                   BorderRadius.circular(10),
                                             ),
                                             child: Text(
-                                              '#$customerPublicId',
+                                              'ID $customerPublicId',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,

@@ -428,7 +428,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
                 Text(
-                  '#${_currentUser.publicId}',
+                  'ID ${_currentUser.publicId}',
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,

@@ -149,7 +149,7 @@ class _ProviderActiveOrdersScreenState
               borderRadius: BorderRadiusDirectional.circular(AppRadius.xs),
             ),
             child: Text(
-              '#$pid',
+              'ID $pid',
               style: TextStyle(
                 fontSize: 11,
                 color: Theme.of(context).colorScheme.onSecondaryContainer,

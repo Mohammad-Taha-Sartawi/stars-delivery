@@ -154,7 +154,7 @@ test('commission and area HTML builders encode displayed database values', () =>
 
 test('report table builders encode reporter, category, ids, dates, and preview content', () => {
   const hardenedPrefix =
-    'rows += `<tr><td><strong>${escapeHtml(report.reportId)}</strong></td><td>${escapeHtml(reporterName)}</td><td>#${escapeHtml(targetId)}</td><td>${escapeHtml(report.category)}</td><td>${escapeHtml(report.date)}</td>';
+    'rows += `<tr><td><strong>${escapeHtml(report.reportId)}</strong></td><td>${escapeHtml(reporterName)}</td><td>ID ${escapeHtml(targetId)}</td><td>${escapeHtml(report.category)}</td><td>${escapeHtml(report.date)}</td>';
 
   assert.equal(
     source.split(

@@ -18,6 +18,7 @@ class OfferModel {
   final String providerArea;
   final String providerCity;
   final String providerGovernorate;
+  final String providerCategory;
   final double providerRatingAverage;
   final int providerRatingCount;
   final int providerPositiveRatingCount;
@@ -42,6 +43,7 @@ class OfferModel {
     this.providerArea = '',
     this.providerCity = '',
     this.providerGovernorate = '',
+    this.providerCategory = 'unknown',
     this.providerRatingAverage = 0,
     this.providerRatingCount = 0,
     this.providerPositiveRatingCount = 0,
@@ -75,6 +77,7 @@ class OfferModel {
       providerGovernorate:
           (json['providerGovernorate'] ?? provider['governorate'] ?? '')
               .toString(),
+      providerCategory: (json['providerCategory'] ?? 'unknown').toString(),
       providerRatingAverage:
           (providerRating['average'] as num?)?.toDouble() ?? 0,
       providerRatingCount: (providerRating['count'] as num?)?.toInt() ?? 0,

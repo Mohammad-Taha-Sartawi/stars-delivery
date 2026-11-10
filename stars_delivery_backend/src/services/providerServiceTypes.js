@@ -10,6 +10,13 @@ const SERVICE_TYPE_LABELS = Object.freeze({
   goods: 'نقل بضائع',
 });
 
+const DRIVER_CATEGORIES = Object.freeze([
+  'public',
+  'private',
+  'truck',
+  'motorcycle',
+]);
+
 function normalizeServiceTypes(raw) {
   if (raw === undefined || raw === null) {
     return [];
@@ -55,10 +62,46 @@ function serviceTypesLabel(types) {
   return normalized.map((type) => SERVICE_TYPE_LABELS[type]).join(' + ');
 }
 
+function driverCategoryForProvider(provider = {}) {
+  const licenseType = String(provider.licenseType || '').trim();
+
+  if (licenseType.includes('عمومي') || licenseType.includes('متعدد')) {
+    return 'public';
+  }
+
+  if (licenseType.includes('بضائع') || licenseType.includes('شاحنة')) {
+    return 'truck';
+  }
+
+  if (licenseType.includes('منتجات') || licenseType.includes('دراجة')) {
+    return 'motorcycle';
+  }
+
+  if (licenseType.includes('ركاب') || licenseType.includes('خاص')) {
+    return 'private';
+  }
+
+  const serviceTypes = normalizeServiceTypes(provider.serviceTypes);
+
+  if (serviceTypes.length >= 2) {
+    return 'public';
+  }
+
+  if (serviceTypes.length === 1) {
+    if (serviceTypes[0] === 'goods') return 'truck';
+    if (serviceTypes[0] === 'people') return 'private';
+    if (serviceTypes[0] === 'product') return 'motorcycle';
+  }
+
+  return 'unknown';
+}
+
 module.exports = {
   SERVICE_TYPES,
   SERVICE_TYPE_LABELS,
+  DRIVER_CATEGORIES,
   normalizeServiceTypes,
   serviceTypesFromAdminLabel,
   serviceTypesLabel,
+  driverCategoryForProvider,
 };

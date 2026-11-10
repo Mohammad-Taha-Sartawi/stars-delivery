@@ -26,6 +26,9 @@ const {
 const {
   getCommissionConfig,
 } = require('../services/commissionSettings');
+const {
+  driverCategoryForProvider,
+} = require('../services/providerServiceTypes');
 
 const router = express.Router();
 
@@ -197,7 +200,7 @@ router.get('/order/:orderId', auth, requireRole('customer'), async (req, res) =>
     await lifecycle.finalizeExpiredOrders({ orderId: order._id });
 
     const offers = await Offer.find({ orderId: req.params.orderId })
-      .populate('providerId', 'fullName phone area governorate publicId')
+      .populate('providerId', 'fullName phone area governorate publicId serviceTypes licenseType')
       .populate('orderId', 'description area type')
       .sort({ createdAt: -1 })
       .lean();
@@ -260,6 +263,7 @@ router.get('/order/:orderId', auth, requireRole('customer'), async (req, res) =>
         providerArea,
         providerCity: providerLocation.city,
         providerGovernorate: providerLocation.governorate,
+        providerCategory: driverCategoryForProvider(provider),
         providerRating: {
           average: ratingCount > 0
             ? Math.round((ratingStars / ratingCount) * 10) / 10

@@ -281,6 +281,17 @@ class AppLocalization {
       'ar': 'أعجب به %d زبون',
       'en': '%d customers liked the service',
     },
+    'driver_category_public': {'ar': 'سائق عمومي', 'en': 'Public driver'},
+    'driver_category_private': {'ar': 'سائق خاص', 'en': 'Private driver'},
+    'driver_category_truck': {'ar': 'سائق شاحنة', 'en': 'Truck driver'},
+    'driver_category_motorcycle': {
+      'ar': 'سائق دراجة',
+      'en': 'Motorcycle driver',
+    },
+    'driver_category_unknown': {
+      'ar': 'نوع السائق غير محدد',
+      'en': 'Driver type not specified',
+    },
     'rating_prompt_title': {
       'ar': 'كيف ترى أداء هذا السائق؟',
       'en': "How was this driver's performance?",

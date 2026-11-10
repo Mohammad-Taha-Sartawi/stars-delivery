@@ -7,6 +7,7 @@ const {
   normalizeServiceTypes,
   serviceTypesFromAdminLabel,
   serviceTypesLabel,
+  driverCategoryForProvider,
 } = require('../src/services/providerServiceTypes');
 
 const backendRoot = path.resolve(__dirname, '..');
@@ -47,6 +48,48 @@ test('provider registration and approval preserve specialty data', () => {
   assert.match(userModel, /serviceTypes/);
   assert.match(adminDrivers, /serviceTypesFromAdminLabel/);
   assert.match(adminDrivers, /serviceTypes:\s*pending\.serviceTypes/);
+});
+
+test('driver category is derived from registered services and license type', () => {
+  assert.equal(
+    driverCategoryForProvider({ serviceTypes: ['product'] }),
+    'motorcycle',
+  );
+  assert.equal(
+    driverCategoryForProvider({ serviceTypes: ['people'] }),
+    'private',
+  );
+  assert.equal(
+    driverCategoryForProvider({ serviceTypes: ['goods'] }),
+    'truck',
+  );
+  assert.equal(
+    driverCategoryForProvider({ serviceTypes: ['product', 'people'] }),
+    'public',
+  );
+  assert.equal(
+    driverCategoryForProvider({
+      serviceTypes: ['goods'],
+      licenseType: 'سائق عمومي مرخص',
+    }),
+    'public',
+  );
+  assert.equal(
+    driverCategoryForProvider({
+      serviceTypes: [],
+      licenseType: 'سائق نقل بضائع خاص',
+    }),
+    'truck',
+  );
+  assert.equal(
+    driverCategoryForProvider({ serviceTypes: [] }),
+    'unknown',
+  );
+
+  const offers = source('src/routes/offers.js');
+  assert.match(offers, /driverCategoryForProvider/);
+  assert.match(offers, /providerCategory/);
+  assert.match(offers, /serviceTypes licenseType/);
 });
 
 test('provider order feed is scoped to the provider specialities', () => {

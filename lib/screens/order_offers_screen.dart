@@ -819,9 +819,40 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
               AppLocalization.get(context, 'no_ratings_yet'),
               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
+            ),
+            child: Text(
+              _driverCategoryLabel(context, offer.providerCategory),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: scheme.onPrimaryContainer,
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _driverCategoryLabel(BuildContext context, String category) {
+    switch (category) {
+      case 'public':
+        return AppLocalization.get(context, 'driver_category_public');
+      case 'private':
+        return AppLocalization.get(context, 'driver_category_private');
+      case 'truck':
+        return AppLocalization.get(context, 'driver_category_truck');
+      case 'motorcycle':
+        return AppLocalization.get(context, 'driver_category_motorcycle');
+      default:
+        return AppLocalization.get(context, 'driver_category_unknown');
+    }
   }
 
   String _maskPhone(String phone) {

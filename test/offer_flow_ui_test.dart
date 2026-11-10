@@ -36,14 +36,21 @@ void main() {
     expect(screen, contains("'positive_ratings_count'"));
     expect(screen, contains('providerRatingAverage'));
     expect(screen, contains('providerPositiveRatingCount'));
+    expect(screen, contains('_driverCategoryLabel'));
+    expect(screen, contains("'driver_category_public'"));
+    expect(screen, contains("'driver_category_truck'"));
 
     expect(model, contains('providerRatingAverage'));
     expect(model, contains('providerRatingCount'));
     expect(model, contains('providerPositiveRatingCount'));
+    expect(model, contains('providerCategory'));
     expect(model, contains("json['providerRating']"));
+    expect(model, contains("json['providerCategory']"));
 
     expect(localization, contains("'rating_average'"));
     expect(localization, contains("'positive_ratings_count'"));
+    expect(localization, contains("'driver_category_public'"));
+    expect(localization, contains("'driver_category_motorcycle'"));
   });
 
   test(

@@ -148,7 +148,6 @@ router.post('/:orderId/resend', auth, requireRole('customer'), orderCreateLimite
         _id: order._id,
         type: order.type,
         description: order.description,
-        images: order.images || [],
         area: order.area,
         governorate: order.governorate,
         governorateLevel: order.governorateLevel,

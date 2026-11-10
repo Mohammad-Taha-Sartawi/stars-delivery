@@ -316,7 +316,7 @@ test(
 
     assert.match(
       approval,
-      /providerDocuments:\s*pending\.providerDocuments/,
+      /providerDocuments:\s*\(pending\.providerDocuments \|\| \[\]\)/,
     );
 
     assert.match(

@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const {
   normalizeAdPayload,
-  isValidAdImageUrl,
+  publicAd,
 } = require('../src/services/adPayload');
 const Ad = require('../src/models/Ad');
 
@@ -18,39 +18,48 @@ function source(relativePath) {
   );
 }
 
-test('ad payload validates title, audience, dates, order, and image URL', () => {
+test('ad payload allows optional title and requires some content', () => {
   const valid = normalizeAdPayload({
     title: 'عرض خاص',
     body: 'خصم على التوصيل',
-    imageUrl: '/uploads/ad.png',
     audience: 'customers',
     isActive: true,
     startsAt: '2026-11-10T10:00:00.000Z',
     endsAt: '2026-11-20T10:00:00.000Z',
     sortOrder: 2,
-  });
+  }, { imageCount: 1 });
 
   assert.equal(valid.ok, true);
   assert.equal(valid.value.title, 'عرض خاص');
   assert.equal(valid.value.audience, 'customers');
   assert.equal(valid.value.sortOrder, 2);
 
+  const imageOnly = normalizeAdPayload({
+    title: '',
+    body: '',
+    audience: 'all',
+  }, { imageCount: 1 });
+
+  assert.equal(imageOnly.ok, true);
+  assert.equal(imageOnly.value.title, '');
+  assert.equal(imageOnly.value.body, '');
+
   assert.equal(
-    normalizeAdPayload({ title: '' }).ok,
+    normalizeAdPayload({ title: '', body: '' }, { imageCount: 0 }).ok,
     false,
   );
   assert.equal(
     normalizeAdPayload({
       title: 'Ad',
       audience: 'unknown',
-    }).ok,
+    }, { imageCount: 1 }).ok,
     false,
   );
   assert.equal(
     normalizeAdPayload({
       title: 'Ad',
       startsAt: 'not-a-date',
-    }).ok,
+    }, { imageCount: 1 }).ok,
     false,
   );
   assert.equal(
@@ -58,21 +67,35 @@ test('ad payload validates title, audience, dates, order, and image URL', () => 
       title: 'Ad',
       startsAt: '2026-11-20T10:00:00.000Z',
       endsAt: '2026-11-10T10:00:00.000Z',
-    }).ok,
+    }, { imageCount: 1 }).ok,
     false,
   );
   assert.equal(
     normalizeAdPayload({
       title: 'Ad',
       sortOrder: -1,
-    }).ok,
+    }, { imageCount: 1 }).ok,
     false,
   );
+});
 
-  assert.equal(isValidAdImageUrl(''), true);
-  assert.equal(isValidAdImageUrl('https://example.com/ad.png'), true);
-  assert.equal(isValidAdImageUrl('/uploads/ad.png'), true);
-  assert.equal(isValidAdImageUrl('javascript:alert(1)'), false);
+test('public ad payload exposes images and optional countdown dates', () => {
+  const payload = publicAd({
+    _id: { toString: () => 'ad-1' },
+    title: '',
+    body: 'نص',
+    images: ['/uploads/ads/a.png', '/uploads/ads/b.png'],
+    startsAt: new Date('2026-11-10T10:00:00.000Z'),
+    endsAt: new Date('2026-11-20T10:00:00.000Z'),
+  });
+
+  assert.equal(payload._id, 'ad-1');
+  assert.deepEqual(payload.images, [
+    '/uploads/ads/a.png',
+    '/uploads/ads/b.png',
+  ]);
+  assert.ok(payload.startsAt);
+  assert.ok(payload.endsAt);
 });
 
 test('ad model and routes keep public previews limited to active ads', () => {
@@ -88,6 +111,7 @@ test('ad model and routes keep public previews limited to active ads', () => {
     Ad.schema.path('audience').options.enum.includes('providers'),
     true,
   );
+  assert.ok(Ad.schema.path('images'));
 
   const publicRoute = source('src/routes/ads.js');
   const adminRoute = source('src/routes/adminAds.js');
@@ -100,6 +124,9 @@ test('ad model and routes keep public previews limited to active ads', () => {
   assert.match(publicRoute, /limit\(5\)/);
 
   assert.match(adminRoute, /normalizeAdPayload/);
+  assert.match(adminRoute, /adImageUpload/);
+  assert.match(adminRoute, /finalizeAdImageFiles/);
+  assert.match(adminRoute, /images/);
   assert.match(adminRoute, /router\.post\('\/'/);
   assert.match(adminRoute, /router\.put\('\/:id'/);
   assert.match(adminRoute, /router\.put\('\/:id\/status'/);
@@ -113,7 +140,7 @@ test('ad model and routes keep public previews limited to active ads', () => {
   assert.match(index, /Ad\.createIndexes\(\)/);
 });
 
-test('admin dashboard exposes ad management controls', () => {
+test('admin dashboard uploads ad images and no longer accepts image URLs', () => {
   const sidebar = source('src/views/admin/partials/sidebar.ejs');
   const page = source('src/views/admin/index.ejs');
   const browser = source('src/public/js/main.js');
@@ -122,9 +149,10 @@ test('admin dashboard exposes ad management controls', () => {
   assert.match(page, /id="page-ads"/);
   assert.match(page, /id="adForm"/);
   assert.match(page, /id="adsList"/);
+  assert.match(page, /id="adImages"/);
+  assert.match(page, /multiple/);
+  assert.doesNotMatch(page, /adImageUrl/);
   assert.match(browser, /loadAds/);
   assert.match(browser, /saveAd/);
-  assert.match(browser, /data-admin-action="editAd"/);
-  assert.match(browser, /data-admin-action="deleteAd"/);
-  assert.match(browser, /data-admin-action="toggleAd"/);
+  assert.match(browser, /FormData/);
 });

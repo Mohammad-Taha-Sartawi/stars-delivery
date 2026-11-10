@@ -6,7 +6,6 @@ const notificationSchema = new mongoose.Schema({
   type: { type: String, enum: ['new_offer', 'offer_accepted', 'offer_not_selected', 'driver_taken', 'order_pending', 'new_order', 'offer_submitted', 'order_completed', 'delivery_confirmation', 'delivery_confirmed', 'delivery_rejected', 'new_rating', 'report_reply', 'broadcast'], required: true },
   title: { type: String, required: true },
   body: { type: String, required: true },
-  image: { type: String, default: '' },
   read: { type: Boolean, default: false },
   pinned: { type: Boolean, default: false },
   expireAt: { type: Date },

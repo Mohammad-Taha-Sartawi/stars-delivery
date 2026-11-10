@@ -214,12 +214,12 @@ test(
 
     assert.match(
       browserSource,
-      /payload\.append\('driverPassword', password\)/,
+      /driverPassword: password,/,
     );
 
     assert.match(
       browserSource,
-      /payload\.append\('driverPasswordConfirm', passwordConfirm\)/,
+      /driverPasswordConfirm: passwordConfirm,/,
     );
 
     assert.doesNotMatch(

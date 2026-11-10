@@ -29,7 +29,6 @@ class AdService {
     return data
         .whereType<Map>()
         .map((item) => AdModel.fromJson(Map<String, dynamic>.from(item)))
-        .where((ad) => ad.title.trim().isNotEmpty)
         .toList();
   }
 }

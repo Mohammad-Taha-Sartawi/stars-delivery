@@ -570,10 +570,8 @@ class _RecordingSessionGateway implements AuthGateway {
     String e,
     String f, {
     String governorate = '',
-    bool licenseNotAvailable = false,
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
-    ProviderRegistrationDocument? driverLicenseDocument,
   }) async => {'error': 'unused'};
 
   @override

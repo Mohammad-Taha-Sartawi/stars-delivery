@@ -4,10 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
+  AD_UPLOAD_DIR,
   detectSafeImageType,
-  finalizeOrderImageFiles,
-  removeOrderImageFiles,
-} = require('../src/services/orderImageStorage');
+  finalizeAdImageFiles,
+  removeAdImageFiles,
+} = require('../src/services/adImageStorage');
 const {
   validateLocationUpdate,
 } = require('../src/security/locationValidation');
@@ -25,7 +26,7 @@ const {
 } = require('../src/security/totp');
 
 const backendRoot = path.resolve(__dirname, '..');
-const uploadsRoot = path.join(backendRoot, 'uploads');
+const uploadsRoot = AD_UPLOAD_DIR;
 
 function source(relativePath) {
   return fs.readFileSync(
@@ -52,7 +53,7 @@ function temporaryUploadFile(content, extension = '.upload') {
   };
 }
 
-test('order image upload rejects active HTML while accepting real image bytes', async () => {
+test('ad image upload rejects active HTML while accepting real image bytes', async () => {
   assert.equal(
     detectSafeImageType(Buffer.from('<html><script>alert(1)</script></html>')),
     null,
@@ -74,7 +75,7 @@ test('order image upload rejects active HTML while accepting real image bytes', 
   );
 
   await assert.rejects(
-    finalizeOrderImageFiles([htmlFile]),
+    finalizeAdImageFiles([htmlFile]),
     /Only JPEG, PNG, GIF, or WebP images are allowed/,
   );
 
@@ -83,7 +84,7 @@ test('order image upload rejects active HTML while accepting real image bytes', 
   const pngFile = temporaryUploadFile(png);
 
   try {
-    const [finalized] = await finalizeOrderImageFiles([pngFile]);
+    const [finalized] = await finalizeAdImageFiles([pngFile]);
 
     assert.match(
       finalized.filename,
@@ -95,20 +96,24 @@ test('order image upload rejects active HTML while accepting real image bytes', 
     );
     assert.equal(fs.existsSync(finalized.path), true);
   } finally {
-    await removeOrderImageFiles([pngFile]);
+    await removeAdImageFiles([pngFile]);
   }
 });
 
-test('upload routes never expose the original filename or trust MIME alone', () => {
-  const storage = source('src/services/orderImageStorage.js');
+test('only ad administration accepts image uploads', () => {
+  const storage = source('src/services/adImageStorage.js');
+  const adminAds = source('src/routes/adminAds.js');
   const orders = source('src/routes/orders.js');
+  const auth = source('src/routes/auth.js');
 
   assert.doesNotMatch(storage, /file\.originalname/);
   assert.match(storage, /crypto\.randomUUID\(\)/);
   assert.match(storage, /detectSafeImageType/);
   assert.match(storage, /file\.mimetype\.startsWith\('image\/'\)/);
-  assert.match(orders, /finalizeOrderImageFiles/);
-  assert.match(orders, /removeOrderImageFiles\(uploadedFiles\)/);
+  assert.match(adminAds, /adImageUpload/);
+  assert.match(adminAds, /finalizeAdImageFiles/);
+  assert.doesNotMatch(orders, /multer|orderImageUpload|finalizeOrderImageFiles/);
+  assert.doesNotMatch(auth, /multer|providerRegistrationUpload|inspectProviderDocumentFiles/);
 });
 
 test('customer phone is not broadcast in new-order socket payloads', () => {
@@ -224,11 +229,12 @@ test('logout revokes the mobile session on the server side', () => {
   assert.match(provider, /revokeSession\(widget\.token\)/);
 });
 
-test('third-party image hosting is opt-in and cloud results stay file-aligned', () => {
-  const upload = source('src/services/upload.js');
+test('order creation no longer accepts or returns images', () => {
+  const orders = source('src/routes/orders.js');
+  const model = source('src/models/Order.js');
 
-  assert.match(upload, /ENABLE_IMGBB_UPLOAD === 'true'/);
-  assert.match(upload, /Promise\.all/);
+  assert.doesNotMatch(orders, /images|upload/i);
+  assert.doesNotMatch(model, /images:/);
 });
 
 test('administrator TOTP codes and recovery codes are verified and hashed', () => {

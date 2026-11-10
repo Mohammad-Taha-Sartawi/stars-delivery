@@ -9,29 +9,29 @@ function source(file) {
   return fs.readFileSync(path.join(backendRoot, file), 'utf8');
 }
 
-test('admin driver creation supports governorate, village and license waiver', () => {
+test('admin driver creation supports governorate and village without image uploads', () => {
   const adminDrivers = source('src/routes/adminDrivers.js');
   const index = source('src/views/admin/index.ejs');
   const main = source('src/public/js/main.js');
 
-  assert.match(adminDrivers, /upload\.single\('driverLicenseDocument'\)/);
+  assert.doesNotMatch(adminDrivers, /upload\.single\('driverLicenseDocument'\)/);
   assert.match(adminDrivers, /driverGovernorate/);
   assert.match(adminDrivers, /isValidAreaForGovernorate/);
   assert.match(adminDrivers, /licenseNotAvailable/);
-  assert.match(adminDrivers, /providerDocuments/);
+  assert.doesNotMatch(adminDrivers, /providerDocuments,\s*serviceTypes/);
   assert.match(adminDrivers, /area: requestedArea/);
   assert.match(adminDrivers, /governorate,/);
 
   assert.match(index, /id="driverGovernorateSelect"/);
   assert.match(index, /id="driverAreaSelect"/);
-  assert.match(index, /id="driverLicenseNotAvailable"/);
-  assert.match(index, /name="driverLicenseDocument"/);
+  assert.doesNotMatch(index, /driverLicenseDocument/);
+  assert.doesNotMatch(index, /driverLicenseNotAvailable/);
 
   assert.match(main, /adminAreasByGovernorate/);
   assert.match(main, /const populateCities/);
   assert.match(main, /new FormData\(\)/);
-  assert.match(main, /append\('driverGovernorate'/);
-  assert.match(main, /append\('driverLicenseDocument'/);
+  assert.match(main, /driverGovernorate: governorate/);
+  assert.doesNotMatch(main, /append\('driverLicenseDocument'/);
 });
 
 test('orphan cleanup script removes offers and rejections without orders', () => {

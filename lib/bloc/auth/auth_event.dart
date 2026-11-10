@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 
 import '../../models/user_model.dart';
-import '../../services/auth_service.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -37,8 +36,6 @@ class RegisterEvent extends AuthEvent {
   final String governorate;
   final bool privacyPolicy;
   final List<String> serviceTypes;
-  final ProviderRegistrationDocument? driverLicenseDocument;
-  final bool licenseNotAvailable;
 
   const RegisterEvent({
     required this.fullName,
@@ -50,8 +47,6 @@ class RegisterEvent extends AuthEvent {
     required this.governorate,
     this.privacyPolicy = true,
     this.serviceTypes = const [],
-    this.driverLicenseDocument,
-    this.licenseNotAvailable = false,
   });
 
   // Provider document bytes are intentionally omitted
@@ -67,7 +62,6 @@ class RegisterEvent extends AuthEvent {
     area,
     governorate,
     privacyPolicy,
-    licenseNotAvailable,
   ];
 }
 

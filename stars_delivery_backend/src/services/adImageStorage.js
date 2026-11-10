@@ -3,9 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-const ORDER_UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
-const MAX_ORDER_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_ORDER_IMAGES = 3;
+const AD_UPLOAD_DIR = path.join(
+  __dirname,
+  '..',
+  '..',
+  'uploads',
+  'ads',
+);
+const MAX_AD_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_AD_IMAGES = 5;
 
 const SAFE_IMAGE_TYPES = [
   {
@@ -63,21 +69,21 @@ const SAFE_UPLOAD_EXTENSIONS = new Set([
   '.webp',
 ]);
 
-class OrderImageValidationError extends Error {
-  constructor(message, code = 'INVALID_IMAGE') {
+class AdImageValidationError extends Error {
+  constructor(message, code = 'INVALID_AD_IMAGE') {
     super(message);
-    this.name = 'OrderImageValidationError';
+    this.name = 'AdImageValidationError';
     this.code = code;
   }
 }
 
-function ensureOrderUploadDirectory() {
-  fs.mkdirSync(ORDER_UPLOAD_DIR, {
+function ensureAdUploadDirectory() {
+  fs.mkdirSync(AD_UPLOAD_DIR, {
     recursive: true,
   });
 }
 
-ensureOrderUploadDirectory();
+ensureAdUploadDirectory();
 
 function detectSafeImageType(buffer) {
   return SAFE_IMAGE_TYPES.find(
@@ -103,13 +109,13 @@ async function readFileHeader(filePath, length = 64) {
   }
 }
 
-async function finalizeOrderImageFiles(files) {
+async function finalizeAdImageFiles(files) {
   const entries = Array.isArray(files) ? files : [];
 
   try {
     for (const file of entries) {
       if (!file?.path || !file?.size) {
-        throw new OrderImageValidationError(
+        throw new AdImageValidationError(
           'The uploaded image is empty.',
           'EMPTY_IMAGE',
         );
@@ -119,7 +125,7 @@ async function finalizeOrderImageFiles(files) {
       const detected = detectSafeImageType(header);
 
       if (!detected) {
-        throw new OrderImageValidationError(
+        throw new AdImageValidationError(
           'Only JPEG, PNG, GIF, or WebP images are allowed.',
           'UNSUPPORTED_IMAGE',
         );
@@ -128,7 +134,7 @@ async function finalizeOrderImageFiles(files) {
       const safeName =
         `${crypto.randomUUID()}${detected.extension}`;
       const safePath = path.join(
-        ORDER_UPLOAD_DIR,
+        AD_UPLOAD_DIR,
         safeName,
       );
 
@@ -136,54 +142,68 @@ async function finalizeOrderImageFiles(files) {
 
       file.filename = safeName;
       file.path = safePath;
-      file.destination = ORDER_UPLOAD_DIR;
+      file.destination = AD_UPLOAD_DIR;
       file.mimetype = detected.mimeType;
+      file.publicUrl = `/uploads/ads/${safeName}`;
     }
 
     return entries;
   } catch (error) {
-    await removeOrderImageFiles(entries);
+    await removeAdImageFiles(entries);
     throw error;
   }
 }
 
-async function removeOrderImageFiles(files) {
+async function removeAdImageFiles(files) {
   const entries = Array.isArray(files) ? files : [];
 
   await Promise.all(
     entries.map((file) =>
-      deleteOrderImageFile(file?.path),
+      deleteAdImageFile(file?.path),
     ),
   );
 }
 
-async function deleteOrderImageFile(filePath) {
+async function deleteAdImageFile(filePath) {
   if (!filePath) return;
 
   try {
     await fs.promises.unlink(filePath);
   } catch (error) {
     if (error?.code !== 'ENOENT') {
-      // Cleanup failures must never hide the original request error.
+      // Cleanup failures must not hide the original request error.
     }
   }
 }
 
+async function deleteAdImageByUrl(imageUrl) {
+  const value = String(imageUrl || '');
+
+  if (!value.startsWith('/uploads/ads/')) {
+    return;
+  }
+
+  const filename = path.basename(value);
+  await deleteAdImageFile(
+    path.join(AD_UPLOAD_DIR, filename),
+  );
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, callback) => {
-    ensureOrderUploadDirectory();
-    callback(null, ORDER_UPLOAD_DIR);
+    ensureAdUploadDirectory();
+    callback(null, AD_UPLOAD_DIR);
   },
   filename: (req, file, callback) => {
     callback(null, `${crypto.randomUUID()}.upload`);
   },
 });
 
-const orderImageUpload = multer({
+const adImageUpload = multer({
   storage,
   limits: {
-    fileSize: MAX_ORDER_IMAGE_BYTES,
-    files: MAX_ORDER_IMAGES,
+    fileSize: MAX_AD_IMAGE_BYTES,
+    files: MAX_AD_IMAGES,
     fields: 20,
     fieldSize: 100 * 1024,
     parts: 30,
@@ -198,15 +218,15 @@ const orderImageUpload = multer({
     }
 
     callback(
-      new OrderImageValidationError(
+      new AdImageValidationError(
         'Only image files are allowed.',
         'UNSUPPORTED_IMAGE',
       ),
     );
   },
-}).array('images', MAX_ORDER_IMAGES);
+}).array('images', MAX_AD_IMAGES);
 
-function orderImageUploadErrorMessage(error) {
+function adImageUploadErrorMessage(error) {
   if (error?.code === 'LIMIT_FILE_SIZE') {
     return 'Each image must be 5MB or smaller.';
   }
@@ -215,10 +235,10 @@ function orderImageUploadErrorMessage(error) {
     error?.code === 'LIMIT_FILE_COUNT'
     || error?.code === 'LIMIT_UNEXPECTED_FILE'
   ) {
-    return `A maximum of ${MAX_ORDER_IMAGES} images is allowed.`;
+    return `A maximum of ${MAX_AD_IMAGES} images is allowed.`;
   }
 
-  if (error instanceof OrderImageValidationError) {
+  if (error instanceof AdImageValidationError) {
     return error.message;
   }
 
@@ -232,16 +252,17 @@ function isSafeUploadExtension(filePath) {
 }
 
 module.exports = {
-  ORDER_UPLOAD_DIR,
-  MAX_ORDER_IMAGE_BYTES,
-  MAX_ORDER_IMAGES,
+  AD_UPLOAD_DIR,
+  MAX_AD_IMAGE_BYTES,
+  MAX_AD_IMAGES,
   SAFE_UPLOAD_EXTENSIONS,
-  OrderImageValidationError,
-  orderImageUpload,
-  orderImageUploadErrorMessage,
-  finalizeOrderImageFiles,
-  removeOrderImageFiles,
-  deleteOrderImageFile,
+  AdImageValidationError,
+  adImageUpload,
+  adImageUploadErrorMessage,
+  finalizeAdImageFiles,
+  removeAdImageFiles,
+  deleteAdImageFile,
+  deleteAdImageByUrl,
   detectSafeImageType,
   isSafeUploadExtension,
 };

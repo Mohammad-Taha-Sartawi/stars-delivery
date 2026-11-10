@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_event.dart';
@@ -36,10 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final _providerDocumentPicker = ImagePicker();
-
-  ProviderRegistrationDocument? _driverLicenseDocument;
-  bool _licenseNotAvailable = false;
   final Set<String> _serviceTypes = {'product', 'people', 'goods'};
 
   bool _isLogin = true;
@@ -349,72 +344,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         )
                         .toList(),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  CheckboxListTile(
-                    key: const Key('providerNoLicenseOption'),
-                    value: _licenseNotAvailable,
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: Text(
-                      AppLocalization.get(
-                        context,
-                        'provider_no_license_option',
-                      ),
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    subtitle: Text(
-                      AppLocalization.get(context, 'provider_no_license_hint'),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _licenseNotAvailable = value ?? false;
-                        if (_licenseNotAvailable) {
-                          _driverLicenseDocument = null;
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (_licenseNotAvailable)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.secondaryContainer,
-                        borderRadius: BorderRadiusDirectional.circular(
-                          AppRadius.md,
-                        ),
-                      ),
-                      child: Text(
-                        AppLocalization.get(
-                          context,
-                          'provider_no_license_selected',
-                        ),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSecondaryContainer,
-                          height: 1.4,
-                        ),
-                      ),
-                    )
-                  else ...[
-                    Text(
-                      AppLocalization.get(context, 'provider_documents_title'),
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      AppLocalization.get(context, 'provider_documents_hint'),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    _providerDocumentButton(
-                      key: const Key('driverLicenseDocumentPicker'),
-                      labelKey: 'driver_license_document',
-                      document: _driverLicenseDocument,
-                      onPressed: _pickProviderDocument,
-                    ),
-                  ],
                   const SizedBox(height: AppSpacing.lg),
                 ],
               ],
@@ -773,41 +702,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _providerDocumentButton({
-    required Key key,
-    required String labelKey,
-    required ProviderRegistrationDocument? document,
-    required VoidCallback onPressed,
-  }) {
-    final selected = document != null;
-
-    return OutlinedButton(
-      key: key,
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        alignment: AlignmentDirectional.centerStart,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            selected
-                ? Icons.verified_outlined
-                : Icons.add_photo_alternate_outlined,
-          ),
-          const SizedBox(width: 10),
-          Expanded(child: Text(AppLocalization.get(context, labelKey))),
-          Text(
-            AppLocalization.get(
-              context,
-              selected ? 'replace_image' : 'choose_image',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _selectRole(String role) {
     if (_selectedRole == role) {
       return;
@@ -815,74 +709,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() {
       _selectedRole = role;
-
-      if (role != 'provider') {
-        _driverLicenseDocument = null;
-        _licenseNotAvailable = false;
-      }
     });
   }
 
   void _toggleAuthMode() {
     setState(() {
       _isLogin = !_isLogin;
-
-      if (_isLogin) {
-        _driverLicenseDocument = null;
-        _licenseNotAvailable = false;
-      }
     });
 
     context.read<AuthBloc>().add(ToggleAuthModeEvent(isLogin: _isLogin));
-  }
-
-  Future<void> _pickProviderDocument() async {
-    try {
-      final picked = await _providerDocumentPicker.pickImage(
-        source: ImageSource.gallery,
-        requestFullMetadata: false,
-      );
-
-      if (picked == null) {
-        return;
-      }
-
-      final document = await ProviderRegistrationDocument.fromXFile(
-        picked,
-        safeBaseName: 'driver-license',
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _driverLicenseDocument = document;
-      });
-    } on ProviderDocumentValidationException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      final key = switch (error.failure) {
-        ProviderDocumentValidationFailure.empty => 'provider_document_empty',
-        ProviderDocumentValidationFailure.tooLarge =>
-          'provider_document_too_large',
-        ProviderDocumentValidationFailure.unsupportedType =>
-          'provider_document_unsupported',
-      };
-
-      AppFeedback.error(context, AppLocalization.get(context, key));
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      AppFeedback.error(
-        context,
-        AppLocalization.get(context, 'provider_document_pick_failed'),
-      );
-    }
   }
 
   void _submit() {
@@ -909,17 +744,6 @@ class _LoginScreenState extends State<LoginScreen> {
         AppFeedback.error(
           context,
           AppLocalization.get(context, 'service_type_required'),
-        );
-
-        return;
-      }
-
-      if (_selectedRole == 'provider' &&
-          !_licenseNotAvailable &&
-          _driverLicenseDocument == null) {
-        AppFeedback.error(
-          context,
-          AppLocalization.get(context, 'provider_documents_required'),
         );
 
         return;
@@ -1042,8 +866,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final password = _passwordController.text;
 
-    final driverLicenseDocument = _driverLicenseDocument;
-
     context.read<AuthBloc>().add(
       RegisterEvent(
         fullName: _nameController.text.trim(),
@@ -1054,21 +876,8 @@ class _LoginScreenState extends State<LoginScreen> {
         area: _selectedArea ?? '',
         governorate: _currentGovernorate?.areaValue ?? '',
         serviceTypes: _serviceTypes.toList(),
-        driverLicenseDocument: driverLicenseDocument,
-        licenseNotAvailable:
-            _selectedRole == 'provider' && _licenseNotAvailable,
       ),
     );
-
-    // Drop the screen's references immediately after
-    // handing the immutable in-memory values to BLoC.
-    // A failed provider submission requires re-selection
-    // rather than retaining sensitive verification bytes.
-    if (_selectedRole == 'provider') {
-      setState(() {
-        _driverLicenseDocument = null;
-      });
-    }
   }
 }
 

@@ -490,69 +490,44 @@ test(
 );
 
 test(
-  'registration uses bounded in-memory multipart contract',
+  'mobile provider registration no longer accepts document uploads',
   () => {
     const auth =
       source('src/routes/auth.js');
 
+    assert.doesNotMatch(
+      auth,
+      /multer|providerRegistrationUpload|REQUIRED_PROVIDER_DOCUMENT_FIELDS|inspectProviderDocumentFiles|persistProviderDocumentFiles/,
+    );
+
+    assert.match(
+      auth,
+      /PendingProvider\.create\(\{/,
+    );
+  },
+);
+
+test(
+  'legacy provider document storage remains private and validated',
+  () => {
     const storage =
       source(
         'src/services/providerDocumentStorage.js',
       );
 
     assert.match(
-      auth,
-      /multer\.memoryStorage\(\)/,
-    );
-
-    assert.match(
-      auth,
-      /REQUIRED_PROVIDER_DOCUMENT_FIELDS/,
-    );
-
-    assert.match(
-      auth,
-      /files:\s*1/,
-    );
-
-    assert.match(
       storage,
       /fieldName:\s*'driverLicenseDocument'/,
     );
 
-    assert.doesNotMatch(
+    assert.match(
       storage,
-      /fieldName:\s*'identityDocument'/,
-    );
-  },
-);
-
-test(
-  'registration validates then persists private provider evidence',
-  () => {
-    const text =
-      source(
-        'src/routes/auth.js',
-      );
-
-    assert.match(
-      text,
-      /inspectProviderDocumentFiles/,
+      /private[\/]provider-documents/,
     );
 
     assert.match(
-      text,
-      /persistProviderDocumentFiles/,
-    );
-
-    assert.match(
-      text,
-      /providerDocuments,/,
-    );
-
-    assert.doesNotMatch(
-      text,
-      /uploadImagesToCloud|imgbb|\/uploads/,
+      storage,
+      /contentType/,
     );
   },
 );
@@ -613,32 +588,12 @@ test(
 );
 
 test(
-  'approval requires complete evidence and transfers metadata',
+  'approval no longer requires evidence and transfers legacy metadata',
   () => {
     const text =
       source(
         'src/routes/adminDrivers.js',
       );
-
-    assert.match(
-      text,
-      /requiredProviderDocumentsPresent/,
-    );
-
-    assert.match(
-      text,
-      /PROVIDER_DOCUMENTS_REQUIRED/,
-    );
-
-    assert.match(
-      text,
-      /select\(\s*['"]\+password \+providerDocuments['"]\s*,?\s*\)/,
-    );
-
-    assert.match(
-      text,
-      /providerDocuments:\s*pending\.providerDocuments/,
-    );
 
     const approvalStart =
       text.indexOf(
@@ -651,71 +606,25 @@ test(
         approvalStart,
       );
 
-    assert.ok(
-      approvalStart >= 0,
-    );
-
-    assert.ok(
-      rejectionStart > approvalStart,
-    );
+    assert.ok(approvalStart >= 0);
+    assert.ok(rejectionStart > approvalStart);
 
     const approval =
-      text.slice(
-        approvalStart,
-        rejectionStart,
-      );
-
-    assert.match(
-      approval,
-      /executeTransaction/,
-    );
-
-    assert.match(
-      approval,
-      /mongoose\.startSession\(\)/,
-    );
-
-    assert.match(
-      approval,
-      /\.session\(session\)/,
-    );
-
-    assert.match(
-      approval,
-      /User\.create\(\s*\[[\s\S]*?\]\s*,\s*\{\s*session,\s*\}\s*,?\s*\)/,
-    );
-
-    assert.match(
-      approval,
-      /PendingProvider\s*\.deleteOne\([\s\S]*?\{\s*session,\s*\}/,
-    );
-
-    assert.match(
-      approval,
-      /deletion\.deletedCount\s*!==\s*1/,
-    );
+      text.slice(approvalStart, rejectionStart);
 
     assert.doesNotMatch(
       approval,
-      /findByIdAndDelete/,
+      /requiredProviderDocumentsPresent|PROVIDER_DOCUMENTS_REQUIRED/,
     );
 
-    const createIndex =
-      approval.indexOf(
-        'await User.create',
-      );
-
-    const deleteIndex =
-      approval.indexOf(
-        '.deleteOne(',
-      );
-
-    assert.ok(
-      createIndex >= 0,
+    assert.match(
+      approval,
+      /select\(\s*['"]\+password \+providerDocuments['"]\s*,?\s*\)/,
     );
 
-    assert.ok(
-      deleteIndex > createIndex,
+    assert.match(
+      approval,
+      /providerDocuments:\s*\(pending\.providerDocuments \|\| \[\]\)/,
     );
   },
 );

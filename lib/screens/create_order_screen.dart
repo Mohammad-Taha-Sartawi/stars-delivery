@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 import '../bloc/order/order_bloc.dart';
 import '../bloc/order/order_event.dart';
 import '../bloc/order/order_state.dart';
@@ -37,8 +35,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final List<File> _images = [];
-  final ImagePicker _picker = ImagePicker();
 
   String get _governorateName {
     final governorate = widget.user.governorate.trim();
@@ -52,23 +48,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _phoneController.dispose();
     _locationController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickImage() async {
-    if (_images.length >= 3) {
-      AppFeedback.warning(
-        context,
-        AppLocalization.get(context, 'max_3_photos'),
-      );
-      return;
-    }
-    final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-    );
-    if (picked != null) {
-      setState(() => _images.add(File(picked.path)));
-    }
   }
 
   @override
@@ -188,7 +167,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   : null,
                             ),
                             const SizedBox(height: 14),
-                            _buildPhotoPicker(),
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _phoneController,
@@ -268,90 +246,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _buildPhotoPicker() {
-    final scheme = Theme.of(context).colorScheme;
-    final tone = appToneStyle(context, AppTone.accent);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_images.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: SizedBox(
-              height: 80,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _images.length,
-                separatorBuilder: (_, i) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  return Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          _images[index],
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      PositionedDirectional(
-                        top: 0,
-                        end: 0,
-                        child: IconButton(
-                          tooltip: AppLocalization.get(context, 'remove_photo'),
-                          constraints: const BoxConstraints.tightFor(
-                            width: AppSizes.minTouchTarget,
-                            height: AppSizes.minTouchTarget,
-                          ),
-                          padding: EdgeInsets.zero,
-                          onPressed: () =>
-                              setState(() => _images.removeAt(index)),
-                          icon: Container(
-                            padding: const EdgeInsets.all(AppSpacing.xs),
-                            decoration: BoxDecoration(
-                              color: scheme.error,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.close,
-                              size: 16,
-                              color: scheme.onError,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _pickImage,
-            icon: Icon(Icons.camera_alt_outlined, color: tone.solid),
-            label: Text(
-              _images.isEmpty
-                  ? AppLocalization.get(context, 'add_photos')
-                  : '${AppLocalization.get(context, 'add_more_photos')} (${_images.length}/3)',
-              style: TextStyle(color: tone.solid),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: tone.solid.withValues(alpha: 0.5)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildGovernorateBanner(BuildContext context) {
     final tone = appToneStyle(context, AppTone.warning);
     final governorate = _governorateName.isNotEmpty
@@ -425,7 +319,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         type: _selectedType!,
         description: _descController.text.trim(),
         phone: _phoneController.text.trim(),
-        imagePaths: _images.map((f) => f.path).toList(),
         area: ApiConfig.detectedArea,
         location: _locationController.text.trim(),
       ),

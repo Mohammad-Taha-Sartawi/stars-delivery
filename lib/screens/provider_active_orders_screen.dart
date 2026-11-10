@@ -7,13 +7,10 @@ import '../bloc/provider/provider_event.dart';
 import '../bloc/app/app_bloc.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
-import '../services/api_config.dart';
 import '../services/location_service.dart';
 import '../services/socket_service.dart';
 import '../services/theme_service.dart';
-import '../widgets/image_preview.dart';
 import '../widgets/ui/app_feedback.dart';
-import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
 
@@ -365,41 +362,6 @@ class _ProviderActiveOrdersScreenState
                                             ),
                                           ),
                                         ],
-                                      ),
-                                    ],
-                                    if (o['images'] is List &&
-                                        (o['images'] as List).isNotEmpty) ...[
-                                      const SizedBox(height: 8),
-                                      SizedBox(
-                                        height: 60,
-                                        child: ListView.separated(
-                                          scrollDirection: Axis.horizontal,
-                                          itemCount:
-                                              (o['images'] as List).length,
-                                          separatorBuilder: (_, __) =>
-                                              const SizedBox(width: 6),
-                                          itemBuilder: (_, i) {
-                                            final img = (o['images'] as List)[i]
-                                                .toString();
-                                            final url = img.startsWith('http')
-                                                ? img
-                                                : '${ApiConfig.serverUrl}$img';
-                                            return AppImageThumbnail(
-                                              imageUrl: url,
-                                              semanticLabel:
-                                                  AppLocalization.get(
-                                                    context,
-                                                    'view_image',
-                                                  ),
-                                              onTap: () => ImagePreview.show(
-                                                context,
-                                                url,
-                                              ),
-                                              size: 60,
-                                              borderRadius: AppRadius.xs,
-                                            );
-                                          },
-                                        ),
                                       ),
                                     ],
                                   ],

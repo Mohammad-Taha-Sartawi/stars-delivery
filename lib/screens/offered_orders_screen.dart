@@ -5,14 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
-import '../services/api_config.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
 import '../services/socket_service.dart';
 import '../services/theme_service.dart';
-import '../widgets/image_preview.dart';
-import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_notification_bell.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
@@ -254,7 +251,6 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
     final phone = (o['phone'] ?? '').toString();
     final area = (o['area'] ?? '').toString();
     final description = (o['description'] ?? '').toString();
-    final images = o['images'] is List ? (o['images'] as List) : const [];
     final offeredPrice = (o['offeredPrice'] as num?)?.toDouble() ?? 0;
     final offeredTime = (o['offeredTime'] as num?)?.toInt() ?? 0;
 
@@ -401,39 +397,6 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
                 ),
               ),
             _buildOfferHighlight(context, scheme, offeredPrice, offeredTime),
-            if (images.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                AppLocalization.get(context, 'images'),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 84,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: images.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) {
-                    final img = images[i].toString();
-                    final imageUrl = img.startsWith('http')
-                        ? img
-                        : '${ApiConfig.serverUrl}$img';
-                    return AppImageThumbnail(
-                      imageUrl: imageUrl,
-                      semanticLabel: AppLocalization.get(context, 'view_image'),
-                      onTap: () => ImagePreview.show(context, imageUrl),
-                      size: 84,
-                      borderRadius: AppRadius.sm,
-                    );
-                  },
-                ),
-              ),
-            ],
           ],
         ),
       ),

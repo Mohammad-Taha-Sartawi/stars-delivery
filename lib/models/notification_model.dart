@@ -7,13 +7,16 @@ class NotificationModel {
   final bool read;
   final bool pinned;
   final String createdAt;
-  final String image;
 
   NotificationModel({
-    required this.id, required this.orderId, required this.type,
-    required this.title, required this.body, required this.read, required this.createdAt,
+    required this.id,
+    required this.orderId,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.read,
+    required this.createdAt,
     this.pinned = false,
-    this.image = '',
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -26,7 +29,6 @@ class NotificationModel {
       read: json['read'] ?? false,
       pinned: json['pinned'] ?? false,
       createdAt: json['createdAt']?.toString() ?? '',
-      image: json['image'] ?? '',
     );
   }
 }

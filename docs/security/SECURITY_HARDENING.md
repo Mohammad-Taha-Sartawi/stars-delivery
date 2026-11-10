@@ -4,8 +4,10 @@ This document summarizes the controls added to the Stars Delivery backend and
 mobile app. It is an implementation guide, not a substitute for a periodic
 security review.
 
-## Order image uploads
+## Ad image uploads
 
+- Image upload exists only in the administrator ads page. The customer and
+  driver apps do not upload order photos or driver-license photos.
 - Only JPEG, PNG, GIF, and WebP files are accepted. The file signature is read
   from disk; the client-supplied MIME type is not trusted.
 - Uploaded files are renamed to a random UUID and a safe extension. The original
@@ -16,9 +18,8 @@ security review.
   - `Content-Security-Policy: default-src 'none'; sandbox`
   - `Referrer-Policy: no-referrer`
   - `Cross-Origin-Resource-Policy: same-site`
-- Files are deleted when validation or order creation fails.
-- ImgBB upload is disabled by default. Set `ENABLE_IMGBB_UPLOAD=true` only if a
-  third-party public image host is explicitly required.
+- Ad images are removed when the administrator deletes the ad or replaces its
+  images.
 
 ## Customer contact data
 
@@ -89,9 +90,10 @@ broadcasts have explicit maximum lengths.
 
 - GPS coordinates originate from the device. Server-side range, mock-location,
   and jump checks reduce abuse but cannot prove physical location.
-- Order images are protected by unguessable capability URLs and safe response
-  headers. For stronger privacy, move them behind authenticated signed URLs or
-  private object storage.
+- Ad images use random filenames and safe response headers. For stronger
+  privacy, move them behind authenticated signed URLs or private object storage.
+- Existing order images uploaded before the feature removal remain on disk for
+  legacy records; no new order or provider-license images are accepted.
 - Firebase Cloud Messaging remains disabled until project credentials are
   configured.
 - Some `firebase-admin` transitive dependencies still report moderate npm

@@ -17,29 +17,20 @@ class OrderService {
     String token,
     String type,
     String description,
-    String phone,
-    List<String> imagePaths, {
+    String phone, {
     String? area,
     String? location,
   }) async {
     try {
-      final formData = FormData();
-      formData.fields.addAll([
-        MapEntry('type', type),
-        MapEntry('description', description),
-        MapEntry('phone', phone),
-        if (area != null) MapEntry('area', area),
-        if (location != null) MapEntry('location', location),
-      ]);
-      for (final path in imagePaths) {
-        formData.files.add(
-          MapEntry('images', await MultipartFile.fromFile(path)),
-        );
-      }
-
       final response = await _dio.post(
         '/orders',
-        data: formData,
+        data: {
+          'type': type,
+          'description': description,
+          'phone': phone,
+          if (area != null) 'area': area,
+          if (location != null) 'location': location,
+        },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return response.data;

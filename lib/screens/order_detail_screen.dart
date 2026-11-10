@@ -3,16 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/offer/offer_bloc.dart';
-import '../services/api_config.dart';
 import '../services/localization_service.dart';
 import '../services/order_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
 import '../services/socket_service.dart';
 import '../services/theme_service.dart';
-import '../widgets/image_preview.dart';
 import '../widgets/ui/app_feedback.dart';
-import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
 import '../widgets/ui/governorate_scope_warning.dart';
@@ -338,9 +335,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final customerPublicId = customer is Map
         ? (customer['publicId'] ?? '').toString()
         : '';
-    final images = order['images'] is List
-        ? (order['images'] as List).map((image) => image.toString()).toList()
-        : <String>[];
 
     return ListView(
       padding: EdgeInsets.symmetric(
@@ -459,32 +453,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                       ),
                     ],
-                  ),
-                ],
-                if (images.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 70,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: images.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
-                      itemBuilder: (_, index) {
-                        final image = images[index];
-                        final url = image.startsWith('http')
-                            ? image
-                            : '${ApiConfig.serverUrl}$image';
-                        return AppImageThumbnail(
-                          imageUrl: url,
-                          semanticLabel: AppLocalization.get(
-                            context,
-                            'view_image',
-                          ),
-                          onTap: () => ImagePreview.show(context, url),
-                          size: 70,
-                        );
-                      },
-                    ),
                   ),
                 ],
                 if (price > 0) ...[

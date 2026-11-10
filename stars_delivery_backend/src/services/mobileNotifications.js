@@ -18,7 +18,6 @@ async function createUserNotification({
   type,
   title,
   body,
-  image = '',
   pinned = false,
   expireAt = null,
   push = true,
@@ -31,7 +30,6 @@ async function createUserNotification({
     type,
     title,
     body,
-    image,
     pinned,
     ...(expireAt ? { expireAt } : {}),
   });

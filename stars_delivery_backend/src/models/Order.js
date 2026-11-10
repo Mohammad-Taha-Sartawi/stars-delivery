@@ -6,7 +6,6 @@ const orderSchema = new mongoose.Schema({
   type: { type: String, enum: ['product', 'people', 'goods'], required: true },
   description: { type: String, required: true, maxlength: 2000 },
   phone: { type: String, required: true, maxlength: 30 },
-  images: [{ type: String }],
   area: { type: String, default: '' },
   governorate: { type: String, default: '' },
   governorateLevel: { type: Boolean, default: false },

@@ -13,8 +13,6 @@ import 'order_detail_screen.dart';
 import 'order_offers_screen.dart';
 import 'my_orders_screen.dart';
 import 'rejected_orders_screen.dart';
-import '../widgets/image_preview.dart';
-import '../widgets/ui/app_image_thumbnail.dart';
 import '../widgets/ui/app_status_badge.dart';
 import '../widgets/ui/app_tone.dart';
 
@@ -102,7 +100,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         itemCount: state.notifications.length,
                         itemBuilder: (_, i) {
                           final n = state.notifications[i];
-                          final hasImage = n.image.isNotEmpty;
                           final isPinned = n.pinned;
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -125,23 +122,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                             ),
                             child: ListTile(
-                              leading: hasImage
-                                  ? AppImageThumbnail(
-                                      imageUrl: n.image,
-                                      semanticLabel: AppLocalization.get(
-                                        context,
-                                        'view_image',
-                                      ),
-                                      onTap: () =>
-                                          ImagePreview.show(context, n.image),
-                                      size: 44,
-                                    )
-                                  : Icon(
-                                      _iconForType(n.type),
-                                      color: isPinned
-                                          ? pinnedTone.foreground
-                                          : scheme.onSurfaceVariant,
-                                    ),
+                              leading: Icon(
+                                _iconForType(n.type),
+                                color: isPinned
+                                    ? pinnedTone.foreground
+                                    : scheme.onSurfaceVariant,
+                              ),
                               title: Row(
                                 children: [
                                   Expanded(

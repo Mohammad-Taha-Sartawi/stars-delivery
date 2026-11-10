@@ -71,10 +71,8 @@ class _HangingAuthGateway implements AuthGateway {
     String role,
     String area, {
     String governorate = '',
-    bool licenseNotAvailable = false,
     bool privacyPolicy = true,
     List<String> serviceTypes = const [],
-    ProviderRegistrationDocument? driverLicenseDocument,
   }) => Completer<Map<String, dynamic>>().future;
 
   @override

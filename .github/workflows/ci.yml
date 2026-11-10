@@ -123,8 +123,8 @@ jobs:
           echo "Analyzer errors: ${ANALYZE_ERRORS:-UNKNOWN}"
 
           if [ "$ANALYZE_RC" -ne 1 ] ||
-             [ "$ANALYZE_COUNT" != "13" ] ||
+             [ "$ANALYZE_COUNT" != "12" ] ||
              [ "$ANALYZE_ERRORS" != "0" ]; then
-            echo "::error::Flutter analyzer baseline drifted from the approved 13 non-error issues."
+            echo "::error::Flutter analyzer baseline drifted from the approved 12 non-error issues."
             exit 1
           fi

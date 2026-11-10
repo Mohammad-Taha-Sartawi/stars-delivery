@@ -1,15 +1,6 @@
-const multer = require('multer');
 const {
   normalizeServiceTypes,
 } = require('../services/providerServiceTypes');
-const {
-  MAX_PROVIDER_DOCUMENT_SIZE,
-  REQUIRED_PROVIDER_DOCUMENT_FIELDS,
-  hasProviderDocumentUploads,
-  inspectProviderDocumentFiles,
-  persistProviderDocumentFiles,
-  deleteProviderDocuments,
-} = require('../services/providerDocumentStorage');
 const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
 const bcrypt = require('bcryptjs');
@@ -58,49 +49,7 @@ const mobileRegistrationLimiter =
 
 const router = express.Router();
 
-const providerRegistrationUpload =
-  multer({
-    storage:
-      multer.memoryStorage(),
-    limits: {
-      fileSize:
-        MAX_PROVIDER_DOCUMENT_SIZE,
-      files: 1,
-      fields: 12,
-    },
-  }).fields(
-    REQUIRED_PROVIDER_DOCUMENT_FIELDS
-      .map(({ fieldName }) => ({
-        name: fieldName,
-        maxCount: 1,
-      })),
-  );
-
-function providerRegistrationDocuments(
-  req,
-  res,
-  next,
-) {
-  providerRegistrationUpload(
-    req,
-    res,
-    (error) => {
-      if (!error) {
-        next();
-        return;
-      }
-
-      res.status(400).json({
-        error:
-          'Invalid provider documents',
-        code:
-          'INVALID_PROVIDER_DOCUMENT',
-      });
-    },
-  );
-}
-
-router.post('/register', mobileRegistrationLimiter, providerRegistrationDocuments, async (req, res) => {
+router.post('/register', mobileRegistrationLimiter, async (req, res) => {
   try {
     const {
       fullName,
@@ -116,9 +65,6 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
       typeof area === 'string' ? area.trim() : '';
     const registrationGovernorate =
       typeof governorate === 'string' ? governorate.trim() : '';
-    const licenseNotAvailable =
-      req.body.licenseNotAvailable === true
-      || req.body.licenseNotAvailable === 'true';
     const normalizedEmail =
       normalizeMobileEmail(email);
 
@@ -148,48 +94,6 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
         ? normalizeServiceTypes(req.body.serviceTypes)
         : [];
 
-    let inspectedProviderDocuments =
-      null;
-
-    if (role === 'provider') {
-      if (licenseNotAvailable) {
-        if (hasProviderDocumentUploads(req.files)) {
-          return res.status(400).json({
-            error:
-              'Provider documents cannot be uploaded when no license is declared.',
-            code: 'INVALID_PROVIDER_DOCUMENT',
-          });
-        }
-        inspectedProviderDocuments = [];
-      } else {
-        try {
-          inspectedProviderDocuments =
-            inspectProviderDocumentFiles(
-              req.files,
-            );
-        } catch (error) {
-          return res.status(400).json({
-            error:
-              'The driver-license document must be a valid JPEG or PNG image.',
-            code:
-              error?.code
-              || 'INVALID_PROVIDER_DOCUMENT',
-          });
-        }
-      }
-    } else if (
-      hasProviderDocumentUploads(
-        req.files,
-      )
-    ) {
-      return res.status(400).json({
-        error:
-          'Provider documents are only accepted for provider registration.',
-        code:
-          'INVALID_PROVIDER_DOCUMENT',
-      });
-    }
-
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) return res.status(400).json({ error: 'Email already registered' });
     const existingPending = await PendingProvider.findOne({ email: normalizedEmail });
@@ -199,51 +103,15 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
 
     // Providers go through admin approval flow.
     if (role === 'provider') {
-      let providerDocuments = [];
-
-      try {
-        if (!licenseNotAvailable) {
-          providerDocuments =
-            await persistProviderDocumentFiles(
-              inspectedProviderDocuments,
-            );
-        }
-
-        await PendingProvider.create({
-          fullName,
-          email:
-            normalizedEmail,
-          phone,
-          password:
-            hashed,
-          area: registrationArea,
-          governorate:
-            registrationGovernorate,
-          licenseNotAvailable,
-          serviceTypes,
-          providerDocuments,
-        });
-      } catch (error) {
-        if (providerDocuments.length > 0) {
-          await deleteProviderDocuments(
-            providerDocuments,
-          ).catch(() => {});
-        }
-
-        if (
-          error?.code
-          === 'PROVIDER_DOCUMENT_STORAGE_UNAVAILABLE'
-        ) {
-          return res.status(503).json({
-            error:
-              'Provider document storage is temporarily unavailable.',
-            code:
-              'PROVIDER_DOCUMENT_STORAGE_UNAVAILABLE',
-          });
-        }
-
-        throw error;
-      }
+      await PendingProvider.create({
+        fullName,
+        email: normalizedEmail,
+        phone,
+        password: hashed,
+        area: registrationArea,
+        governorate: registrationGovernorate,
+        serviceTypes,
+      });
 
       return res.status(201).json({
         pending: true,

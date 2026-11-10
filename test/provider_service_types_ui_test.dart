@@ -18,9 +18,11 @@ void main() {
 
     expect(event, contains('List<String> serviceTypes'));
 
-    expect(service, contains("'serviceTypes': serviceTypes.join(',')"));
+    expect(service, contains("'serviceTypes': serviceTypes"));
 
-    final localization = File('lib/services/localization_service.dart').readAsStringSync();
+    final localization = File(
+      'lib/services/localization_service.dart',
+    ).readAsStringSync();
 
     expect(localization, contains("'service_types'"));
 

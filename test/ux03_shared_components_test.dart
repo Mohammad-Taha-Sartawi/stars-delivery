@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stars_delivery/services/theme_service.dart';
 import 'package:stars_delivery/widgets/ui/app_button_loading_indicator.dart';
 import 'package:stars_delivery/widgets/ui/app_confirm_dialog.dart';
-import 'package:stars_delivery/widgets/ui/app_image_thumbnail.dart';
 import 'package:stars_delivery/widgets/ui/app_status_chip.dart';
 import 'package:stars_delivery/widgets/ui/app_tone.dart';
 
@@ -98,41 +97,6 @@ void main() {
         .getSemantics(find.byType(AppStatusChip))
         .getSemanticsData();
     expect(data.label, 'Expired');
-    handle.dispose();
-  });
-
-  testWidgets('image thumbnail keeps a 48dp target and an accessible name', (
-    tester,
-  ) async {
-    final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      _localizedApp(
-        theme: AppTheme.light,
-        home: Scaffold(
-          body: Center(
-            child: AppImageThumbnail(
-              imageUrl: 'http://127.0.0.1:1/image.png',
-              semanticLabel: 'View image',
-              onTap: () {},
-              size: 44,
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    final size = tester.getSize(find.byType(AppImageThumbnail));
-    expect(size.width, greaterThanOrEqualTo(48));
-    expect(size.height, greaterThanOrEqualTo(48));
-
-    final data = tester
-        .getSemantics(find.byType(AppImageThumbnail))
-        .getSemanticsData();
-    expect(data.label, 'View image');
-    expect(data.flagsCollection.isButton, isTrue);
-    expect(data.flagsCollection.isImage, isTrue);
-    expect(tester.takeException(), isNull);
     handle.dispose();
   });
 

@@ -2,12 +2,9 @@ const fs = require('fs/promises');
 const mongoose = require('mongoose');
 const {
   PROVIDER_DOCUMENT_KINDS,
-  MAX_PROVIDER_DOCUMENT_SIZE,
   deleteProviderDocuments,
   requiredProviderDocumentsPresent,
   findProviderDocument,
-  inspectProviderDocumentFiles,
-  persistProviderDocumentFiles,
   providerDocumentMetadata,
   providerDocumentPath,
   providerDocumentDownloadName,
@@ -24,7 +21,6 @@ const {
 const { sendInternalServerError, sendInternalServerFailure } = require('../security/errorResponse');
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const RejectedOrder = require('../models/RejectedOrder');
@@ -49,30 +45,6 @@ const {
   normalizeMobileEmail,
   isValidMobileEmail,
 } = require('../security/mobileEmail');
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: MAX_PROVIDER_DOCUMENT_SIZE,
-    files: 1,
-    fields: 30,
-    fieldSize: 100 * 1024,
-    parts: 35,
-  },
-});
-
-function driverDocumentUpload(req, res, next) {
-  upload.single('driverLicenseDocument')(req, res, (error) => {
-    if (error) {
-      return res.json({
-        success: false,
-        message: 'صورة الرخصة يجب أن تكون JPEG أو PNG وبحد أقصى 5 ميجابايت.',
-      });
-    }
-
-    return next();
-  });
-}
 
 router.put('/:id/availability', async (req, res) => {
   try {
@@ -356,9 +328,7 @@ router.get('/search', async (req, res) => {
   }
 });
 
-router.post('/', driverDocumentUpload, async (req, res) => {
-  let providerDocuments = [];
-
+router.post('/', async (req, res) => {
   try {
     const {
       driverName,
@@ -432,8 +402,7 @@ router.post('/', driverDocumentUpload, async (req, res) => {
     }
 
     const licenseNotAvailable =
-      req.body.licenseNotAvailable === true
-      || req.body.licenseNotAvailable === 'true';
+      String(driverLicenseType || '').trim() === 'بدون رخصة';
 
     const exists =
       await User.findOne({
@@ -445,35 +414,6 @@ router.post('/', driverDocumentUpload, async (req, res) => {
         success: false,
         message: 'البريد الإلكتروني مسجل بالفعل',
       });
-    }
-
-    if (licenseNotAvailable) {
-      if (req.file) {
-        return res.json({
-          success: false,
-          message: 'لا يمكن إرفاق رخصة عند اختيار عدم امتلاكها.',
-        });
-      }
-    } else {
-      if (!req.file) {
-        return res.json({
-          success: false,
-          message: 'أرفق صورة رخصة القيادة أو اختر خيار عدم امتلاك الرخصة.',
-        });
-      }
-
-      try {
-        const inspected = inspectProviderDocumentFiles({
-          driverLicenseDocument: [req.file],
-        });
-        providerDocuments =
-          await persistProviderDocumentFiles(inspected);
-      } catch (_) {
-        return res.json({
-          success: false,
-          message: 'صورة الرخصة يجب أن تكون JPEG أو PNG وبحد أقصى 5 ميجابايت.',
-        });
-      }
     }
 
     const requestedPublicId = String(driverCustomId || '').trim();
@@ -528,7 +468,6 @@ router.post('/', driverDocumentUpload, async (req, res) => {
         governorate,
         governorateLevel: false,
         licenseNotAvailable,
-        providerDocuments,
         serviceTypes: serviceTypesFromAdminLabel(driverServiceType),
         licenseType: driverLicenseType || '',
         status: 'active',
@@ -542,9 +481,6 @@ router.post('/', driverDocumentUpload, async (req, res) => {
       message: `تم إضافة السائق (${driverName}) بنجاح! سيُطلب منه تغيير كلمة المرور عند أول تسجيل دخول.`,
     });
   } catch (err) {
-    if (providerDocuments.length > 0) {
-      await deleteProviderDocuments(providerDocuments).catch(() => {});
-    }
     if (err?.code === 11000) {
       return res.json({
         success: false,
@@ -1289,7 +1225,6 @@ router.get('/pending', async (req, res) => {
 // Historical fake document route intentionally disabled.
 router.post(
   '/pending/:id',
-  upload.none(),
   (req, res) => {
     return res.status(410).json({
       success: false,
@@ -1330,18 +1265,6 @@ router.post('/pending/:id/approve', async (req, res) => {
               };
             }
 
-            if (
-              pending.licenseNotAvailable !== true
-              && !requiredProviderDocumentsPresent(
-                pending.providerDocuments,
-              )
-            ) {
-              return {
-                outcome:
-                  'documents_required',
-              };
-            }
-
             await User.create(
               [{
                 fullName:
@@ -1376,7 +1299,7 @@ router.post('/pending/:id/approve', async (req, res) => {
                 status:
                   'active',
                 providerDocuments:
-                  pending.providerDocuments
+                  (pending.providerDocuments || [])
                     .map(
                       (document) =>
                         typeof document.toObject
@@ -1427,19 +1350,6 @@ router.post('/pending/:id/approve', async (req, res) => {
         success: false,
         message:
           'طلب التسجيل غير موجود',
-      });
-    }
-
-    if (
-      approvalResult.outcome
-      === 'documents_required'
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'لا يمكن قبول المزود قبل اكتمال رخصة القيادة.',
-        code:
-          'PROVIDER_DOCUMENTS_REQUIRED',
       });
     }
 

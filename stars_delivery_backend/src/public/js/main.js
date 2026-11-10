@@ -383,19 +383,6 @@ document.getElementById('addDriverForm').addEventListener('submit', function (e)
   addNewDriver();
 });
 
-const driverNoLicenseCheckbox = document.getElementById('driverLicenseNotAvailable');
-const driverLicenseInput = document.getElementById('driverLicenseDocumentInput');
-if (driverNoLicenseCheckbox && driverLicenseInput) {
-  driverNoLicenseCheckbox.addEventListener('change', () => {
-    driverLicenseInput.disabled = driverNoLicenseCheckbox.checked;
-    if (driverNoLicenseCheckbox.checked) {
-      driverLicenseInput.value = '';
-      const licenseType = document.querySelector('[name="driverLicenseType"]');
-      if (licenseType) licenseType.value = 'بدون رخصة';
-    }
-  });
-}
-
 async function addNewDriver() {
   const form = document.getElementById('addDriverForm');
   const formData = new FormData(form);
@@ -440,16 +427,6 @@ async function addNewDriver() {
       formData.get('driverArea')
       || '',
     ).trim();
-
-  const licenseNotAvailable =
-    formData.get('licenseNotAvailable')
-    === 'on';
-
-  const licenseFile =
-    form.elements.driverLicenseDocument
-    && form.elements.driverLicenseDocument.files
-      ? form.elements.driverLicenseDocument.files[0]
-      : null;
 
   const errorElement =
     document.getElementById('formErrorMsg');
@@ -503,49 +480,35 @@ async function addNewDriver() {
     return;
   }
 
-  if (!licenseNotAvailable && !licenseFile) {
-    errorElement.textContent =
-      'أرفق صورة رخصة القيادة أو اختر خيار عدم امتلاك الرخصة.';
-    errorElement.classList.add('show');
-    successElement.classList.remove('show');
-    return;
-  }
-
   try {
-    const payload = new FormData();
-    payload.append('driverName', name);
-    payload.append('driverEmail', email);
-    payload.append('driverPhone', phone);
-    payload.append(
-      'driverCustomId',
-      String(formData.get('driverCustomId') || '').trim(),
-    );
-    payload.append(
-      'driverServiceType',
-      String(formData.get('driverServiceType') || ''),
-    );
-    payload.append(
-      'driverLicenseType',
-      String(formData.get('driverLicenseType') || ''),
-    );
-    payload.append('driverGovernorate', governorate);
-    payload.append('driverArea', area);
-    payload.append(
-      'licenseNotAvailable',
-      licenseNotAvailable ? 'true' : 'false',
-    );
-    payload.append('driverPassword', password);
-    payload.append('driverPasswordConfirm', passwordConfirm);
-    if (!licenseNotAvailable && licenseFile) {
-      payload.append('driverLicenseDocument', licenseFile);
-    }
+    const payload = {
+      driverName: name,
+      driverEmail: email,
+      driverPhone: phone,
+      driverCustomId: String(
+        formData.get('driverCustomId') || '',
+      ).trim(),
+      driverServiceType: String(
+        formData.get('driverServiceType') || '',
+      ),
+      driverLicenseType: String(
+        formData.get('driverLicenseType') || '',
+      ),
+      driverGovernorate: governorate,
+      driverArea: area,
+      driverPassword: password,
+      driverPasswordConfirm: passwordConfirm,
+    };
 
     const res =
       await adminFetch(
         '/admin/drivers',
         {
           method: 'POST',
-          body: payload,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
         },
       );
 
@@ -566,9 +529,6 @@ async function addNewDriver() {
       if (areaSelect) {
         areaSelect.innerHTML = '<option value="">اختر القرية أو المدينة...</option>';
         areaSelect.disabled = true;
-      }
-      if (driverLicenseInput) {
-        driverLicenseInput.disabled = false;
       }
       loadDashboardStats();
 
@@ -3063,7 +3023,6 @@ function resetAdForm() {
   form.dataset.editingId = '';
   document.getElementById('adTitle').value = '';
   document.getElementById('adBody').value = '';
-  document.getElementById('adImageUrl').value = '';
   document.getElementById('adStartsAt').value = '';
   document.getElementById('adEndsAt').value = '';
   document.getElementById('adSortOrder').value = '0';
@@ -3092,9 +3051,15 @@ async function loadAds() {
       return;
     }
 
-    const rows = ads.map((ad) => `
+    const rows = ads.map((ad) => {
+      const firstImage =
+        Array.isArray(ad.images) && ad.images.length > 0
+          ? ad.images[0]
+          : '';
+
+      return `
       <tr>
-        <td><strong>${escapeHtml(ad.title)}</strong><br><small>${escapeHtml(ad.body || '')}</small></td>
+        <td>${firstImage ? `<img class="ad-thumb" src="${escapeHtml(firstImage)}" alt="">` : ''}<strong>${escapeHtml(ad.title || 'بدون عنوان')}</strong><br><small>${escapeHtml(ad.body || '')}</small></td>
         <td>${escapeHtml(adAudienceLabel(ad.audience))}</td>
         <td>${adStatusBadge(ad.isActive)}</td>
         <td>${escapeHtml(formatAdDate(ad.startsAt))}<br><small>${escapeHtml(formatAdDate(ad.endsAt))}</small></td>
@@ -3107,7 +3072,8 @@ async function loadAds() {
           </div>
         </td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     container.innerHTML = `
       <h3><i class="fas fa-rectangle-ad"></i> كل الإعلانات</h3>
@@ -3136,15 +3102,18 @@ function editAd(id) {
 
   document.getElementById('adForm').dataset.editingId = String(ad._id);
   document.getElementById('adTitle').value = ad.title || '';
+  document.getElementById('adImages').value = '';
   document.getElementById('adBody').value = ad.body || '';
-  document.getElementById('adImageUrl').value = ad.imageUrl || '';
   document.getElementById('adAudience').value = ad.audience || 'all';
   document.getElementById('adStartsAt').value = toDateTimeLocal(ad.startsAt);
   document.getElementById('adEndsAt').value = toDateTimeLocal(ad.endsAt);
   document.getElementById('adSortOrder').value = String(ad.sortOrder || 0);
   document.getElementById('adIsActive').value = ad.isActive ? 'true' : 'false';
 
-  setAdFormMessage('أنت تعدّل إعلاناً موجوداً. اضغط حفظ الإعلان لتحديثه.', 'success');
+  setAdFormMessage(
+    `أنت تعدّل إعلاناً موجوداً${Array.isArray(ad.images) && ad.images.length > 0 ? ` (${ad.images.length} صورة حالية)` : ''}. اضغط حفظ الإعلان لتحديثه.`,
+    'success',
+  );
   document.getElementById('page-ads').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -3197,20 +3166,26 @@ async function saveAd(event) {
 
   const title = document.getElementById('adTitle').value.trim();
   const body = document.getElementById('adBody').value.trim();
-  const imageUrl = document.getElementById('adImageUrl').value.trim();
+  const imageFiles = Array.from(document.getElementById('adImages').files || []);
   const audience = document.getElementById('adAudience').value;
   const startsAtValue = document.getElementById('adStartsAt').value;
   const endsAtValue = document.getElementById('adEndsAt').value;
   const sortOrder = Number(document.getElementById('adSortOrder').value || 0);
   const isActive = document.getElementById('adIsActive').value === 'true';
 
-  if (!title) {
-    setAdFormMessage('عنوان الإعلان مطلوب.', 'error');
+  const editingId = document.getElementById('adForm').dataset.editingId || '';
+  const existingAd = adsCache.find((item) => String(item._id) === String(editingId));
+  const existingImageCount = Array.isArray(existingAd?.images)
+    ? existingAd.images.length
+    : 0;
+
+  if (imageFiles.length > 5) {
+    setAdFormMessage('يمكن رفع 5 صور كحد أقصى للإعلان.', 'error');
     return;
   }
 
-  if (imageUrl && !/^(https?:\/\/|\/uploads\/)/i.test(imageUrl)) {
-    setAdFormMessage('رابط الصورة يجب أن يبدأ بـ http/https أو /uploads/.', 'error');
+  if (!title && !body && imageFiles.length === 0 && existingImageCount === 0) {
+    setAdFormMessage('أضف عنواناً أو نصاً أو صورة واحدة على الأقل.', 'error');
     return;
   }
 
@@ -3219,18 +3194,21 @@ async function saveAd(event) {
     return;
   }
 
-  const payload = {
-    title,
-    body,
-    imageUrl,
-    audience,
-    isActive,
-    startsAt: startsAtValue ? new Date(startsAtValue).toISOString() : null,
-    endsAt: endsAtValue ? new Date(endsAtValue).toISOString() : null,
-    sortOrder,
-  };
-
-  const editingId = document.getElementById('adForm').dataset.editingId || '';
+  const payload = new FormData();
+  payload.append('title', title);
+  payload.append('body', body);
+  payload.append('audience', audience);
+  payload.append('isActive', isActive ? 'true' : 'false');
+  payload.append('sortOrder', String(sortOrder));
+  payload.append(
+    'startsAt',
+    startsAtValue ? new Date(startsAtValue).toISOString() : '',
+  );
+  payload.append(
+    'endsAt',
+    endsAtValue ? new Date(endsAtValue).toISOString() : '',
+  );
+  imageFiles.forEach((file) => payload.append('images', file));
 
   try {
     const response = await adminFetch(
@@ -3239,8 +3217,7 @@ async function saveAd(event) {
         : '/admin/ads',
       {
         method: editingId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: payload,
       },
     );
     const data = await response.json();
@@ -3741,23 +3718,18 @@ async function loadPendingProviders() {
         const licenseWaived =
           provider.licenseNotAvailable === true
           || review.licenseNotAvailable === true;
-        const canApprove =
-          licenseWaived
-          || (
-            review.complete
-            && !review.unavailable
-          );
+        const canApprove = true;
 
         const documentStatusText =
           licenseWaived
             ? 'لا يملك رخصة'
             : (
                 review.unavailable
-                  ? 'تعذر التحقق'
+                  ? 'لا توجد وثائق'
                   : (
                       review.complete
                         ? 'مكتملة'
-                        : 'ناقصة'
+                        : 'لا توجد وثائق مرفقة'
                     )
               );
 

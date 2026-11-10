@@ -33,7 +33,7 @@ const { governorateKey } = require('./services/registrationLocation');
 const { createOriginGuard, corsOptionsForRequest, socketOriginAllowed } = require('./security/originPolicy');
 const {
   isSafeUploadExtension,
-} = require('./services/orderImageStorage');
+} = require('./services/adImageStorage');
 const authRoutes = require('./routes/auth');
 const orderRoutes = require('./routes/orders');
 const providerRoutes = require('./routes/provider');

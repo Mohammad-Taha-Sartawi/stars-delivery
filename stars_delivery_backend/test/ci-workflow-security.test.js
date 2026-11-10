@@ -246,7 +246,7 @@ test(
 
     assert.match(
       workflow,
-      /\[ "\$ANALYZE_COUNT" != "13" \]/,
+      /\[ "\$ANALYZE_COUNT" != "12" \]/,
     );
 
     assert.match(

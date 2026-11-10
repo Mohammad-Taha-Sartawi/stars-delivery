@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('new order cards use a clear hierarchy and labeled details', () {
-    final source = File('lib/screens/pending_orders_screen.dart').readAsStringSync();
+    final source = File(
+      'lib/screens/pending_orders_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains("'description'"));
 
@@ -13,8 +15,6 @@ void main() {
     expect(source, contains("'phone_number'"));
 
     expect(source, contains("'area_region'"));
-
-    expect(source, contains("'images'"));
 
     expect(source, contains('_buildInfoRow'));
 

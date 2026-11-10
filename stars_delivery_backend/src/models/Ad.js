@@ -4,7 +4,7 @@ const adSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
       maxlength: 120,
     },
@@ -14,11 +14,9 @@ const adSchema = new mongoose.Schema(
       trim: true,
       maxlength: 300,
     },
-    imageUrl: {
-      type: String,
-      default: '',
-      trim: true,
-      maxlength: 1000,
+    images: {
+      type: [String],
+      default: [],
     },
     audience: {
       type: String,

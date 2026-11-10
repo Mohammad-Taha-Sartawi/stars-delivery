@@ -11,11 +11,17 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     on<CreateOrderEvent>(_onCreateOrder);
   }
 
-  Future<void> _onCreateOrder(CreateOrderEvent event, Emitter<OrderState> emit) async {
+  Future<void> _onCreateOrder(
+    CreateOrderEvent event,
+    Emitter<OrderState> emit,
+  ) async {
     emit(OrderLoading());
     try {
       final data = await _orderService.createOrder(
-        event.token, event.type, event.description, event.phone, event.imagePaths,
+        event.token,
+        event.type,
+        event.description,
+        event.phone,
         area: event.area,
         location: event.location,
       );

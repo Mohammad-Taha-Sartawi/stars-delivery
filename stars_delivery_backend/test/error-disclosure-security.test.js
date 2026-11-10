@@ -135,14 +135,9 @@ test('controlled non-500 application errors remain intact', () => {
     /code:\s*err\.code/,
   );
 
-  assert.match(
+  assert.doesNotMatch(
     orders,
-    /orderImageUploadErrorMessage\(error\)/,
-  );
-
-  assert.match(
-    orders,
-    /code: 'INVALID_IMAGE_UPLOAD'/,
+    /orderImageUploadErrorMessage|INVALID_IMAGE_UPLOAD|multer/,
   );
 
   for (const source of [offers, orders]) {

@@ -293,6 +293,8 @@ class AppLocalization {
       'en': 'Driver type not specified',
     },
     'ad_label': {'ar': 'إعلان', 'en': 'Ad'},
+    'ad_ends_in': {'ar': 'ينتهي بعد', 'en': 'Ends in'},
+    'ad_ended': {'ar': 'انتهى الإعلان', 'en': 'Ad ended'},
     'rating_prompt_title': {
       'ar': 'كيف ترى أداء هذا السائق؟',
       'en': "How was this driver's performance?",

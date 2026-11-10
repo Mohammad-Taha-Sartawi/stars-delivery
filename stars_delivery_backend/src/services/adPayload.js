@@ -10,13 +10,6 @@ function trimmed(value) {
     : '';
 }
 
-function isValidAdImageUrl(value) {
-  if (!value) return true;
-
-  return /^https?:\/\/\S+$/i.test(value)
-    || /^\/uploads\/[A-Za-z0-9._-]+$/.test(value);
-}
-
 function parseOptionalDate(value) {
   if (value === undefined || value === null || value === '') {
     return null;
@@ -29,10 +22,9 @@ function parseOptionalDate(value) {
     : undefined;
 }
 
-function normalizeAdPayload(body = {}) {
+function normalizeAdPayload(body = {}, { imageCount = 0 } = {}) {
   const title = trimmed(body.title);
   const description = trimmed(body.body);
-  const imageUrl = trimmed(body.imageUrl);
   const audience = trimmed(body.audience) || 'all';
   const rawSortOrder = body.sortOrder;
   const sortOrder = rawSortOrder === undefined || rawSortOrder === ''
@@ -44,10 +36,10 @@ function normalizeAdPayload(body = {}) {
     ? true
     : body.isActive === true || body.isActive === 'true';
 
-  if (!title || title.length > 120) {
+  if (title.length > 120) {
     return {
       ok: false,
-      message: 'عنوان الإعلان مطلوب وبحد أقصى 120 حرفاً.',
+      message: 'عنوان الإعلان يجب ألا يتجاوز 120 حرفاً.',
     };
   }
 
@@ -58,10 +50,14 @@ function normalizeAdPayload(body = {}) {
     };
   }
 
-  if (!isValidAdImageUrl(imageUrl)) {
+  if (
+    !title
+    && !description
+    && imageCount === 0
+  ) {
     return {
       ok: false,
-      message: 'رابط الصورة يجب أن يبدأ بـ http/https أو /uploads/.',
+      message: 'أضف عنواناً أو نصاً أو صورة واحدة على الأقل للإعلان.',
     };
   }
 
@@ -102,7 +98,6 @@ function normalizeAdPayload(body = {}) {
     value: {
       title,
       body: description,
-      imageUrl,
       audience,
       isActive,
       startsAt,
@@ -117,13 +112,14 @@ function publicAd(ad) {
     _id: ad._id?.toString?.() || '',
     title: ad.title || '',
     body: ad.body || '',
-    imageUrl: ad.imageUrl || '',
+    images: Array.isArray(ad.images) ? ad.images : [],
+    startsAt: ad.startsAt || null,
+    endsAt: ad.endsAt || null,
   };
 }
 
 module.exports = {
   AD_AUDIENCES,
-  isValidAdImageUrl,
   normalizeAdPayload,
   publicAd,
 };

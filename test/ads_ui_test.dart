@@ -4,22 +4,42 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stars_delivery/models/ad_model.dart';
 
 void main() {
-  test('ad model parses backend banner fields', () {
-    final ad = AdModel.fromJson({
-      '_id': 'ad-1',
-      'title': 'عرض خاص',
-      'body': 'خصم على التوصيل',
-      'imageUrl': '/uploads/ad.png',
-    });
+  test(
+    'ad model parses optional title, multiple images, and countdown dates',
+    () {
+      final ad = AdModel.fromJson({
+        '_id': 'ad-1',
+        'title': '',
+        'body': 'خصم على التوصيل',
+        'images': ['/uploads/ads/a.png', '/uploads/ads/b.png'],
+        'startsAt': '2026-11-10T10:00:00.000Z',
+        'endsAt': '2026-11-20T10:00:00.000Z',
+      });
 
-    expect(ad.id, 'ad-1');
-    expect(ad.title, 'عرض خاص');
-    expect(ad.body, 'خصم على التوصيل');
-    expect(ad.imageUrl, '/uploads/ad.png');
-  });
+      expect(ad.id, 'ad-1');
+      expect(ad.title, '');
+      expect(ad.body, 'خصم على التوصيل');
+      expect(ad.images.length, 2);
+      expect(ad.startsAt, isNotNull);
+      expect(ad.endsAt, isNotNull);
+      expect(ad.isActiveAt(DateTime.utc(2026, 11, 15)), isTrue);
+      expect(ad.isActiveAt(DateTime.utc(2026, 11, 21)), isFalse);
+
+      final imageOnly = AdModel.fromJson({
+        '_id': 'ad-2',
+        'title': '',
+        'body': '',
+        'images': ['/uploads/ads/only.png'],
+      });
+
+      expect(imageOnly.title, isEmpty);
+      expect(imageOnly.body, isEmpty);
+      expect(imageOnly.images.single, '/uploads/ads/only.png');
+    },
+  );
 
   test(
-    'customer and provider homes render the shared ad banner at the top',
+    'customer and provider homes render the shared ad slider at the top',
     () {
       final customer = File('lib/screens/home_screen.dart').readAsStringSync();
       final provider = File(
@@ -35,8 +55,10 @@ void main() {
       expect(provider, contains('refreshTick: _adRefreshTick'));
       expect(widget, contains('PageView.builder'));
       expect(widget, contains('Timer.periodic'));
-      expect(widget, contains("AppLocalization.get(context, 'ad_label')"));
+      expect(widget, contains('AnimatedContainer'));
+      expect(widget, contains('ad_ends_in'));
       expect(widget, contains('ApiConfig.resolveMediaUrl'));
+      expect(widget, contains('AnimatedSwitcher'));
     },
   );
 
@@ -48,6 +70,8 @@ void main() {
 
     expect(service, contains("'/ads'"));
     expect(service, contains('Authorization'));
+    expect(service, isNot(contains('title.trim().isNotEmpty')));
     expect(localization, contains("'ad_label'"));
+    expect(localization, contains("'ad_ends_in'"));
   });
 }

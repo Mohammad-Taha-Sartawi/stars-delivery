@@ -127,6 +127,7 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .add-driver-form .settings-message { grid-column: span 2; text-align: center; }
 .add-driver-form .btn-cancel-ad { grid-column: span 2; padding: 12px; border: 1px solid #2a3546; border-radius: 14px; background: transparent; color: #b0c0d4; font-weight: 700; font-size: 15px; cursor: pointer; transition: 0.3s; }
 .add-driver-form .btn-cancel-ad:hover { border-color: #00d4ff; color: #00d4ff; }
+.ad-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; vertical-align: middle; margin-left: 8px; border: 1px solid #2a3546; }
 .add-driver-form select option { background: #141a24; color: #fff; }
 .add-driver-form .doc-section { grid-column: span 2; margin-top: 10px; padding-top: 15px; border-top: 1px solid #2a3546; }
 .add-driver-form .doc-section h4 { color: #00d4ff; margin-bottom: 15px; font-size: 16px; }

@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('offered orders cards match the new orders readability design', () {
-    final source = File('lib/screens/offered_orders_screen.dart').readAsStringSync();
+    final source = File(
+      'lib/screens/offered_orders_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains('_buildInfoRow'));
 
@@ -18,8 +20,6 @@ void main() {
 
     expect(source, contains("'area_region'"));
 
-    expect(source, contains("'images'"));
-
     expect(source, contains("'awaiting_response'"));
 
     expect(source, contains('offeredPrice'));
@@ -32,7 +32,9 @@ void main() {
 
     expect(source, contains('fontSize: 15'));
 
-    final localization = File('lib/services/localization_service.dart').readAsStringSync();
+    final localization = File(
+      'lib/services/localization_service.dart',
+    ).readAsStringSync();
 
     expect(localization, contains("'offer_time'"));
   });

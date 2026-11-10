@@ -9,7 +9,6 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
-const { uploadImagesToCloud } = require('../services/upload');
 const {
   orderCreateLimiter,
   orderCreateIpLimiter,
@@ -18,13 +17,6 @@ const {
   boundedTrimmedString,
   optionalBoundedTrimmedString,
 } = require('../security/requestInput');
-const {
-  orderImageUpload,
-  orderImageUploadErrorMessage,
-  finalizeOrderImageFiles,
-  removeOrderImageFiles,
-  deleteOrderImageFile,
-} = require('../services/orderImageStorage');
 const {
   governorateKey,
   resolveRegistrationLocation,
@@ -50,29 +42,7 @@ function maskedPhone(phone) {
     : '***';
 }
 
-router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateIpLimiter, (req, res, next) => {
-  orderImageUpload(req, res, async (error) => {
-    if (error) {
-      return res.status(400).json({
-        error: orderImageUploadErrorMessage(error),
-        code: 'INVALID_IMAGE_UPLOAD',
-      });
-    }
-
-    try {
-      await finalizeOrderImageFiles(req.files);
-      return next();
-    } catch (validationError) {
-      return res.status(400).json({
-        error: orderImageUploadErrorMessage(validationError),
-        code: validationError.code || 'INVALID_IMAGE_UPLOAD',
-      });
-    }
-  });
-}, async (req, res) => {
-  const uploadedFiles =
-    Array.isArray(req.files) ? req.files : [];
-
+router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateIpLimiter, async (req, res) => {
   try {
     const type = boundedTrimmedString(req.body?.type, 20);
     const description = boundedTrimmedString(req.body?.description, 2000);
@@ -88,8 +58,6 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
       || area === null
       || requestedLocation === null
     ) {
-      await removeOrderImageFiles(uploadedFiles);
-
       return res.status(400).json({
         error: 'All fields are required',
         code: 'INVALID_ORDER_INPUT',
@@ -99,32 +67,11 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
     const user = await User.findById(req.userId);
 
     if (!user) {
-      await removeOrderImageFiles(uploadedFiles);
       return res.status(404).json({ error: 'User not found' });
     }
 
     if (user.status === 'blocked' || user.deleted) {
-      await removeOrderImageFiles(uploadedFiles);
       return res.status(403).json({ error: 'تم تجميد حسابك. يرجى التواصل مع الدعم.' });
-    }
-
-    const localPaths = uploadedFiles.map((file) => file.path);
-
-    // Cloud upload is disabled by default. Local files remain in the
-    // private-by-capability upload directory and are served as images only.
-    const cloudUrls = await uploadImagesToCloud(localPaths);
-    const images = [];
-
-    for (let index = 0; index < uploadedFiles.length; index += 1) {
-      const file = uploadedFiles[index];
-      const cloudUrl = cloudUrls[index];
-
-      if (cloudUrl) {
-        images.push(cloudUrl);
-        await deleteOrderImageFile(file.path);
-      } else {
-        images.push(`/uploads/${file.filename}`);
-      }
     }
 
     // Registered area is authoritative; GPS-detected area is a fallback only
@@ -138,7 +85,6 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
       type,
       description,
       phone,
-      images,
       area: orderArea,
       governorate: orderGovernorate,
       governorateLevel: orderGovernorateLevel,
@@ -155,7 +101,6 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
         _id,
         type: orderType,
         description: orderDescription,
-        images: orderImages,
         area: oArea,
         governorate: oGovernorate,
         governorateLevel: oGovernorateLevel,
@@ -167,7 +112,6 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
         _id,
         type: orderType,
         description: orderDescription,
-        images: orderImages,
         area: oArea,
         governorate: oGovernorate,
         governorateLevel: oGovernorateLevel,
@@ -228,12 +172,8 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
       },
     ).catch(() => {});
 
-    // Include image URLs in response
-    const result = order.toObject();
-    result.images = images;
-    res.status(201).json(result);
+    res.status(201).json(order.toObject());
   } catch (err) {
-    await removeOrderImageFiles(uploadedFiles);
     console.error('Create order error:', err.message);
     sendInternalServerError(res);
   }

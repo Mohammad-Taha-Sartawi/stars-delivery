@@ -900,6 +900,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                             ),
                           ),
                           GovernorateScopeCard(
+                            key: ValueKey(
+                              '${_user.area}-${_user.governorate}-$_governorateLevel',
+                            ),
                             token: widget.token,
                             initialEnabled: _governorateLevel,
                             isProvider: true,

@@ -12,6 +12,7 @@ class ProviderStats {
   final int activeOrdersCount;
   final double averageRating;
   final int ratingCount;
+  final int ratingStars;
   final String? blockedUntil;
   final String? offerCooldownUntil;
   final bool isAvailable;
@@ -30,6 +31,7 @@ class ProviderStats {
     required this.activeOrdersCount,
     this.averageRating = 0,
     this.ratingCount = 0,
+    this.ratingStars = 0,
     this.blockedUntil,
     this.offerCooldownUntil,
     this.isAvailable = true,
@@ -50,6 +52,7 @@ class ProviderStats {
       activeOrdersCount: (json['activeOrdersCount'] ?? 0).toInt(),
       averageRating: (json['averageRating'] ?? 0).toDouble(),
       ratingCount: (json['ratingCount'] ?? 0).toInt(),
+      ratingStars: (json['ratingStars'] ?? 0).toInt(),
       blockedUntil: json['blockedUntil']?.toString(),
       offerCooldownUntil: json['offerCooldownUntil']?.toString(),
       isAvailable: json['isAvailable'] != false,

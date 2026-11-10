@@ -1365,18 +1365,15 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                       ),
                     )
                   else ...[
-                    Row(
-                      children: [
-                        Text(
-                          '${s.averageRating.toStringAsFixed(1)} / 5',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: tone.foreground,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        _buildRatingStars(context, s.averageRating, tone),
-                      ],
+                    Text(
+                      AppLocalization.get(
+                        context,
+                        'rating_stars_total',
+                      ).replaceAll('%d', '${s.ratingStars}'),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: tone.foreground,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1395,26 +1392,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildRatingStars(
-    BuildContext context,
-    double rating,
-    AppToneStyle tone,
-  ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        final position = index + 1;
-        final icon = rating >= position
-            ? Icons.star_rounded
-            : rating >= position - 0.5
-            ? Icons.star_half_rounded
-            : Icons.star_border_rounded;
-
-        return Icon(icon, size: 17, color: tone.foreground);
-      }),
     );
   }
 

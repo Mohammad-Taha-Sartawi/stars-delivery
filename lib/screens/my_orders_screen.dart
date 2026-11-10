@@ -114,78 +114,49 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
-  Future<void> _rateOrder(String orderId) async {
-    var selectedRating = 5;
-    final commentController = TextEditingController();
-
-    final result = await showDialog<Map<String, dynamic>>(
+  Future<int?> _showRatingPrompt() {
+    return showDialog<int>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(AppLocalization.get(dialogContext, 'rate_driver')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  final value = index + 1;
-                  return IconButton(
-                    tooltip: '$value / 5',
-                    onPressed: () =>
-                        setDialogState(() => selectedRating = value),
-                    icon: Icon(
-                      value <= selectedRating
-                          ? Icons.star_rounded
-                          : Icons.star_border_rounded,
-                      color: appToneStyle(dialogContext, AppTone.warning).solid,
-                      size: 32,
-                    ),
-                  );
-                }),
-              ),
-              TextField(
-                controller: commentController,
-                maxLines: 2,
-                maxLength: 500,
-                decoration: InputDecoration(
-                  hintText: AppLocalization.get(
-                    dialogContext,
-                    'rating_comment_hint',
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(AppLocalization.get(dialogContext, 'cancel')),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalization.get(dialogContext, 'rating_prompt_title')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              AppLocalization.get(dialogContext, 'rating_prompt_body'),
+              textAlign: TextAlign.center,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, {
-                'rating': selectedRating,
-                'comment': commentController.text.trim(),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                final value = index + 1;
+                return IconButton(
+                  tooltip: '$value / 5',
+                  iconSize: 36,
+                  onPressed: () => Navigator.pop(dialogContext, value),
+                  icon: Icon(
+                    Icons.star_rounded,
+                    color: appToneStyle(dialogContext, AppTone.warning).solid,
+                  ),
+                );
               }),
-              child: Text(AppLocalization.get(dialogContext, 'submit_rating')),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppLocalization.get(dialogContext, 'cancel')),
+          ),
+        ],
       ),
     );
+  }
 
-    commentController.dispose();
-
-    if (result == null || !mounted) return;
-
+  Future<void> _submitRating(String orderId, int rating) async {
     try {
-      await _orderService.rateOrder(
-        widget.token,
-        orderId,
-        rating: (result['rating'] as num).toInt(),
-        comment: result['comment']?.toString() ?? '',
-      );
+      await _orderService.rateOrder(widget.token, orderId, rating: rating);
       await _loadOrders();
       if (!mounted) return;
       AppFeedback.success(
@@ -201,6 +172,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
+  Future<void> _rateOrder(String orderId) async {
+    final rating = await _showRatingPrompt();
+    if (rating == null || !mounted) return;
+    await _submitRating(orderId, rating);
+  }
+
   Future<void> _confirmDelivery(String orderId) async {
     try {
       await _orderService.confirmDelivery(widget.token, orderId);
@@ -210,6 +187,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         context,
         AppLocalization.get(context, 'delivery_approved_message'),
       );
+      final rating = await _showRatingPrompt();
+      if (rating == null || !mounted) return;
+      await _submitRating(orderId, rating);
     } catch (error) {
       if (!mounted) return;
       AppFeedback.error(

@@ -275,6 +275,15 @@ class AppLocalization {
     'driver_rating': {'ar': 'تقييم السائق', 'en': 'Driver Rating'},
     'no_ratings_yet': {'ar': 'لا توجد تقييمات بعد', 'en': 'No ratings yet'},
     'rating_count': {'ar': '%d تقييم', 'en': '%d ratings'},
+    'rating_stars_total': {'ar': '%d نجمة', 'en': '%d stars'},
+    'rating_prompt_title': {
+      'ar': 'كيف ترى أداء هذا السائق؟',
+      'en': "How was this driver's performance?",
+    },
+    'rating_prompt_body': {
+      'ar': 'اختر عدد النجوم المناسب، وسيتم إرسال التقييم فور اختيارك.',
+      'en': 'Choose a star rating; it will be sent as soon as you select it.',
+    },
     'rate_driver': {'ar': 'تقييم السائق', 'en': 'Rate the driver'},
     'your_rating': {'ar': 'تقييمك: %d من 5', 'en': 'Your rating: %d of 5'},
     'rating_comment_hint': {

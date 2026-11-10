@@ -17,27 +17,36 @@ void main() {
       'activeOrdersCount': 0,
       'averageRating': 4.6,
       'ratingCount': 7,
+      'ratingStars': 32,
     });
 
     expect(stats.averageRating, 4.6);
     expect(stats.ratingCount, 7);
+    expect(stats.ratingStars, 32);
   });
 
-  test('customer can rate a completed order', () {
-    final source = File('lib/screens/my_orders_screen.dart').readAsStringSync();
+  test(
+    'customer is prompted to rate immediately after delivery confirmation',
+    () {
+      final source = File(
+        'lib/screens/my_orders_screen.dart',
+      ).readAsStringSync();
 
-    expect(source, contains('_rateOrder'));
+      expect(source, contains('_showRatingPrompt'));
 
-    expect(source, contains("'rate_driver'"));
+      expect(source, contains("'rating_prompt_title'"));
 
-    expect(source, contains("'your_rating'"));
+      expect(source, contains("'rating_prompt_body'"));
 
-    expect(source, contains('_orderService.rateOrder'));
+      expect(source, contains('_submitRating'));
 
-    expect(source, contains("'submit_rating'"));
-  });
+      expect(source, contains('_orderService.rateOrder'));
 
-  test('provider dashboard shows the average rating and count', () {
+      expect(source, contains('await _showRatingPrompt()'));
+    },
+  );
+
+  test('provider dashboard shows cumulative stars and rating count', () {
     final source = File(
       'lib/screens/provider_home_screen.dart',
     ).readAsStringSync();
@@ -46,7 +55,9 @@ void main() {
 
     expect(source, contains("'driver_rating'"));
 
-    expect(source, contains('averageRating'));
+    expect(source, contains('ratingStars'));
+
+    expect(source, contains("'rating_stars_total'"));
 
     expect(source, contains('ratingCount'));
 

@@ -35,8 +35,10 @@ test('provider stats expose the average rating and count', () => {
 
   assert.match(provider, /Rating\.aggregate/);
   assert.match(provider, /\$avg: '\$rating'/);
+  assert.match(provider, /\$sum: '\$rating'/);
   assert.match(provider, /averageRating/);
   assert.match(provider, /ratingCount/);
+  assert.match(provider, /ratingStars/);
 });
 
 test('rating notifications are persisted and indexed at startup', () => {

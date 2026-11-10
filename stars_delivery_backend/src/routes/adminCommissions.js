@@ -89,6 +89,7 @@ async function resetDriverCommissionById(driverId) {
   const dueOrders = orders.filter((order) =>
     isCommissionDue(order, driver),
   );
+  const adjustmentAmount = Number(driver.commissionAdjustment) || 0;
   const now = new Date();
 
   if (dueOrders.length > 0) {
@@ -119,15 +120,19 @@ async function resetDriverCommissionById(driverId) {
   }
 
   driver.commissionResetAt = now;
+  driver.commissionAdjustment = 0;
   await driver.save();
 
   return {
     success: true,
     driverName: driver.fullName,
     orders: dueOrders.length,
-    amount: dueOrders.reduce(
-      (sum, order) => sum + (order.platformCommission || 0),
+    amount: Math.max(
       0,
+      dueOrders.reduce(
+        (sum, order) => sum + (order.platformCommission || 0),
+        0,
+      ) + adjustmentAmount,
     ),
   };
 }
@@ -189,6 +194,7 @@ router.put('/pay/:id', async (req, res) => {
     driver.commissionPaid = true;
     driver.commissionPaidAt = new Date();
     driver.commissionResetAt = null;
+    driver.commissionAdjustment = 0;
     await driver.save();
     res.json({
       success: true,

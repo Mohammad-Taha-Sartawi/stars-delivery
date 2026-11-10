@@ -683,6 +683,8 @@ async function openEditDriver(driverId) {
     document.getElementById('driverEditEmail').value = driver.email || '';
     document.getElementById('driverEditPhone').value = driver.phone || '';
     document.getElementById('driverEditPublicId').value = driver.publicId || '';
+    document.getElementById('driverEditCommissionDue').value =
+      Number(driver.commissionDue ?? data.commission ?? 0).toFixed(2);
     document.getElementById('driverEditLicenseType').value =
       driver.licenseType === 'غير محدد' ? '' : (driver.licenseType || '');
     document.getElementById('driverEditStatus').value =
@@ -745,6 +747,9 @@ async function saveDriverEdits(event) {
     email: document.getElementById('driverEditEmail').value.trim(),
     phone: document.getElementById('driverEditPhone').value.trim(),
     publicId: document.getElementById('driverEditPublicId').value.trim(),
+    commissionDue: Number(
+      document.getElementById('driverEditCommissionDue').value,
+    ),
     governorate: document.getElementById('driverEditGovernorate').value,
     area: document.getElementById('driverEditArea').value,
     status: document.getElementById('driverEditStatus').value,

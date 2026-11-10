@@ -18,6 +18,8 @@ test('admin can update every driver profile field', () => {
   assert.match(route, /phoneNumbers:\s*\[\{\s*number:\s*phone,\s*primary:\s*true\s*\}\]/s);
   assert.match(route, /isValidAreaForGovernorate/);
   assert.match(route, /normalizeServiceTypes/);
+  assert.match(route, /commissionDue/);
+  assert.match(route, /commissionAdjustment/);
   assert.match(route, /licenseNotAvailable/);
   assert.match(route, /governorateLevel/);
   assert.match(route, /serviceTypes/);
@@ -47,6 +49,7 @@ test('driver edit modal exposes editable fields and save flow', () => {
   assert.match(modal, /id="driverEditArea"/);
   assert.match(modal, /id="driverEditServiceProduct"/);
   assert.match(modal, /id="driverEditStatus"/);
+  assert.match(modal, /id="driverEditCommissionDue"/);
   assert.match(script, /openEditDriver/);
   assert.match(script, /saveDriverEdits/);
   assert.match(script, /\/profile/);

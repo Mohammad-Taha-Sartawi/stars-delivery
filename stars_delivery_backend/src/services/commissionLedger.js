@@ -41,7 +41,7 @@ function isCommissionDue(order, user) {
  */
 function splitCommission(orders, user) {
   const cutoff = commissionCutoff(user);
-  let unpaid = 0;
+  let unpaid = Number(user?.commissionAdjustment) || 0;
   let paid = 0;
 
   for (const order of orders || []) {
@@ -55,7 +55,10 @@ function splitCommission(orders, user) {
     }
   }
 
-  return { unpaid, paid };
+  return {
+    unpaid: Math.max(0, Math.round(unpaid * 100) / 100),
+    paid: Math.round(paid * 100) / 100,
+  };
 }
 
 module.exports = {

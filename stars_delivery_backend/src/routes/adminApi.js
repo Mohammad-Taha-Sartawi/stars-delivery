@@ -119,7 +119,25 @@ router.get('/stats', async (req, res) => {
         },
       },
     ]);
-    const pendingAmount = unpaidCommissionAgg[0]?.pendingAmount || 0;
+    const adjustmentAgg = await User.aggregate([
+      {
+        $match: {
+          role: 'provider',
+          commissionAdjustment: { $ne: 0 },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$commissionAdjustment' },
+        },
+      },
+    ]);
+    const pendingAmount = Math.max(
+      0,
+      (unpaidCommissionAgg[0]?.pendingAmount || 0)
+        + (adjustmentAgg[0]?.total || 0),
+    );
     const pendingDrivers = unpaidCommissionAgg[0]?.pendingDrivers || 0;
 
     const inactiveUsers = totalUsers - activeUsers;

@@ -297,6 +297,8 @@ router.get('/search', async (req, res) => {
       city: location.city,
       governorateLevel: match.governorateLevel === true,
       publicId: match.publicId || '',
+      commissionDue: unpaidCommission,
+      commissionAdjustment: match.commissionAdjustment || 0,
       status: match.status || '',
       financial: {
         paymentStatus,
@@ -598,6 +600,29 @@ router.put('/:id/profile', async (req, res) => {
       });
     }
 
+    let commissionAdjustment =
+      Number(driver.commissionAdjustment) || 0;
+
+    if (body.commissionDue !== undefined) {
+      const targetDue = Number(body.commissionDue);
+
+      if (!Number.isFinite(targetDue) || targetDue < 0) {
+        return res.json({
+          success: false,
+          message: 'عمولة المنصة المستحقة يجب أن تكون رقماً غير سالب.',
+        });
+      }
+
+      const commissionOrders = await Order.find({
+        providerId: driver._id,
+        status: { $in: ['accepted', 'fulfilling', 'completed'] },
+      }).lean();
+      const { unpaid } = splitCommission(commissionOrders, driver);
+      const baseDue = unpaid - commissionAdjustment;
+      const adjustment = Math.max(targetDue - baseDue, -baseDue);
+      commissionAdjustment = Math.round(adjustment * 100) / 100;
+    }
+
     const updates = {
       fullName,
       name: fullName,
@@ -611,6 +636,7 @@ router.put('/:id/profile', async (req, res) => {
       licenseNotAvailable,
       isAvailable: status === 'active' ? isAvailableRequested : false,
       status,
+      commissionAdjustment,
     };
 
     if (publicId) {

@@ -8,6 +8,9 @@ const {
   calculateCommission,
   normalizeCommissionConfig,
 } = require('../src/services/commissionSettings');
+const {
+  splitCommission,
+} = require('../src/services/commissionLedger');
 
 const backendRoot = path.resolve(__dirname, '..');
 
@@ -44,6 +47,24 @@ test('fixed and percentage commission values are calculated safely', () => {
   assert.deepEqual(
     normalizeCommissionConfig({ type: 'invalid', value: -3 }),
     { type: 'fixed', value: 1 },
+  );
+});
+
+test('manual commission adjustments change the displayed due amount', () => {
+  const now = new Date();
+  const orders = [{ platformCommission: 10, acceptedAt: now }];
+
+  assert.equal(
+    splitCommission(orders, { commissionAdjustment: -4 }).unpaid,
+    6,
+  );
+  assert.equal(
+    splitCommission(orders, { commissionAdjustment: 5 }).unpaid,
+    15,
+  );
+  assert.equal(
+    splitCommission([], { commissionAdjustment: 7 }).unpaid,
+    7,
   );
 });
 

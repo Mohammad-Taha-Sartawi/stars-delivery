@@ -238,6 +238,20 @@
       <div class="settings-grid">
         <div class="settings-card"><div class="icon"><i class="fas fa-sign-out-alt"></i></div><h3>تسجيل الخروج</h3><p>قم بتسجيل الخروج من لوحة التحكم.</p><form method="POST" action="/admin/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit" class="btn-action logout"><i class="fas fa-door-open"></i> تسجيل الخروج</button></form></div>
         <div class="settings-card"><div class="icon"><i class="fas fa-key"></i></div><h3>إعادة تعيين كلمة المرور</h3><p>تغيير كلمة المرور الخاصة بحساب المدير.</p><button class="btn-action reset" data-admin-action="openResetPassword" data-admin-arg-count="0"><i class="fas fa-undo-alt"></i> إعادة تعيين كلمة المرور</button></div>
+        <div class="settings-card">
+          <div class="icon"><i class="fas fa-percent"></i></div>
+          <h3>عمولة المنصة</h3>
+          <p>حدد مبلغاً ثابتاً لكل طلب أو نسبة مئوية من سعر الطلب. تُطبق على الطلبات الجديدة فقط.</p>
+          <form id="commissionSettingsForm">
+            <select id="commissionType" aria-label="نوع العمولة">
+              <option value="fixed">مبلغ ثابت (شيكل)</option>
+              <option value="percent">نسبة مئوية (%)</option>
+            </select>
+            <input id="commissionValue" type="number" min="0" step="0.01" required aria-label="قيمة العمولة">
+            <button type="submit" class="btn-action reset"><i class="fas fa-save"></i> حفظ إعدادات العمولة</button>
+          </form>
+          <p id="commissionSettingsMessage" class="settings-message" role="status"></p>
+        </div>
       </div>
     </div>
 

@@ -4,6 +4,11 @@ const router = express.Router();
 const User = require('../models/User');
 const Order = require('../models/Order');
 const Report = require('../models/Report');
+const CommissionSetting = require('../models/CommissionSetting');
+const {
+  normalizeCommissionConfig,
+  getCommissionConfig,
+} = require('../services/commissionSettings');
 const {
   orderStatBoundaries,
   normalizeOrderTypeCounts,
@@ -179,6 +184,72 @@ router.get('/top-driver', async (req, res) => {
     } else {
       res.json({ name: '---', earnings: 0 });
     }
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.get('/commission-settings', async (req, res) => {
+  try {
+    res.json(await getCommissionConfig());
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.put('/commission-settings', async (req, res) => {
+  try {
+    const type = req.body?.type;
+    const value = Number(req.body?.value);
+
+    if (type !== 'fixed' && type !== 'percent') {
+      return res.status(400).json({
+        success: false,
+        message: 'نوع العمولة يجب أن يكون مبلغاً ثابتاً أو نسبة مئوية.',
+      });
+    }
+
+    if (!Number.isFinite(value) || value < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'قيمة العمولة يجب أن تكون رقماً غير سالب.',
+      });
+    }
+
+    if (type === 'percent' && value > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'نسبة العمولة لا يمكن أن تتجاوز 100%.',
+      });
+    }
+
+    if (type === 'fixed' && value > 100000) {
+      return res.status(400).json({
+        success: false,
+        message: 'مبلغ العمولة الثابت كبير جداً.',
+      });
+    }
+
+    const setting = await CommissionSetting.findOneAndUpdate(
+      { key: 'platform' },
+      {
+        $set: {
+          type,
+          value,
+          updatedAt: new Date(),
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      },
+    ).lean();
+
+    res.json({
+      success: true,
+      config: normalizeCommissionConfig(setting),
+    });
   } catch (err) {
     sendInternalServerError(res);
   }

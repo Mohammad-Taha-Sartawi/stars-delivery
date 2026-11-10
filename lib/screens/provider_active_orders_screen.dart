@@ -8,6 +8,7 @@ import '../bloc/app/app_bloc.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
+import '../services/location_service.dart';
 import '../services/socket_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/image_preview.dart';
@@ -31,11 +32,17 @@ class _ProviderActiveOrdersScreenState
   bool _loading = true;
   String? _error;
   final List<StreamSubscription> _socketSubs = [];
+  Timer? _locationTimer;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _locationTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && (_orders?.isNotEmpty ?? false)) {
+        LocationService.syncToBackend(widget.token);
+      }
+    });
     for (final stream in [
       SocketService.instance.onOfferAccepted,
       SocketService.instance.onOrderStatusChanged,
@@ -68,6 +75,7 @@ class _ProviderActiveOrdersScreenState
 
   @override
   void dispose() {
+    _locationTimer?.cancel();
     for (final subscription in _socketSubs) {
       subscription.cancel();
     }

@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/jwt_token.dart';
 import '../../services/session_storage.dart';
 import '../../services/socket_service.dart';
+import '../../services/push_notification_service.dart';
 import '../../models/user_model.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -151,6 +152,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onLogout(LogoutEvent event, Emitter<AuthState> emit) async {
     SocketService.instance.disconnect();
+    await PushNotificationService.instance.stop();
     await _sessionStorage.clear();
     emit(AuthInitial());
   }

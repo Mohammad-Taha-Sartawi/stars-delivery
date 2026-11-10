@@ -109,6 +109,24 @@ class OrderService {
     }
   }
 
+  Future<Map<String, dynamic>> rateOrder(
+    String token,
+    String orderId, {
+    required int rating,
+    String comment = '',
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/orders/$orderId/rating',
+        data: {'rating': rating, 'comment': comment},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['error'] ?? 'Failed to submit rating');
+    }
+  }
+
   Future<int> getAvailableDriversCount(String token) async {
     try {
       final response = await _dio.get(

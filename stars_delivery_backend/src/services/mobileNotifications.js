@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const { sendPushToUser } = require('./pushNotifications');
 
 async function emitUnreadNotificationCount(io, userId) {
   if (!io || !userId) return;
@@ -20,6 +21,7 @@ async function createUserNotification({
   image = '',
   pinned = false,
   expireAt = null,
+  push = true,
 }) {
   if (!userId) return null;
 
@@ -35,6 +37,16 @@ async function createUserNotification({
   });
 
   await emitUnreadNotificationCount(io, userId).catch(() => {});
+  if (push) {
+    sendPushToUser(userId, {
+      title,
+      body,
+      data: {
+        type,
+        ...(orderId ? { orderId: orderId.toString() } : {}),
+      },
+    }).catch(() => {});
+  }
   return notification;
 }
 

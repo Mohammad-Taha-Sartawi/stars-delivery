@@ -3,6 +3,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const PendingProvider = require('../models/PendingProvider');
+const PushToken = require('../models/PushToken');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const { isReservedGuestEmail } = require('../services/contactRequest');
@@ -30,6 +31,66 @@ const {
 
 const router = express.Router();
 router.use(auth, requireRole('customer', 'provider'));
+
+router.post('/push-token', async (req, res) => {
+  try {
+    const token =
+      typeof req.body?.token === 'string'
+        ? req.body.token.trim()
+        : '';
+    const platform =
+      typeof req.body?.platform === 'string'
+        ? req.body.platform.trim().toLowerCase()
+        : 'unknown';
+
+    if (!token || token.length > 4096) {
+      return res.status(400).json({
+        error: 'Valid push token is required',
+        code: 'PUSH_TOKEN_REQUIRED',
+      });
+    }
+
+    await PushToken.findOneAndUpdate(
+      { token },
+      {
+        $set: {
+          userId: req.userId,
+          platform: ['android', 'ios', 'web'].includes(platform)
+            ? platform
+            : 'unknown',
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true, new: true },
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.delete('/push-token', async (req, res) => {
+  try {
+    const token =
+      typeof req.body?.token === 'string'
+        ? req.body.token.trim()
+        : typeof req.query?.token === 'string'
+          ? req.query.token.trim()
+          : '';
+
+    if (token) {
+      await PushToken.deleteOne({ token, userId: req.userId });
+    } else {
+      await PushToken.deleteMany({ userId: req.userId });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
 
 router.get('/available-providers', requireRole('customer'), async (req, res) => {
   try {

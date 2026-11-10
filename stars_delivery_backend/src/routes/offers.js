@@ -11,6 +11,9 @@ const {
 const {
   createUserNotification,
 } = require('../services/mobileNotifications');
+const {
+  getCommissionConfig,
+} = require('../services/commissionSettings');
 
 const router = express.Router();
 
@@ -190,7 +193,12 @@ router.get('/order/:orderId', auth, requireRole('customer'), async (req, res) =>
 
 router.post('/:id/accept', auth, requireRole('customer'), async (req, res) => {
   try {
-    const result = await lifecycle.acceptOffer({ offerId: req.params.id, customerId: req.userId });
+    const commissionConfig = await getCommissionConfig();
+    const result = await lifecycle.acceptOffer({
+      offerId: req.params.id,
+      customerId: req.userId,
+      commissionConfig,
+    });
 
     const io = req.app.get('io');
     if (io) {

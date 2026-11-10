@@ -43,6 +43,12 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .settings-card .btn-action.logout:hover { background: #c0392b; transform: scale(1.03); }
 .settings-card .btn-action.reset { background: #f39c12; color: #0b0e14; }
 .settings-card .btn-action.reset:hover { background: #e08e0b; transform: scale(1.03); }
+.settings-card form { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.settings-card select, .settings-card input[type="number"] { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #2a3546; background: #0f141c; color: #fff; font-size: 14px; outline: none; }
+.settings-card select:focus, .settings-card input[type="number"]:focus { border-color: #00d4ff; box-shadow: 0 0 0 3px #00d4ff33; }
+.settings-message { min-height: 20px; margin-top: 8px; font-size: 13px; color: #8892a8; }
+.settings-message.success { color: #2ecc71; }
+.settings-message.error { color: #e74c3c; }
 
 /* Password Modal */
 .password-modal .modal-box { max-width: 480px; }

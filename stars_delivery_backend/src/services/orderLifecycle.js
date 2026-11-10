@@ -6,6 +6,7 @@ const User = require('../models/User');
 const { executeTransaction } = require('./transaction');
 const { ACCEPTABLE_OFFER_ORDER_STATES, canAcceptOfferRecord, nextProviderStatus } = require('./orderState');
 const { normalizeServiceTypes } = require('./providerServiceTypes');
+const { calculateCommission } = require('./commissionSettings');
 const {
   providerVisibilityFilter,
   orderResponderFilter,
@@ -239,7 +240,7 @@ async function finalizeExpiredOrders({ orderId } = {}) {
   return result.modifiedCount || 0;
 }
 
-async function acceptOffer({ offerId, customerId }) {
+async function acceptOffer({ offerId, customerId, commissionConfig }) {
   try {
     return await inTransaction(async (session) => {
       const offer = await Offer.findOne({ _id: offerId })
@@ -301,6 +302,15 @@ async function acceptOffer({ offerId, customerId }) {
         .session(session)
         .lean();
 
+      const platformCommission = calculateCommission(
+        offer.price,
+        commissionConfig,
+      );
+      const providerEarning =
+        Math.round(
+          Math.max(0, Number(offer.price) - platformCommission) * 100,
+        ) / 100;
+
       const orderUpdate = await Order.updateOne({
         _id: order._id,
         customerId,
@@ -310,8 +320,8 @@ async function acceptOffer({ offerId, customerId }) {
           status: 'accepted',
           providerId: offer.providerId,
           price: offer.price,
-          providerEarning: offer.price - 1,
-          platformCommission: 1,
+          providerEarning,
+          platformCommission,
           estimatedTime: offer.estimatedTime || 0,
           acceptedAt: new Date(),
           offerWindowExpiredAt: null,

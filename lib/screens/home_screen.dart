@@ -17,6 +17,7 @@ import '../services/theme_service.dart';
 import '../services/localization_service.dart';
 import '../services/location_service.dart';
 import '../services/order_service.dart';
+import '../services/push_notification_service.dart';
 import '../services/support_chat_service.dart';
 import '../widgets/ui/app_action_tile.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
@@ -93,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     LocationService.syncToBackend(widget.token);
 
     SocketService.instance.connect(token: widget.token);
+    unawaited(PushNotificationService.instance.start(widget.token));
 
     _socketConnectedSub = SocketService.instance.onConnected.listen((_) {
       if (!mounted) return;

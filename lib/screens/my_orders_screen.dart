@@ -4,6 +4,7 @@ import 'dart:async';
 import '../bloc/offer/offer_bloc.dart';
 import 'order_offers_screen.dart';
 import 'order_report_screen.dart';
+import 'order_tracking_screen.dart';
 import '../services/order_service.dart';
 import '../services/offer_service.dart';
 import '../services/responsive.dart';
@@ -100,6 +101,103 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       });
     } catch (e) {
       setState(() => _loading = false);
+    }
+  }
+
+  void _openTracking(String orderId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            OrderTrackingScreen(token: widget.token, orderId: orderId),
+      ),
+    );
+  }
+
+  Future<void> _rateOrder(String orderId) async {
+    var selectedRating = 5;
+    final commentController = TextEditingController();
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(AppLocalization.get(dialogContext, 'rate_driver')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final value = index + 1;
+                  return IconButton(
+                    tooltip: '$value / 5',
+                    onPressed: () =>
+                        setDialogState(() => selectedRating = value),
+                    icon: Icon(
+                      value <= selectedRating
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: appToneStyle(dialogContext, AppTone.warning).solid,
+                      size: 32,
+                    ),
+                  );
+                }),
+              ),
+              TextField(
+                controller: commentController,
+                maxLines: 2,
+                maxLength: 500,
+                decoration: InputDecoration(
+                  hintText: AppLocalization.get(
+                    dialogContext,
+                    'rating_comment_hint',
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppLocalization.get(dialogContext, 'cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, {
+                'rating': selectedRating,
+                'comment': commentController.text.trim(),
+              }),
+              child: Text(AppLocalization.get(dialogContext, 'submit_rating')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    commentController.dispose();
+
+    if (result == null || !mounted) return;
+
+    try {
+      await _orderService.rateOrder(
+        widget.token,
+        orderId,
+        rating: (result['rating'] as num).toInt(),
+        comment: result['comment']?.toString() ?? '',
+      );
+      await _loadOrders();
+      if (!mounted) return;
+      AppFeedback.success(
+        context,
+        AppLocalization.get(context, 'rating_thanks'),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -422,6 +520,35 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                     ).then((_) => _loadOrders());
                                   },
                                 ),
+                                if ((o['status'] == 'accepted' ||
+                                        o['status'] == 'fulfilling') &&
+                                    !widget.readOnlyReport)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      10,
+                                    ),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _openTracking(
+                                          o['_id']?.toString() ?? '',
+                                        ),
+                                        icon: const Icon(
+                                          Icons.map_outlined,
+                                          size: 18,
+                                        ),
+                                        label: Text(
+                                          AppLocalization.get(
+                                            context,
+                                            'track_driver',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 if (isOfferSuspended)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
@@ -753,6 +880,60 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                         ],
                                       ),
                                     ),
+                                  ),
+                                if (o['status'] == 'completed' &&
+                                    !widget.readOnlyReport)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      12,
+                                    ),
+                                    child: o['myRating'] is Map
+                                        ? Row(
+                                            children: [
+                                              Icon(
+                                                Icons.star_rounded,
+                                                color: appToneStyle(
+                                                  context,
+                                                  AppTone.warning,
+                                                ).solid,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                AppLocalization.get(
+                                                  context,
+                                                  'your_rating',
+                                                ).replaceAll(
+                                                  '%d',
+                                                  '${(o['myRating'] as Map)['rating']}',
+                                                ),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: scheme.onSurface,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : SizedBox(
+                                            width: double.infinity,
+                                            child: OutlinedButton.icon(
+                                              onPressed: () => _rateOrder(
+                                                o['_id']?.toString() ?? '',
+                                              ),
+                                              icon: const Icon(
+                                                Icons.star_border_rounded,
+                                              ),
+                                              label: Text(
+                                                AppLocalization.get(
+                                                  context,
+                                                  'rate_driver',
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                   ),
                                 if (o['status'] == 'pending' &&
                                     !widget.readOnlyReport)

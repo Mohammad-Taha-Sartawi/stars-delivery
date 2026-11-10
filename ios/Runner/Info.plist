@@ -55,6 +55,12 @@
 	<string>Main</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Stars Delivery uses your photo library to attach identity and driver-license documents during provider registration.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Stars Delivery uses your location to match orders and show your position to the customer during delivery.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

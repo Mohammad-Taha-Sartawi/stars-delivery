@@ -22,6 +22,7 @@ import '../services/provider_service.dart';
 import '../services/support_chat_service.dart';
 import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
+import '../services/push_notification_service.dart';
 import '../widgets/ui/app_action_tile.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
@@ -179,6 +180,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       token: widget.token,
       area: ApiConfig.detectedArea,
     );
+    unawaited(PushNotificationService.instance.start(widget.token));
 
     _socketConnectedSub = SocketService.instance.onConnected.listen((_) {
       if (!mounted) return;
@@ -857,6 +859,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                           _buildEarnings(context, s),
                           const SizedBox(height: AppSpacing.md),
                           _buildCommissionCard(context, s),
+                          const SizedBox(height: AppSpacing.md),
+                          _buildRatingCard(context, s),
                           const SizedBox(height: AppSpacing.lg),
                           AppSectionHeader(
                             title: AppLocalization.get(
@@ -1288,6 +1292,95 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRatingCard(BuildContext context, ProviderStats s) {
+    final theme = Theme.of(context);
+    final tone = appToneStyle(context, AppTone.info);
+
+    return Material(
+      color: tone.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusDirectional.circular(AppRadius.lg),
+        side: BorderSide(color: tone.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.lg),
+        child: Row(
+          children: [
+            Icon(Icons.star_rounded, size: 36, color: tone.foreground),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalization.get(context, 'driver_rating'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: tone.foreground,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  if (s.ratingCount == 0)
+                    Text(
+                      AppLocalization.get(context, 'no_ratings_yet'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: tone.foreground,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  else ...[
+                    Row(
+                      children: [
+                        Text(
+                          '${s.averageRating.toStringAsFixed(1)} / 5',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: tone.foreground,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        _buildRatingStars(context, s.averageRating, tone),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      AppLocalization.get(
+                        context,
+                        'rating_count',
+                      ).replaceAll('%d', '${s.ratingCount}'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: tone.foreground.withValues(alpha: 0.86),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingStars(
+    BuildContext context,
+    double rating,
+    AppToneStyle tone,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final position = index + 1;
+        final icon = rating >= position
+            ? Icons.star_rounded
+            : rating >= position - 0.5
+            ? Icons.star_half_rounded
+            : Icons.star_border_rounded;
+
+        return Icon(icon, size: 17, color: tone.foreground);
+      }),
     );
   }
 

@@ -272,6 +272,28 @@ class AppLocalization {
     },
     'daily_earnings': {'ar': 'أرباحك هذا اليوم', 'en': 'Daily Earnings'},
     'monthly_earnings': {'ar': 'أرباحك هذا الشهر', 'en': 'Monthly Earnings'},
+    'driver_rating': {'ar': 'تقييم السائق', 'en': 'Driver Rating'},
+    'no_ratings_yet': {'ar': 'لا توجد تقييمات بعد', 'en': 'No ratings yet'},
+    'rating_count': {'ar': '%d تقييم', 'en': '%d ratings'},
+    'rate_driver': {'ar': 'تقييم السائق', 'en': 'Rate the driver'},
+    'your_rating': {'ar': 'تقييمك: %d من 5', 'en': 'Your rating: %d of 5'},
+    'rating_comment_hint': {
+      'ar': 'تعليق اختياري عن الخدمة',
+      'en': 'Optional comment about the service',
+    },
+    'submit_rating': {'ar': 'إرسال التقييم', 'en': 'Submit rating'},
+    'rating_thanks': {
+      'ar': 'شكراً لك، تم إرسال تقييمك.',
+      'en': 'Thank you, your rating was submitted.',
+    },
+    'rating_required': {
+      'ar': 'اختر عدد النجوم أولاً.',
+      'en': 'Select a star rating first.',
+    },
+    'rating_exists': {
+      'ar': 'تم تقييم هذا الطلب مسبقاً.',
+      'en': 'This order has already been rated.',
+    },
     'today_orders': {'ar': ' طلبات اليوم', 'en': ' orders today'},
     'order_count': {'ar': ' طلب', 'en': ' orders'},
     'pending_orders_btn': {
@@ -471,6 +493,20 @@ class AppLocalization {
     'delivery_not_started': {
       'ar': 'بانتظار بدء السائق للتوصيل',
       'en': 'Waiting for the driver to start delivery',
+    },
+    'track_driver': {'ar': 'تتبع السائق', 'en': 'Track driver'},
+    'driver_location': {'ar': 'موقع السائق', 'en': 'Driver location'},
+    'driver_location_unavailable': {
+      'ar': 'لم يرسل السائق موقعه بعد',
+      'en': "The driver hasn't shared a location yet",
+    },
+    'driver_location_updated': {
+      'ar': 'آخر تحديث للموقع متاح',
+      'en': 'Location is up to date',
+    },
+    'driver_location_updated_at': {
+      'ar': 'آخر تحديث للموقع: %s',
+      'en': 'Location updated at %s',
     },
     'awaiting_delivery_confirmation': {
       'ar': 'بانتظار تأكيد التسليم',

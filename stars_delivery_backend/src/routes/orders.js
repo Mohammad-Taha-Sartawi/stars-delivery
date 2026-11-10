@@ -6,6 +6,7 @@ const path = require('path');
 const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const RejectedOrder = require('../models/RejectedOrder');
+const Rating = require('../models/Rating');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
@@ -17,10 +18,14 @@ const {
 } = require('../services/registrationLocation');
 const {
   canProviderSeeOrder,
+  orderResponderFilter,
 } = require('../services/orderVisibility');
 const {
   createUserNotification,
 } = require('../services/mobileNotifications');
+const {
+  sendPushToUsers,
+} = require('../services/pushNotifications');
 
 const router = express.Router();
 
@@ -117,6 +122,48 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
       }
     }
 
+    const pushAnd = [
+      {
+        $or: [
+          { blockedUntil: null },
+          { blockedUntil: { $exists: false } },
+          { blockedUntil: { $lte: new Date() } },
+        ],
+      },
+      {
+        $or: [
+          { serviceTypes: { $exists: false } },
+          { serviceTypes: { $size: 0 } },
+          { serviceTypes: order.type },
+        ],
+      },
+    ];
+    const responderVisibility = orderResponderFilter(order);
+    if (responderVisibility) {
+      pushAnd.push(responderVisibility);
+    }
+    const eligibleDrivers = await User.find({
+      role: 'provider',
+      status: 'active',
+      deleted: { $ne: true },
+      isAvailable: { $ne: false },
+      $and: pushAnd,
+    })
+      .select('_id')
+      .lean();
+
+    sendPushToUsers(
+      eligibleDrivers.map((driver) => driver._id),
+      {
+        title: 'طلب جديد',
+        body: `${order.description || 'طلب جديد'} — ${order.area || ''}`.trim(),
+        data: {
+          type: 'new_order',
+          orderId: order._id.toString(),
+        },
+      },
+    ).catch(() => {});
+
     // Include image URLs in response
     const result = order.toObject();
     result.images = images;
@@ -146,6 +193,29 @@ router.get('/', auth, requireRole('customer'), async (req, res) => {
           order.offerWindowExpiredAt = suspended.offerWindowExpiredAt;
           order.offerSuspendedUntil = suspended.offerSuspendedUntil;
         }
+      }
+    }
+
+    if (orders.length > 0) {
+      const ratings = await Rating.find({
+        customerId: req.userId,
+        orderId: { $in: orders.map((order) => order._id) },
+      })
+        .select('orderId rating comment createdAt')
+        .lean();
+      const ratingMap = new Map(
+        ratings.map((rating) => [rating.orderId.toString(), rating]),
+      );
+
+      for (const order of orders) {
+        const rating = ratingMap.get(order._id.toString());
+        order.myRating = rating
+          ? {
+              rating: rating.rating,
+              comment: rating.comment || '',
+              createdAt: rating.createdAt,
+            }
+          : null;
       }
     }
 
@@ -240,9 +310,128 @@ router.get('/:id', auth, async (req, res) => {
           { reason: null },
         ],
       });
+      const rating = await Rating.findOne({
+        orderId: order._id,
+        customerId: req.userId,
+      })
+        .select('rating comment createdAt')
+        .lean();
+      order.myRating = rating || null;
+
+      if (
+        ['accepted', 'fulfilling'].includes(order.status)
+        && order.providerId
+      ) {
+        const provider = await User.findById(
+          order.providerId,
+          'fullName lastLatitude lastLongitude lastLocationUpdate',
+        ).lean();
+        order.providerName = provider?.fullName || '';
+        if (
+          provider
+          && Number.isFinite(provider.lastLatitude)
+          && Number.isFinite(provider.lastLongitude)
+        ) {
+          order.providerLocation = {
+            latitude: provider.lastLatitude,
+            longitude: provider.lastLongitude,
+            updatedAt: provider.lastLocationUpdate || null,
+          };
+        } else {
+          order.providerLocation = null;
+        }
+      }
     }
 
     res.json(order);
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+router.post('/:id/rating', auth, requireRole('customer'), async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const rating = Number(req.body?.rating);
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        error: 'Rating must be an integer from 1 to 5',
+        code: 'INVALID_RATING',
+      });
+    }
+
+    const comment =
+      typeof req.body?.comment === 'string'
+        ? req.body.comment.trim().slice(0, 500)
+        : '';
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      customerId: req.userId,
+      status: 'completed',
+    }).lean();
+
+    if (!order) {
+      return res.status(409).json({
+        error: 'Only completed orders can be rated',
+        code: 'ORDER_NOT_RATEABLE',
+      });
+    }
+
+    if (!order.providerId) {
+      return res.status(409).json({
+        error: 'Order has no assigned provider',
+        code: 'ORDER_NOT_RATEABLE',
+      });
+    }
+
+    let created;
+    try {
+      created = await Rating.create({
+        orderId: order._id,
+        customerId: req.userId,
+        providerId: order.providerId,
+        rating,
+        comment,
+      });
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(409).json({
+          error: 'Order has already been rated',
+          code: 'RATING_EXISTS',
+        });
+      }
+      throw error;
+    }
+
+    const io = req.app.get('io');
+
+    if (io) {
+      io.to(`user:${order.providerId}`).emit('rating_received', {
+        orderId: order._id,
+        rating,
+      });
+    }
+
+    await createUserNotification({
+      io,
+      userId: order.providerId,
+      orderId: order._id,
+      type: 'new_rating',
+      title: 'تقييم جديد',
+      body: `قيّم الزبون خدمتك بـ ${rating} من 5.`,
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
+
+    res.status(201).json({
+      rating: created.rating,
+      comment: created.comment,
+      createdAt: created.createdAt,
+    });
   } catch (err) {
     sendInternalServerError(res);
   }

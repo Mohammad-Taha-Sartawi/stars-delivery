@@ -245,6 +245,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.verified_outlined;
       case 'delivery_rejected':
         return Icons.report_gmailerrorred_outlined;
+      case 'new_rating':
+        return Icons.star_outline_rounded;
       case 'report_reply':
         return Icons.support_agent;
       case 'broadcast':
@@ -265,6 +267,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'offer_accepted',
       'delivery_confirmed',
       'delivery_rejected',
+      'new_rating',
     };
     const customerTypes = {
       'new_offer',

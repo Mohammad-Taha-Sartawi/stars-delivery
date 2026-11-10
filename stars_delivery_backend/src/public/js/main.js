@@ -142,6 +142,7 @@ document.querySelectorAll('.sidebar ul li[data-page]').forEach(item => {
     if (page === 'drivers') loadDriversList();
     if (page === 'users') loadUsersList();
     if (page === 'commissions') loadCommissions();
+    if (page === 'settings') loadCommissionSettings();
     if (page === 'driver-reports') loadDriverReports();
       if (page === 'user-reports') loadUserReports();
       if (page === 'support-chat') initSupportChat();
@@ -900,6 +901,70 @@ async function loadDashboardStats() {
 // ================================================
 // 10. العمولات
 // ================================================
+async function loadCommissionSettings() {
+  try {
+    const res = await adminFetch('/admin/api/commission-settings');
+    if (!res.ok) return;
+    const data = await res.json();
+    const typeEl = document.getElementById('commissionType');
+    const valueEl = document.getElementById('commissionValue');
+    if (!typeEl || !valueEl) return;
+    typeEl.value = data.type === 'percent' ? 'percent' : 'fixed';
+    valueEl.value = data.value;
+    const message = document.getElementById('commissionSettingsMessage');
+    if (message) {
+      message.textContent = '';
+      message.className = 'settings-message';
+    }
+  } catch (err) {
+    console.error('Error loading commission settings:', err);
+  }
+}
+
+async function saveCommissionSettings(event) {
+  event.preventDefault();
+  const typeEl = document.getElementById('commissionType');
+  const valueEl = document.getElementById('commissionValue');
+  const message = document.getElementById('commissionSettingsMessage');
+  if (!typeEl || !valueEl || !message) return;
+
+  const type = typeEl.value;
+  const value = Number(valueEl.value);
+
+  if (!Number.isFinite(value) || value < 0) {
+    message.textContent = 'أدخل قيمة صحيحة للعمولة.';
+    message.className = 'settings-message error';
+    return;
+  }
+
+  try {
+    const res = await adminFetch('/admin/api/commission-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, value }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      message.textContent = data.message || 'تعذر حفظ إعدادات العمولة.';
+      message.className = 'settings-message error';
+      return;
+    }
+
+    valueEl.value = data.config.value;
+    message.textContent = 'تم حفظ إعدادات العمولة بنجاح.';
+    message.className = 'settings-message success';
+  } catch (err) {
+    message.textContent = 'تعذر حفظ إعدادات العمولة.';
+    message.className = 'settings-message error';
+  }
+}
+
+const commissionSettingsForm = document.getElementById('commissionSettingsForm');
+if (commissionSettingsForm) {
+  commissionSettingsForm.addEventListener('submit', saveCommissionSettings);
+}
+
 async function loadCommissions() {
   try {
     const res = await adminFetch('/admin/commissions');

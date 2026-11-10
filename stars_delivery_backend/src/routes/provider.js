@@ -5,6 +5,7 @@ const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const RejectedOrder = require('../models/RejectedOrder');
 const User = require('../models/User');
+const Rating = require('../models/Rating');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
@@ -86,13 +87,23 @@ router.get('/stats', async (req, res) => {
     const match = { providerId: req.userId, status: { $in: ['accepted', 'fulfilling', 'completed'] } };
 
     const t1 = Date.now();
-    const [dailyOrders, monthlyOrders, allCommissionOrders, user] = await Promise.all([
+    const [dailyOrders, monthlyOrders, allCommissionOrders, user, ratingSummary] = await Promise.all([
       Order.find({ ...match, createdAt: { $gte: startOfDay } }).lean(),
       Order.find({ ...match, createdAt: { $gte: startOfMonth } }).lean(),
       Order.find(match)
         .select('platformCommission acceptedAt completedAt createdAt')
         .lean(),
       User.findById(req.userId),
+      Rating.aggregate([
+        { $match: { providerId: new mongoose.Types.ObjectId(req.userId) } },
+        {
+          $group: {
+            _id: null,
+            average: { $avg: '$rating' },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
     const t2 = Date.now();
 
@@ -206,6 +217,8 @@ router.get('/stats', async (req, res) => {
       offeredOrdersCount,
       ordersReportCount,
       activeOrdersCount,
+      averageRating: Math.round((ratingSummary[0]?.average || 0) * 10) / 10,
+      ratingCount: ratingSummary[0]?.count || 0,
       blockedUntil: blocked ? user.blockedUntil : null,
       offerCooldownUntil,
       isAvailable: user.isAvailable !== false,

@@ -19,10 +19,10 @@ const protectedFiles = new Map([
   ['src/routes/adminChat.js', 2],
   ['src/routes/notifications.js', 4],
   ['src/routes/offers.js', 5],
-  ['src/routes/orders.js', 7],
+  ['src/routes/orders.js', 8],
   ['src/routes/provider.js', 7],
   ['src/routes/reports.js', 2],
-  ['src/routes/users.js', 15],
+  ['src/routes/users.js', 17],
 ]);
 
 function read(relative) {
@@ -102,7 +102,7 @@ test('all STARS-009A HTTP 500 sites use the safe helper', () => {
     total += calls.length;
   }
 
-  assert.equal(total, 56);
+  assert.equal(total, 59);
 });
 
 test('controlled non-500 application errors remain intact', () => {
@@ -260,7 +260,7 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
   const adminFiles = new Map([
     [
       'src/routes/adminApi.js',
-      { error: 2, failure: 0 },
+      { error: 4, failure: 0 },
     ],
     [
       'src/routes/adminAreas.js',
@@ -337,11 +337,11 @@ test('all STARS-009B admin 500 sites preserve their response shapes through safe
     failureTotal += failureCalls.length;
   }
 
-  assert.equal(errorTotal, 19);
+  assert.equal(errorTotal, 21);
   assert.equal(failureTotal, 23);
   assert.equal(
     errorTotal + failureTotal,
-    42,
+    44,
   );
 });
 

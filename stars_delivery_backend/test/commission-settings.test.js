@@ -66,6 +66,14 @@ test('manual commission adjustments change the displayed due amount', () => {
     splitCommission([], { commissionAdjustment: 7 }).unpaid,
     7,
   );
+  assert.equal(
+    splitCommission(
+      orders,
+      { commissionAdjustment: 5 },
+      { includeAdjustment: false },
+    ).unpaid,
+    10,
+  );
 });
 
 test('new accepted offers use the configured commission snapshot', () => {

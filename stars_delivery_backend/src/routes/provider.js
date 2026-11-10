@@ -196,10 +196,15 @@ router.get('/stats', async (req, res) => {
       console.warn(`[SLOW] /stats took ${totalTime}ms (queries: ${dbTime}ms, count: ${countTime}ms)`);
     }
 
-    const { unpaid: dailyCommissionDue } = splitCommission(dailyOrders, user);
+    const { unpaid: dailyCommissionDue } = splitCommission(
+      dailyOrders,
+      user,
+      { includeAdjustment: false },
+    );
     const { unpaid: monthlyCommissionDue } = splitCommission(
       monthlyOrders,
       user,
+      { includeAdjustment: false },
     );
     const { unpaid: totalCommissionDue } = splitCommission(
       allCommissionOrders,

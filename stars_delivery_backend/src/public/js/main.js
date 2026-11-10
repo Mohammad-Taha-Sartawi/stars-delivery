@@ -593,6 +593,9 @@ async function searchDriver() {
   const raw = input.value.trim();
   if (!raw) return alert('الرجاء إدخال ID السائق أو الاسم');
 
+  const resultElement = document.getElementById('driverResult');
+  resultElement.removeAttribute('data-driver-id');
+
   try {
     const res = await adminFetch(`/admin/drivers/search?id=${encodeURIComponent(raw)}`);
     const data = await res.json();
@@ -683,8 +686,14 @@ async function openEditDriver(driverId) {
     document.getElementById('driverEditEmail').value = driver.email || '';
     document.getElementById('driverEditPhone').value = driver.phone || '';
     document.getElementById('driverEditPublicId').value = driver.publicId || '';
-    document.getElementById('driverEditCommissionDue').value =
-      Number(driver.commissionDue ?? data.commission ?? 0).toFixed(2);
+    const commissionDueInput = document.getElementById(
+      'driverEditCommissionDue',
+    );
+    const commissionDue = Number(
+      driver.commissionDue ?? data.commission ?? 0,
+    );
+    commissionDueInput.value = commissionDue.toFixed(2);
+    commissionDueInput.dataset.original = commissionDue.toFixed(2);
     document.getElementById('driverEditLicenseType').value =
       driver.licenseType === 'غير محدد' ? '' : (driver.licenseType || '');
     document.getElementById('driverEditStatus').value =
@@ -747,9 +756,6 @@ async function saveDriverEdits(event) {
     email: document.getElementById('driverEditEmail').value.trim(),
     phone: document.getElementById('driverEditPhone').value.trim(),
     publicId: document.getElementById('driverEditPublicId').value.trim(),
-    commissionDue: Number(
-      document.getElementById('driverEditCommissionDue').value,
-    ),
     governorate: document.getElementById('driverEditGovernorate').value,
     area: document.getElementById('driverEditArea').value,
     status: document.getElementById('driverEditStatus').value,
@@ -761,6 +767,24 @@ async function saveDriverEdits(event) {
       document.getElementById('driverEditGovernorateLevel').checked,
     serviceTypes,
   };
+
+  const commissionDueInput = document.getElementById(
+    'driverEditCommissionDue',
+  );
+  const originalCommissionDue = Number(
+    commissionDueInput.dataset.original,
+  );
+  const commissionDue = Number(commissionDueInput.value);
+
+  // Only send the commission when the admin actually changed it. Otherwise a
+  // new order arriving while the modal is open could be overwritten by the
+  // stale value loaded when the modal opened.
+  if (
+    !Number.isFinite(originalCommissionDue)
+    || commissionDue !== originalCommissionDue
+  ) {
+    payload.commissionDue = commissionDue;
+  }
 
   try {
     const res = await adminFetch(
@@ -813,6 +837,15 @@ if (driverEditModal) {
   });
 }
 
+const driverResultElement = document.getElementById('driverResult');
+if (driverResultElement) {
+  driverResultElement.addEventListener('click', function (event) {
+    if (event.target.closest('button, a, input, select, textarea')) return;
+    const driverId = driverResultElement.dataset.driverId;
+    if (driverId) openEditDriver(driverId);
+  });
+}
+
 function renderDriverResultFromDB(data) {
   const {
     driver,
@@ -823,6 +856,7 @@ function renderDriverResultFromDB(data) {
     notAcceptedOrdersCount,
   } = data;
   const container = document.getElementById('driverResult');
+  container.dataset.driverId = driver._id;
   const paymentStatus = driver.financial.paymentStatus;
   const hasDue = Number(commission) > 0;
   const paymentLabel = hasDue

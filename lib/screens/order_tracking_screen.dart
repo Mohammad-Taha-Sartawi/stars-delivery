@@ -34,7 +34,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   String? _updatedAt;
   String? _error;
   bool _loading = true;
-  bool _movedToDriver = false;
 
   @override
   void initState() {
@@ -63,6 +62,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
       final location = order['providerLocation'];
       final providerName = order['providerName']?.toString() ?? '';
+      final previousLocation = _driverLocation;
       LatLng? nextLocation;
 
       if (location is Map) {
@@ -81,8 +81,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         _loading = false;
       });
 
-      if (nextLocation != null && (!_movedToDriver || showLoading)) {
-        _movedToDriver = true;
+      final locationChanged =
+          nextLocation != null &&
+          (previousLocation == null ||
+              previousLocation.latitude != nextLocation.latitude ||
+              previousLocation.longitude != nextLocation.longitude);
+
+      if (locationChanged) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _mapController.move(nextLocation!, 15);

@@ -136,7 +136,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                   iconSize: 36,
                   onPressed: () => Navigator.pop(dialogContext, value),
                   icon: Icon(
-                    Icons.star_rounded,
+                    Icons.star_border_rounded,
                     color: appToneStyle(dialogContext, AppTone.warning).solid,
                   ),
                 );
@@ -861,8 +861,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                       ),
                                     ),
                                   ),
-                                if (o['status'] == 'completed' &&
-                                    !widget.readOnlyReport)
+                                if (o['status'] == 'completed')
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                       16,

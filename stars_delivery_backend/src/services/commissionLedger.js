@@ -39,9 +39,16 @@ function isCommissionDue(order, user) {
  * Splits platform commission into unpaid (due now) and paid (settled by the
  * driver's last payment) amounts.
  */
-function splitCommission(orders, user) {
+function splitCommission(
+  orders,
+  user,
+  { includeAdjustment = true } = {},
+) {
   const cutoff = commissionCutoff(user);
-  let unpaid = Number(user?.commissionAdjustment) || 0;
+  let unpaid =
+    includeAdjustment
+      ? Number(user?.commissionAdjustment) || 0
+      : 0;
   let paid = 0;
 
   for (const order of orders || []) {

@@ -65,6 +65,8 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .driver-edit-modal .msg { display: none; margin-top: 12px; font-size: 14px; font-weight: 700; }
 .driver-edit-modal .msg.success { display: block; color: #2ecc71; }
 .driver-edit-modal .msg.error { display: block; color: #e74c3c; }
+#driverResult[data-driver-id] .row { cursor: pointer; }
+#driverResult[data-driver-id] .row:hover { background: #1e2733; border-radius: 8px; }
 .driver-edit-modal .btn-submit-driver { width: 100%; margin-top: 16px; padding: 14px; border: none; border-radius: 14px; background: #00d4ff; color: #0b0e14; font-weight: 800; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
 .driver-edit-modal .btn-submit-driver:hover { background: #00b8e0; }
 @media (max-width: 700px) {

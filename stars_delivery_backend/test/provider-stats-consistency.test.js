@@ -13,8 +13,14 @@ test('provider stats stop showing due commission after payment', () => {
   const provider = source('src/routes/provider.js');
   const providerHome = source('../lib/screens/provider_home_screen.dart');
 
-  assert.match(provider, /splitCommission\(dailyOrders,\s*user\)/);
-  assert.match(provider, /splitCommission\(\s*monthlyOrders,\s*user,?\s*\)/);
+  assert.match(
+    provider,
+    /splitCommission\(\s*dailyOrders,\s*user,\s*\{\s*includeAdjustment:\s*false\s*\}/,
+  );
+  assert.match(
+    provider,
+    /splitCommission\(\s*monthlyOrders,\s*user,\s*\{\s*includeAdjustment:\s*false\s*\}/,
+  );
   assert.match(provider, /splitCommission\(\s*allCommissionOrders,\s*user,?\s*\)/);
   assert.match(provider, /dailyCommission: dailyCommissionDue/);
   assert.match(provider, /monthlyCommission: monthlyCommissionDue/);

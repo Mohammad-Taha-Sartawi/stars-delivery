@@ -19,6 +19,7 @@ import '../services/localization_service.dart';
 import '../services/api_config.dart';
 import '../services/location_service.dart';
 import '../services/provider_service.dart';
+import '../services/auth_service.dart';
 import '../services/support_chat_service.dart';
 import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
@@ -92,6 +93,24 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
 
       setState(() => _supportUnreadCount = count);
     } catch (_) {}
+  }
+
+  Future<void> _refreshCurrentUser() async {
+    try {
+      final data = await AuthService().validateSession(widget.token);
+      final rawUser = data['user'];
+      if (rawUser is! Map) return;
+
+      final updated = UserModel.fromJson(Map<String, dynamic>.from(rawUser));
+      if (!mounted) return;
+
+      setState(() {
+        _user = updated;
+        _governorateLevel = updated.governorateLevel;
+      });
+    } catch (_) {
+      // The existing session failure listener handles definitive rejection.
+    }
   }
 
   Future<void> _openAcceptedOrder(String orderId) async {
@@ -185,6 +204,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
 
     _socketConnectedSub = SocketService.instance.onConnected.listen((_) {
       if (!mounted) return;
+      _refreshCurrentUser();
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
       context.read<ProviderBloc>().add(LoadOfferedOrders(token: widget.token));
       context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
@@ -217,6 +237,11 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     // (for example after test data is removed from the database).
     _dashboardRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
+      final providerState = context.read<ProviderBloc>().state;
+      if (providerState is ProviderStatsLoaded &&
+          providerState.stats.activeOrdersCount > 0) {
+        LocationService.syncToBackend(widget.token);
+      }
       context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
       context.read<ProviderBloc>().add(LoadOfferedOrders(token: widget.token));
@@ -411,6 +436,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
           area: ApiConfig.detectedArea,
         );
       }
+      _refreshCurrentUser();
       LocationService.syncToBackend(widget.token);
       context.read<ProviderBloc>().add(LoadPendingOrders(token: widget.token));
       context.read<ProviderBloc>().add(LoadProviderStats(token: widget.token));

@@ -540,6 +540,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
+const HOST = isProduction ? '127.0.0.1' : '0.0.0.0';
 
 const startServer = (retries = 3) => {
   server = http.createServer(app);
@@ -550,11 +551,11 @@ const startServer = (retries = 3) => {
 
   const attemptListen = () => {
     retryScheduled = false;
-    server.listen(PORT, '0.0.0.0');
+    server.listen(PORT, HOST);
   };
 
   server.once('listening', () => {
-    console.log(`Server running on port ${PORT} (0.0.0.0)`);
+    console.log(`Server running on ${HOST}:${PORT}`);
     if (!isProduction) {
       console.log(
         `LAN IP: http://${lanIp}:${PORT}`,

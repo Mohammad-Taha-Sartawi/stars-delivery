@@ -86,6 +86,14 @@ router.post('/send/:type/:id', async (req, res) => {
       return res.status(400).json({ success: false, message: 'الرجاء كتابة رسالة' });
     }
 
+    if (text.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: 'الرسالة أطول من الحد المسموح',
+        code: 'MESSAGE_TOO_LONG',
+      });
+    }
+
     const target = await findTarget(type, id);
 
     if (!target) {

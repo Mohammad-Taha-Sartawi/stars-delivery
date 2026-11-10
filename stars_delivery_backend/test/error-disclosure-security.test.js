@@ -13,7 +13,7 @@ const backendRoot = path.resolve(__dirname, '..');
 
 const protectedFiles = new Map([
   ['src/index.js', 1],
-  ['src/routes/auth.js', 2],
+  ['src/routes/auth.js', 3],
   ['src/routes/passwordRecovery.js', 1],
   ['src/routes/chat.js', 10],
   ['src/routes/adminChat.js', 2],
@@ -102,7 +102,7 @@ test('all STARS-009A HTTP 500 sites use the safe helper', () => {
     total += calls.length;
   }
 
-  assert.equal(total, 59);
+  assert.equal(total, 60);
 });
 
 test('controlled non-500 application errors remain intact', () => {
@@ -137,7 +137,12 @@ test('controlled non-500 application errors remain intact', () => {
 
   assert.match(
     orders,
-    /if \(err\) return res\.status\(400\)\.json\(\{ error: err\.message \}\);/,
+    /orderImageUploadErrorMessage\(error\)/,
+  );
+
+  assert.match(
+    orders,
+    /code: 'INVALID_IMAGE_UPLOAD'/,
   );
 
   for (const source of [offers, orders]) {

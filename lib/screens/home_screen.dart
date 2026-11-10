@@ -12,6 +12,7 @@ import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
 import '../bloc/notification/notification_state.dart';
 import '../models/user_model.dart';
+import '../services/auth_service.dart';
 import '../services/responsive.dart';
 import '../services/theme_service.dart';
 import '../services/localization_service.dart';
@@ -820,6 +821,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               return;
             }
 
+            unawaited(AuthService().revokeSession(widget.token));
             SocketService.instance.disconnect();
             context.read<AuthBloc>().add(LogoutEvent());
             Navigator.pushAndRemoveUntil(

@@ -17,6 +17,7 @@
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="email" name="identifier" placeholder="البريد الإلكتروني" autocomplete="username" required>
         <input type="password" name="password" placeholder="كلمة المرور" autocomplete="current-password" required>
+        <input type="text" name="twoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="20" placeholder="رمز المصادقة الثنائية (إن كان مفعلاً)">
         <button type="submit"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</button>
         <% if (error) { %>
           <div class="error-msg show" data-presentation="p011">❌ <%= error %></div>

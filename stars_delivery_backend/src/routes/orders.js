@@ -1,8 +1,6 @@
 const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
-const multer = require('multer');
 const mongoose = require('mongoose');
-const path = require('path');
 const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const RejectedOrder = require('../models/RejectedOrder');
@@ -12,6 +10,21 @@ const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
 const { uploadImagesToCloud } = require('../services/upload');
+const {
+  orderCreateLimiter,
+  orderCreateIpLimiter,
+} = require('../security/actionRateLimit');
+const {
+  boundedTrimmedString,
+  optionalBoundedTrimmedString,
+} = require('../security/requestInput');
+const {
+  orderImageUpload,
+  orderImageUploadErrorMessage,
+  finalizeOrderImageFiles,
+  removeOrderImageFiles,
+  deleteOrderImageFile,
+} = require('../services/orderImageStorage');
 const {
   governorateKey,
   resolveRegistrationLocation,
@@ -29,67 +42,119 @@ const {
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => { cb(null, path.join(__dirname, '../../uploads')); },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + '-' + file.originalname);
-  },
-});
+function maskedPhone(phone) {
+  const value = String(phone || '');
 
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Only image files are allowed'));
-  },
-});
-const uploadMiddleware = upload.array('images', 3);
+  return value.length > 3
+    ? `${value.slice(0, -3)}***`
+    : '***';
+}
 
-router.post('/', auth, requireRole('customer'), (req, res, next) => {
-  uploadMiddleware(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    next();
+router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateIpLimiter, (req, res, next) => {
+  orderImageUpload(req, res, async (error) => {
+    if (error) {
+      return res.status(400).json({
+        error: orderImageUploadErrorMessage(error),
+        code: 'INVALID_IMAGE_UPLOAD',
+      });
+    }
+
+    try {
+      await finalizeOrderImageFiles(req.files);
+      return next();
+    } catch (validationError) {
+      return res.status(400).json({
+        error: orderImageUploadErrorMessage(validationError),
+        code: validationError.code || 'INVALID_IMAGE_UPLOAD',
+      });
+    }
   });
 }, async (req, res) => {
+  const uploadedFiles =
+    Array.isArray(req.files) ? req.files : [];
+
   try {
-    const { type, description, phone, area, location } = req.body;
-    if (!type || !description || !phone) return res.status(400).json({ error: 'All fields are required' });
+    const type = boundedTrimmedString(req.body?.type, 20);
+    const description = boundedTrimmedString(req.body?.description, 2000);
+    const phone = boundedTrimmedString(req.body?.phone, 30);
+    const area = optionalBoundedTrimmedString(req.body?.area, 100);
+    const requestedLocation = optionalBoundedTrimmedString(req.body?.location, 500);
+
+    if (
+      !type
+      || !['product', 'people', 'goods'].includes(type)
+      || !description
+      || !phone
+      || area === null
+      || requestedLocation === null
+    ) {
+      await removeOrderImageFiles(uploadedFiles);
+
+      return res.status(400).json({
+        error: 'All fields are required',
+        code: 'INVALID_ORDER_INPUT',
+      });
+    }
 
     const user = await User.findById(req.userId);
+
+    if (!user) {
+      await removeOrderImageFiles(uploadedFiles);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     if (user.status === 'blocked' || user.deleted) {
+      await removeOrderImageFiles(uploadedFiles);
       return res.status(403).json({ error: 'تم تجميد حسابك. يرجى التواصل مع الدعم.' });
     }
-    const localPaths = req.files ? req.files.map(f => f.path) : [];
+
+    const localPaths = uploadedFiles.map((file) => file.path);
+
+    // Cloud upload is disabled by default. Local files remain in the
+    // private-by-capability upload directory and are served as images only.
+    const cloudUrls = await uploadImagesToCloud(localPaths);
+    const images = [];
+
+    for (let index = 0; index < uploadedFiles.length; index += 1) {
+      const file = uploadedFiles[index];
+      const cloudUrl = cloudUrls[index];
+
+      if (cloudUrl) {
+        images.push(cloudUrl);
+        await deleteOrderImageFile(file.path);
+      } else {
+        images.push(`/uploads/${file.filename}`);
+      }
+    }
 
     // Registered area is authoritative; GPS-detected area is a fallback only
     const orderArea = user.area || area || '';
     const orderGovernorate = governorateKey(user);
     const orderGovernorateLevel = user.governorateLevel === true;
-    console.log(`[CREATE] data received — area="${orderArea}" (reqBody="${area}" userArea="${user.area}") governorate="${orderGovernorate}" governorateLevel=${orderGovernorateLevel}`);
-
-    // Upload to cloud (ImgBB), fall back to local URLs
-    const cloudUrls = await uploadImagesToCloud(localPaths);
-    const images = req.files
-      ? req.files.map((f, i) => cloudUrls[i] || '/uploads/' + f.filename)
-      : [];
+    console.log(`[CREATE] data received — area="${orderArea}" (reqBody="${area}") userArea="${user.area}" governorate="${orderGovernorate}" governorateLevel=${orderGovernorateLevel}`);
 
     const order = await Order.create({
-      customerId: req.userId, type, description, phone, images,
+      customerId: req.userId,
+      type,
+      description,
+      phone,
+      images,
       area: orderArea,
       governorate: orderGovernorate,
       governorateLevel: orderGovernorateLevel,
-      location: location || '',
+      location: requestedLocation,
     });
     console.log(`[CREATE] saved order=${order._id} status=${order.status}`);
 
     // Emit a real-time event to providers who can see this order. A
     // governorate-level order also reaches providers across the governorate.
+    // Never include the full customer phone in this broadcast.
     const io = req.app.get('io');
     if (io) {
       const {
         _id,
         type: orderType,
         description: orderDescription,
-        phone: orderPhone,
         images: orderImages,
         area: oArea,
         governorate: oGovernorate,
@@ -102,7 +167,6 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
         _id,
         type: orderType,
         description: orderDescription,
-        phone: orderPhone,
         images: orderImages,
         area: oArea,
         governorate: oGovernorate,
@@ -110,7 +174,7 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
         location: oLocation,
         status,
         createdAt,
-        phoneMasked: orderPhone.slice(0, -3) + '***',
+        phoneMasked: maskedPhone(order.phone),
       };
       const areaRoom = `area:${orderArea || ''}`;
       if (orderGovernorateLevel && orderGovernorate) {
@@ -169,6 +233,7 @@ router.post('/', auth, requireRole('customer'), (req, res, next) => {
     result.images = images;
     res.status(201).json(result);
   } catch (err) {
+    await removeOrderImageFiles(uploadedFiles);
     console.error('Create order error:', err.message);
     sendInternalServerError(res);
   }

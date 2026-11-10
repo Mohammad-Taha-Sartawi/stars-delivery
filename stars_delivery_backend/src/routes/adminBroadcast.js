@@ -12,6 +12,23 @@ router.post('/:target', async (req, res) => {
       return res.json({ success: false, message: 'الرجاء إدخال عنوان ونص للرسالة' });
     }
 
+    if (
+      typeof title !== 'string'
+      || typeof body !== 'string'
+      || title.trim().length === 0
+      || body.trim().length === 0
+      || title.trim().length > 150
+      || body.trim().length > 2000
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'عنوان الرسالة أو نصها أطول من الحد المسموح',
+      });
+    }
+
+    const normalizedTitle = title.trim();
+    const normalizedBody = body.trim();
+
     const role = req.params.target === 'drivers' ? 'provider' : 'customer';
     const label = req.params.target === 'drivers' ? 'سائق' : 'مستخدم';
 
@@ -19,16 +36,16 @@ router.post('/:target', async (req, res) => {
 
     const archiveEntry = await BroadcastMessage.create({
       target: req.params.target,
-      title,
-      body,
+      title: normalizedTitle,
+      body: normalizedBody,
       recipientCount: users.length,
     });
 
     const notifications = users.map(u => ({
       userId: u._id,
       type: 'broadcast',
-      title,
-      body,
+      title: normalizedTitle,
+      body: normalizedBody,
       pinned: true,
       expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     }));
@@ -48,14 +65,14 @@ router.post('/:target', async (req, res) => {
           read: false,
         });
         io.to(`user:${u._id}`).emit('notification_count', { unreadCount });
-        io.to(`user:${u._id}`).emit('broadcast', { title, body });
+        io.to(`user:${u._id}`).emit('broadcast', { title: normalizedTitle, body: normalizedBody });
       }
     }
 
     res.json({
       success: true,
       message: `تم إرسال الرسالة بنجاح إلى ${users.length} ${label}`,
-      title,
+      title: normalizedTitle,
       count: users.length,
       sentAt: new Date().toLocaleString('ar-EG'),
       archiveId: archiveEntry._id.toString(),

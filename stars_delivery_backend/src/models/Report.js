@@ -11,12 +11,12 @@ const reportSchema = new mongoose.Schema({
   reportType: { type: String, enum: ['driver', 'user'], required: true },
   reporterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   reporter: { type: String, required: true },
-  reportedPublicId: { type: String, required: true },
+  reportedPublicId: { type: String, required: true, maxlength: 50 },
   reportedUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   category: { type: String, required: true },
   date: { type: String, default: () => new Date().toISOString().split('T')[0] },
   status: { type: String, enum: ['in-review', 'in-progress', 'resolved', 'rejected'], default: 'in-review' },
-  content: { type: String, required: true },
+  content: { type: String, required: true, maxlength: 2000 },
   replies: [replySchema]
 }, { timestamps: true });
 

@@ -28,6 +28,28 @@ class ApiConfig {
 
   static String get apiUrl => '$serverUrl/api';
 
+  /// Resolves backend-relative media paths such as `/uploads/...` against the
+  /// configured server origin. Absolute URLs are returned unchanged.
+  static String resolveMediaUrl(String raw) {
+    final value = raw.trim();
+
+    if (value.isEmpty) {
+      return value;
+    }
+
+    final uri = Uri.tryParse(value);
+
+    if (uri != null && uri.hasScheme) {
+      return value;
+    }
+
+    if (!_initialized || _serverUrl.isEmpty) {
+      return value;
+    }
+
+    return value.startsWith('/') ? '$_serverUrl$value' : '$_serverUrl/$value';
+  }
+
   @visibleForTesting
   static String resolveInitialServerUrl({
     required String configuredServerUrl,
@@ -119,8 +141,8 @@ class ApiConfig {
     final host = preferFallbackHost
         ? (fallbackHost ?? advertisedIp)
         : (advertisedIp == null || advertisedIp.isEmpty
-            ? fallbackHost
-            : advertisedIp);
+              ? fallbackHost
+              : advertisedIp);
 
     if (host == null || host.isEmpty) {
       return null;
@@ -133,9 +155,7 @@ class ApiConfig {
         : int.tryParse(rawPort?.toString() ?? '');
 
     final candidatePort =
-        advertisedPort != null &&
-            advertisedPort >= 1 &&
-            advertisedPort <= 65535
+        advertisedPort != null && advertisedPort >= 1 && advertisedPort <= 65535
         ? advertisedPort
         : port;
 
@@ -204,14 +224,10 @@ class ApiConfig {
         for (final subnet in subnets) {
           for (var start = 1; start <= 254; start += 32) {
             final end = start + 31 <= 254 ? start + 31 : 254;
-            final hosts = [
-              for (var i = start; i <= end; i++) '$subnet.$i',
-            ];
+            final hosts = [for (var i = start; i <= end; i++) '$subnet.$i'];
 
             final results = await Future.wait(
-              hosts.map(
-                (host) => _probeHost(client, host, probePort),
-              ),
+              hosts.map((host) => _probeHost(client, host, probePort)),
             );
 
             for (final result in results) {
@@ -246,9 +262,9 @@ class ApiConfig {
           .getUrl(uri)
           .timeout(const Duration(milliseconds: 500));
 
-      final response = await request
-          .close()
-          .timeout(const Duration(milliseconds: 500));
+      final response = await request.close().timeout(
+        const Duration(milliseconds: 500),
+      );
 
       if (response.statusCode != 200) {
         return null;

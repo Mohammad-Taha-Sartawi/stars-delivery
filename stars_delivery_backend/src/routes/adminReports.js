@@ -29,11 +29,22 @@ router.get('/detail/:id', async (req, res) => {
 
 router.post('/reply/:id', async (req, res) => {
   try {
+    const text = typeof req.body?.text === 'string'
+      ? req.body.text.trim()
+      : '';
+
+    if (!text || text.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: 'نص الرد مطلوب وبحد أقصى 2000 حرف',
+      });
+    }
+
     const report = await Report.findOne({ reportId: req.params.id });
     if (!report) return res.json({ success: false, message: 'الإبلاغ غير موجود' });
     report.replies.push({
       sender: 'admin',
-      text: req.body.text,
+      text,
       time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
     });
     await report.save();
@@ -44,7 +55,7 @@ router.post('/reply/:id', async (req, res) => {
       userId: report.reporterId,
       type: 'report_reply',
       title: 'رد جديد على بلاغك',
-      body: String(req.body.text || '').trim(),
+      body: text,
       expireAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     }).catch(() => {});
 
@@ -56,6 +67,20 @@ router.post('/reply/:id', async (req, res) => {
 
 router.put('/:id/status', async (req, res) => {
   try {
+    const allowedStatuses = [
+      'in-review',
+      'in-progress',
+      'resolved',
+      'rejected',
+    ];
+
+    if (!allowedStatuses.includes(req.body?.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'حالة البلاغ غير صالحة',
+      });
+    }
+
     const report = await Report.findOne({ reportId: req.params.id });
     if (!report) return res.json({ success: false, message: 'الإبلاغ غير موجود' });
     report.status = req.body.status;

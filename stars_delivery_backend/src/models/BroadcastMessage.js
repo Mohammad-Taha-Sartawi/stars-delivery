@@ -6,8 +6,8 @@ const broadcastMessageSchema = new mongoose.Schema({
     enum: ['drivers', 'users'],
     required: true,
   },
-  title: { type: String, required: true },
-  body: { type: String, required: true },
+  title: { type: String, required: true, maxlength: 150 },
+  body: { type: String, required: true, maxlength: 2000 },
   recipientCount: { type: Number, default: 0 },
   sentAt: { type: Date, default: Date.now },
   // The archive keeps broadcast history for one month.

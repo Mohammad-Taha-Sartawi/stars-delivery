@@ -20,7 +20,11 @@ function assertThrows(fn, message) {
   assert.throws(fn, new RegExp(message));
 }
 
-function runAdminMiddleware(session, originalUrl = '/admin') {
+async function runAdminMiddleware(
+  session,
+  originalUrl = '/admin',
+  middleware = requireAdminSession,
+) {
   let nextCalled = false;
   let statusCode;
   let redirectPath;
@@ -32,9 +36,24 @@ function runAdminMiddleware(session, originalUrl = '/admin') {
     },
     json() { return this; },
     redirect(path) { redirectPath = path; return this; },
+    set() { return this; },
+    clearCookie() { return this; },
   };
-  requireAdminSession(req, res, () => { nextCalled = true; });
+  await middleware(req, res, () => { nextCalled = true; });
   return { nextCalled, statusCode, redirectPath };
+}
+
+function activeAdmin(overrides = {}) {
+  return {
+    _id: '507f1f77bcf86cd799439011',
+    email: 'admin@example.com',
+    fullName: 'Admin',
+    role: 'admin',
+    status: 'active',
+    deleted: false,
+    sessionVersion: 0,
+    ...overrides,
+  };
 }
 
 test('missing JWT secret is rejected', () => {
@@ -79,14 +98,41 @@ test('committed example leaves sensitive values blank', () => {
   }
 });
 
-test('unauthenticated admin session is rejected for pages and APIs', () => {
-  assert.equal(runAdminMiddleware(undefined).redirectPath, '/admin/login');
-  assert.equal(runAdminMiddleware(undefined, '/api/chat/admin/conversations').statusCode, 401);
+test('unauthenticated admin session is rejected for pages and APIs', async () => {
+  assert.equal((await runAdminMiddleware(undefined)).redirectPath, '/admin/login');
+  assert.equal((await runAdminMiddleware(undefined, '/api/chat/admin/conversations')).statusCode, 401);
 });
 
-test('authenticated admin session is accepted', () => {
-  const result = runAdminMiddleware({ admin: { id: 'admin-id', role: 'admin' } });
+test('authenticated admin session is accepted after database revalidation', async () => {
+  const middleware = requireAdminSession.createRequireAdminSession({
+    loadAdmin: async () => activeAdmin(),
+  });
+  const result = await runAdminMiddleware(
+    { admin: { id: '507f1f77bcf86cd799439011', role: 'admin', sessionVersion: 0 } },
+    '/admin',
+    middleware,
+  );
   assert.equal(result.nextCalled, true);
+});
+
+test('deleted, inactive, and version-mismatched admin sessions are rejected', async () => {
+  for (const admin of [
+    activeAdmin({ deleted: true }),
+    activeAdmin({ status: 'blocked' }),
+    activeAdmin({ sessionVersion: 2 }),
+  ]) {
+    const middleware = requireAdminSession.createRequireAdminSession({
+      loadAdmin: async () => admin,
+    });
+    const result = await runAdminMiddleware(
+      { admin: { id: '507f1f77bcf86cd799439011', role: 'admin', sessionVersion: 0 } },
+      '/admin',
+      middleware,
+    );
+
+    assert.equal(result.nextCalled, false);
+    assert.equal(result.redirectPath, '/admin/login');
+  }
 });
 
 test('admin session middleware uses persistent session store and secure cookie settings', () => {
@@ -147,10 +193,10 @@ test('admin=true query parameter alone does not authenticate a socket', () => {
 
 test('valid administrator session authenticates an admin socket', () => {
   const identity = authenticateSocket({
-    request: { session: { admin: { id: 'admin-id', role: 'admin' } } },
+    request: { session: { admin: { id: '507f1f77bcf86cd799439011', role: 'admin', sessionVersion: 0 } } },
     handshake: { query: { admin: 'true' }, auth: {} },
   }, secret);
-  assert.deepEqual(identity, { id: 'admin-id', role: 'admin' });
+  assert.deepEqual(identity, { id: '507f1f77bcf86cd799439011', role: 'admin', sessionVersion: 0 });
 });
 
 test('customer and provider JWTs authenticate mobile sockets', () => {

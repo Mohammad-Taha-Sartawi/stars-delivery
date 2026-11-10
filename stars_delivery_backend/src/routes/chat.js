@@ -10,6 +10,10 @@ const requireRole = require('../middleware/requireRole');
 const requireAdminSession = require('../middleware/requireAdminSession');
 const { adminCsrfProtection } = require('../security/adminCsrf');
 const {
+  chatSendLimiter,
+  chatSendIpLimiter,
+} = require('../security/actionRateLimit');
+const {
   ContactValidationError,
   normalizeContactPayload,
   contactConversationId,
@@ -43,18 +47,27 @@ router.get('/history', auth, requireRole('customer', 'provider'), async (req, re
   }
 });
 
-router.post('/send', auth, requireRole('customer', 'provider'), async (req, res) => {
+router.post('/send', auth, requireRole('customer', 'provider'), chatSendLimiter, chatSendIpLimiter, async (req, res) => {
   try {
-    const { text } = req.body;
+    const text = typeof req.body?.text === 'string'
+      ? req.body.text.trim()
+      : '';
 
-    if (!text || !text.trim()) {
+    if (!text) {
       return res.status(400).json({ error: 'Message is required' });
+    }
+
+    if (text.length > 2000) {
+      return res.status(400).json({
+        error: 'Message is too long',
+        code: 'MESSAGE_TOO_LONG',
+      });
     }
 
     const msg = await ChatMessage.create({
       userId: req.userId,
       sender: 'user',
-      text: text.trim(),
+      text,
     });
 
     await ChatMessage.updateMany(
@@ -342,16 +355,25 @@ router.post('/admin/reply/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Invalid conversation id' });
     }
 
-    const { text } = req.body;
+    const text = typeof req.body?.text === 'string'
+      ? req.body.text.trim()
+      : '';
 
-    if (!text || !text.trim()) {
+    if (!text) {
       return res.status(400).json({ error: 'Message is required' });
+    }
+
+    if (text.length > 2000) {
+      return res.status(400).json({
+        error: 'Message is too long',
+        code: 'MESSAGE_TOO_LONG',
+      });
     }
 
     const msg = await ChatMessage.create({
       userId: rawConversationId,
       sender: 'admin',
-      text: text.trim(),
+      text,
       read: false,
     });
 

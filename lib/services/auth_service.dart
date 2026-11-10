@@ -280,6 +280,21 @@ class AuthService implements AuthGateway {
     }
   }
 
+  Future<void> revokeSession(String token) async {
+    try {
+      await _dio.post(
+        '/auth/logout',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          sendTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
+    } catch (_) {
+      // Local logout must still complete when the device is offline.
+    }
+  }
+
   Map<String, dynamic> _asMap(dynamic value) {
     if (value is Map) {
       return Map<String, dynamic>.from(value);

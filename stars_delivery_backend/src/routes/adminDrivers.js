@@ -2,6 +2,7 @@ const fs = require('fs/promises');
 const mongoose = require('mongoose');
 const {
   PROVIDER_DOCUMENT_KINDS,
+  MAX_PROVIDER_DOCUMENT_SIZE,
   deleteProviderDocuments,
   requiredProviderDocumentsPresent,
   findProviderDocument,
@@ -49,7 +50,29 @@ const {
   isValidMobileEmail,
 } = require('../security/mobileEmail');
 
-const upload = multer();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_PROVIDER_DOCUMENT_SIZE,
+    files: 1,
+    fields: 30,
+    fieldSize: 100 * 1024,
+    parts: 35,
+  },
+});
+
+function driverDocumentUpload(req, res, next) {
+  upload.single('driverLicenseDocument')(req, res, (error) => {
+    if (error) {
+      return res.json({
+        success: false,
+        message: 'صورة الرخصة يجب أن تكون JPEG أو PNG وبحد أقصى 5 ميجابايت.',
+      });
+    }
+
+    return next();
+  });
+}
 
 router.put('/:id/availability', async (req, res) => {
   try {
@@ -333,7 +356,7 @@ router.get('/search', async (req, res) => {
   }
 });
 
-router.post('/', upload.single('driverLicenseDocument'), async (req, res) => {
+router.post('/', driverDocumentUpload, async (req, res) => {
   let providerDocuments = [];
 
   try {

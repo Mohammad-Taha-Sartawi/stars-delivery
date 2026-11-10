@@ -4,15 +4,35 @@ const Report = require('../models/Report');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
+const {
+  reportCreateLimiter,
+  reportCreateIpLimiter,
+} = require('../security/actionRateLimit');
 
 const router = express.Router();
 router.use(auth, requireRole('customer', 'provider'));
 
-router.post('/', async (req, res) => {
+router.post('/', reportCreateLimiter, reportCreateIpLimiter, async (req, res) => {
   try {
-    const { reportedPublicId, reportType, content } = req.body;
+    const reportedPublicId =
+      typeof req.body?.reportedPublicId === 'string'
+        ? req.body.reportedPublicId.trim()
+        : '';
+    const content =
+      typeof req.body?.content === 'string'
+        ? req.body.content.trim()
+        : '';
+    const { reportType } = req.body;
+
     if (!reportedPublicId || !content) {
       return res.status(400).json({ error: 'ID ووصف المشكلة مطلوبان' });
+    }
+
+    if (reportedPublicId.length > 50 || content.length > 2000) {
+      return res.status(400).json({
+        error: 'المحتوى أطول من الحد المسموح.',
+        code: 'REPORT_TOO_LONG',
+      });
     }
 
     const normalizedReportType =
@@ -20,7 +40,7 @@ router.post('/', async (req, res) => {
     const targetRole =
       normalizedReportType === 'driver' ? 'provider' : 'customer';
     const target = await User.findOne({
-      publicId: String(reportedPublicId).trim(),
+      publicId: reportedPublicId,
       role: targetRole,
       deleted: { $ne: true },
     }).select('_id').lean();

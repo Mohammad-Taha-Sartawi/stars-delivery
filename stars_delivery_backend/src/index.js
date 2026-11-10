@@ -5,12 +5,14 @@ const {
 } = require('./security/errorResponse');
 const { createAdminBrowserHeaders } = require('./security/adminBrowserHeaders');
 const { adminCsrfProtection } = require('./security/adminCsrf');
+const adminAuditLogger = require('./middleware/adminAuditLog');
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
 const os = require('os');
 const path = require('path');
 const { Server } = require('socket.io');
@@ -20,11 +22,18 @@ const { createAdminSessionMiddleware } = require('./middleware/adminSession');
 const requireAdminSession = require('./middleware/requireAdminSession');
 const authenticateSocket = require('./socket/authenticateSocket');
 const {
+  isActiveAdminAccount,
+  adminSessionVersionMatches,
+} = require('./services/adminAccounts');
+const {
   isActiveMobileAccount,
   mobileSessionVersionMatches,
 } = require('./services/mobileSession');
 const { governorateKey } = require('./services/registrationLocation');
 const { createOriginGuard, corsOptionsForRequest, socketOriginAllowed } = require('./security/originPolicy');
+const {
+  isSafeUploadExtension,
+} = require('./services/orderImageStorage');
 const authRoutes = require('./routes/auth');
 const orderRoutes = require('./routes/orders');
 const providerRoutes = require('./routes/provider');
@@ -49,6 +58,15 @@ const app = express();
 const appConfig = loadAppConfig();
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 const isProduction = process.env.NODE_ENV === 'production';
+
+app.disable('x-powered-by');
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  referrerPolicy: {
+    policy: 'no-referrer',
+  },
+}));
 
 function getLanIp() {
   const ifaces = os.networkInterfaces();
@@ -83,7 +101,29 @@ app.use(cors((req, callback) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use('/uploads', express.static('uploads'));
+
+const uploadedFilesRoot = path.join(__dirname, '..', 'uploads');
+
+app.use('/uploads', (req, res, next) => {
+  if (!isSafeUploadExtension(req.path)) {
+    return res.status(404).end();
+  }
+
+  res.set({
+    'Content-Security-Policy': "default-src 'none'; sandbox",
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Cache-Control': 'private, max-age=86400',
+    'Content-Disposition': 'inline',
+  });
+
+  return next();
+}, express.static(uploadedFilesRoot, {
+  dotfiles: 'deny',
+  index: false,
+}));
+
 app.use('/data', express.static(path.join(__dirname, 'public', 'data')));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -131,6 +171,11 @@ app.use(
   adminBrowserHeaders,
 );
 
+app.use(
+  '/admin',
+  adminAuditLogger,
+);
+
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.admin || null;
   next();
@@ -147,6 +192,7 @@ const CommissionPayment = require('./models/CommissionPayment');
 const Rating = require('./models/Rating');
 const CommissionSetting = require('./models/CommissionSetting');
 const PushToken = require('./models/PushToken');
+const AdminAuditLog = require('./models/AdminAuditLog');
 const User = require('./models/User');
 
 const MONGO_RETRY_DELAYS_MS = Object.freeze([
@@ -173,6 +219,7 @@ async function ensureMongoIndexes() {
     Rating.createIndexes(),
     CommissionSetting.createIndexes(),
     PushToken.createIndexes(),
+    AdminAuditLog.createIndexes(),
   ]);
   console.log('Indexes ready');
 }
@@ -277,7 +324,25 @@ io.use(async (socket, next) => {
         appConfig.jwtSecret,
       );
 
-    if (identity.role !== 'admin') {
+    if (identity.role === 'admin') {
+      const admin =
+        await User.findById(
+          identity.id,
+          'role status deleted sessionVersion',
+        );
+
+      if (
+        !isActiveAdminAccount(admin)
+        || !adminSessionVersionMatches(
+          admin,
+          identity.sessionVersion,
+        )
+      ) {
+        throw new Error(
+          'Invalid authentication',
+        );
+      }
+    } else {
       const user =
         await User.findById(
           identity.id,
@@ -353,6 +418,7 @@ io.on('connection', async (socket) => {
 
   if (socket.userRole === 'admin') {
     socket.join('support');
+    socket.join(`admin:${socket.userId}`);
     console.log('Admin socket connected (support room)');
   } else if (socket.userRole === 'provider') {
     // Registered area is authoritative; GPS-detected query param is a fallback

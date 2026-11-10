@@ -681,6 +681,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
               return;
             }
 
+            unawaited(AuthService().revokeSession(widget.token));
             SocketService.instance.disconnect();
             context.read<AuthBloc>().add(LogoutEvent());
             Navigator.pushAndRemoveUntil(

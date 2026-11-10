@@ -6,6 +6,15 @@ const PendingProvider = require('../models/PendingProvider');
 const PushToken = require('../models/PushToken');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
+const {
+  locationUpdateLimiter,
+  locationUpdateIpLimiter,
+  pushTokenLimiter,
+  pushTokenIpLimiter,
+} = require('../security/actionRateLimit');
+const {
+  validateLocationUpdate,
+} = require('../security/locationValidation');
 const { isReservedGuestEmail } = require('../services/contactRequest');
 const {
   normalizeMobileEmail,
@@ -32,7 +41,7 @@ const {
 const router = express.Router();
 router.use(auth, requireRole('customer', 'provider'));
 
-router.post('/push-token', async (req, res) => {
+router.post('/push-token', pushTokenLimiter, pushTokenIpLimiter, async (req, res) => {
   try {
     const token =
       typeof req.body?.token === 'string'
@@ -135,26 +144,47 @@ router.get('/available-providers', requireRole('customer'), async (req, res) => 
   }
 });
 
-router.put('/location', async (req, res) => {
+router.put('/location', locationUpdateLimiter, locationUpdateIpLimiter, async (req, res) => {
   try {
-    const { latitude, longitude, area } = req.body;
-    if (latitude == null || longitude == null) {
-      return res.status(400).json({ error: 'Latitude and longitude are required' });
-    }
-
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const validation = validateLocationUpdate({
+      latitude: req.body?.latitude,
+      longitude: req.body?.longitude,
+      previousLatitude: user.lastLatitude,
+      previousLongitude: user.lastLongitude,
+      previousUpdatedAt: user.lastLocationUpdate,
+      isMocked: req.body?.isMocked,
+      accuracy: req.body?.accuracy,
+      rejectMocked:
+        process.env.NODE_ENV === 'production'
+        && process.env.ALLOW_MOCK_LOCATION !== 'true',
+    });
+
+    if (!validation.ok) {
+      return res.status(400).json({
+        error: 'Location update rejected',
+        code: validation.code,
+      });
+    }
 
     // The area chosen at registration is authoritative for order matching.
     // GPS-detected governorate is only a fallback for legacy accounts that
     // never selected one, so a location sync must never overwrite it.
     const registeredArea =
       typeof user.area === 'string' ? user.area.trim() : '';
-    user.lastLatitude = latitude;
-    user.lastLongitude = longitude;
+    const area = req.body?.area;
+
+    user.lastLatitude = validation.latitude;
+    user.lastLongitude = validation.longitude;
     user.lastLocationUpdate = new Date();
+    user.lastLocationMocked = validation.mocked === true;
     if (!registeredArea && typeof area === 'string') {
-      user.area = area.trim();
+      const normalizedArea = area.trim().slice(0, 100);
+      if (normalizedArea) {
+        user.area = normalizedArea;
+      }
     }
     await user.save();
 

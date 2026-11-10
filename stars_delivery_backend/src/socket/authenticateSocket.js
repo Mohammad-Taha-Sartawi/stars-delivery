@@ -7,7 +7,11 @@ const {
 function authenticateSocket(socket, jwtSecret) {
   const admin = socket.request?.session?.admin;
   if (admin?.id && admin.role === 'admin') {
-    return { id: admin.id, role: 'admin' };
+    return {
+      id: admin.id,
+      role: 'admin',
+      sessionVersion: admin.sessionVersion ?? 0,
+    };
   }
 
   const token = socket.handshake?.auth?.token;

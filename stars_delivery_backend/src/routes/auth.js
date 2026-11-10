@@ -31,6 +31,7 @@ const {
   isActiveMobileAccount,
   publicMobileUser,
   mobileSessionVersion,
+  mobileSessionRotationFilter,
 } = require('../services/mobileSession');
 const { governorateKey } = require('../services/registrationLocation');
 const {
@@ -40,13 +41,18 @@ const {
 } = require('../security/passwordPolicy');
 const {
   createMobileLoginLimiter,
+  createMobileLoginAccountLimiter,
   createMobileRegistrationLimiter,
 } = require('../security/mobileAuthRateLimit');
 
 const JWT_SECRET = loadSecurityConfig().jwtSecret;
+const DUMMY_PASSWORD_HASH =
+  '$2a$12$sGnyg4das1q00q6NeIP1SOg243vtjXF8zU8iycDT6Nna.E1CnAr76';
 
 const invalidCredentialsMessage = 'Invalid credentials';
 const mobileLoginLimiter = createMobileLoginLimiter();
+const mobileLoginAccountLimiter =
+  createMobileLoginAccountLimiter();
 const mobileRegistrationLimiter =
   createMobileRegistrationLimiter();
 
@@ -291,7 +297,7 @@ router.post('/register', mobileRegistrationLimiter, providerRegistrationDocument
   }
 });
 
-router.post('/login', mobileLoginLimiter, async (req, res) => {
+router.post('/login', mobileLoginLimiter, mobileLoginAccountLimiter, async (req, res) => {
   try {
     const { email, password, role } = req.body;
     const normalizedEmail =
@@ -311,20 +317,18 @@ router.post('/login', mobileLoginLimiter, async (req, res) => {
     }
 
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
-
-    if (!user) {
-      return res.status(400).json({
-        error: invalidCredentialsMessage,
-      });
-    }
+    const suppliedPassword =
+      typeof password === 'string'
+        ? password
+        : '';
 
     const match =
       await bcrypt.compare(
-        password,
-        user.password,
+        suppliedPassword,
+        user?.password || DUMMY_PASSWORD_HASH,
       );
 
-    if (!match || user.role !== role) {
+    if (!user || !match || user.role !== role) {
       return res.status(400).json({
         error: invalidCredentialsMessage,
       });
@@ -375,6 +379,61 @@ router.post('/login', mobileLoginLimiter, async (req, res) => {
 router.use(
   '/password-recovery',
   passwordRecoveryRouter,
+);
+
+router.post(
+  '/logout',
+  auth,
+  requireRole('customer', 'provider'),
+  async (req, res) => {
+    try {
+      const rotationFilter =
+        mobileSessionRotationFilter(
+          req.authUser,
+        );
+
+      if (!rotationFilter) {
+        throw new Error(
+          'Invalid mobile session version',
+        );
+      }
+
+      const rotation =
+        await User.updateOne(
+          {
+            _id: req.userId,
+            role: req.userRole,
+            ...rotationFilter,
+          },
+          {
+            $inc: {
+              sessionVersion: 1,
+            },
+          },
+        );
+
+      if (rotation.matchedCount !== 1) {
+        throw new Error(
+          'Concurrent session revocation',
+        );
+      }
+
+      const io = req.app.get('io');
+
+      if (io) {
+        io.in(
+          `user:${req.userId}`,
+        ).disconnectSockets(true);
+      }
+
+      return res.json({
+        success: true,
+        message: 'Logged out',
+      });
+    } catch (_err) {
+      return sendInternalServerError(res);
+    }
+  },
 );
 
 router.get(

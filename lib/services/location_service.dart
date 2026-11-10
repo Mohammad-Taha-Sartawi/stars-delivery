@@ -27,7 +27,8 @@ class LocationService {
     final permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       final result = await Geolocator.requestPermission();
-      if (result == LocationPermission.denied || result == LocationPermission.deniedForever) {
+      if (result == LocationPermission.denied ||
+          result == LocationPermission.deniedForever) {
         return false;
       }
     }
@@ -52,7 +53,9 @@ class LocationService {
 
   static Future<String?> _findNearestArea(double lat, double lng) async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/countries+states+cities.json');
+      final jsonStr = await rootBundle.loadString(
+        'assets/countries+states+cities.json',
+      );
       final List countries = jsonDecode(jsonStr);
       final palestine = countries.firstWhere(
         (c) => c['iso2'] == 'PS',
@@ -105,7 +108,12 @@ class LocationService {
     }
   }
 
-  static double _distanceSq(double lat1, double lng1, double lat2, double lng2) {
+  static double _distanceSq(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
     final dlat = lat1 - lat2;
     final dlng = lng1 - lng2;
     return dlat * dlat + dlng * dlng;
@@ -133,6 +141,8 @@ class LocationService {
           'latitude': pos.latitude,
           'longitude': pos.longitude,
           'area': area,
+          'isMocked': pos.isMocked,
+          'accuracy': pos.accuracy,
         },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );

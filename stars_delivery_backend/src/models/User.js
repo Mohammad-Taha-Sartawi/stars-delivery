@@ -56,6 +56,14 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, select: false },
   sessionVersion: { type: Number, default: 0, min: 0 },
   mustChangePassword: { type: Boolean, default: false },
+  adminTotpSecret: { type: String, default: '', select: false },
+  adminTotpEnabled: { type: Boolean, default: false },
+  adminTotpRecoveryCodeHashes: {
+    type: [String],
+    default: [],
+    select: false,
+  },
+  adminTotpEnabledAt: { type: Date, default: null },
   providerDocuments: {
     type: [providerDocumentSchema],
     default: [],
@@ -86,6 +94,7 @@ const userSchema = new mongoose.Schema({
   lastLatitude: { type: Number },
   lastLongitude: { type: Number },
   lastLocationUpdate: { type: Date },
+  lastLocationMocked: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   // Admin panel fields
   name: { type: String },

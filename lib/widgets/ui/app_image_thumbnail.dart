@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../services/api_config.dart';
 import '../../services/theme_service.dart';
 
 /// A network image thumbnail with a guaranteed minimum touch target, an
@@ -33,11 +34,12 @@ class AppImageThumbnail extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final radius = borderRadius ?? AppRadius.sm;
     final targetSize = math.max(size, AppSizes.minTouchTarget);
+    final resolvedImageUrl = ApiConfig.resolveMediaUrl(imageUrl);
 
     final image = ClipRRect(
       borderRadius: BorderRadiusDirectional.circular(radius),
       child: Image.network(
-        imageUrl,
+        resolvedImageUrl,
         width: size,
         height: size,
         fit: BoxFit.cover,

@@ -390,7 +390,7 @@ test(
 
     assert.match(
       loginSource,
-      /if\s*\(!match\s*\|\|\s*user\.role\s*!==\s*role\)/,
+      /if\s*\(!user\s*\|\|\s*!match\s*\|\|\s*user\.role\s*!==\s*role\)/,
     );
 
     // Preserve historical short-password login:
@@ -410,6 +410,11 @@ test(
         'function createMobileLoginLimiter()',
       );
 
+    const loginAccountLimiterStart =
+      rateLimitSource.indexOf(
+        'function createMobileLoginAccountLimiter()',
+      );
+
     const registrationLimiterStart =
       rateLimitSource.indexOf(
         'function createMobileRegistrationLimiter()',
@@ -425,8 +430,13 @@ test(
     );
 
     assert.ok(
-      registrationLimiterStart
+      loginAccountLimiterStart
         > loginLimiterStart,
+    );
+
+    assert.ok(
+      registrationLimiterStart
+        > loginAccountLimiterStart,
     );
 
     assert.ok(
@@ -437,7 +447,7 @@ test(
     const loginLimiterSource =
       rateLimitSource.slice(
         loginLimiterStart,
-        registrationLimiterStart,
+        loginAccountLimiterStart,
       );
 
     const registrationLimiterSource =

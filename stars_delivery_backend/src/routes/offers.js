@@ -1,10 +1,21 @@
 const { sendInternalServerError } = require('../security/errorResponse');
 const express = require('express');
+const mongoose = require('mongoose');
 const Offer = require('../models/Offer');
 const Order = require('../models/Order');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
+const {
+  offerCreateLimiter,
+  offerCreateIpLimiter,
+  orderCreateLimiter,
+  orderCreateIpLimiter,
+} = require('../security/actionRateLimit');
+const {
+  boundedTrimmedString,
+  boundedFiniteNumber,
+} = require('../security/requestInput');
 const {
   resolveRegistrationLocation,
 } = require('../services/registrationLocation');
@@ -57,15 +68,38 @@ async function notifyDriverTaken(io, customerId, orderId, offerId, providerId) {
   }).catch(() => {});
 }
 
-router.post('/', auth, requireRole('provider'), async (req, res) => {
+router.post('/', auth, requireRole('provider'), offerCreateLimiter, offerCreateIpLimiter, async (req, res) => {
   try {
-    const { orderId, price, estimatedTime } = req.body;
+    const orderId = boundedTrimmedString(req.body?.orderId, 50);
+    const price = boundedFiniteNumber(req.body?.price, {
+      min: 0.01,
+      max: 100000,
+    });
+    const estimatedTime = req.body?.estimatedTime === undefined
+      ? 0
+      : boundedFiniteNumber(req.body?.estimatedTime, {
+          min: 0,
+          max: 1440,
+        });
 
-    if (!orderId || !price || price <= 0) {
-      return res.status(400).json({ error: 'Valid price is required' });
+    if (
+      !orderId
+      || !mongoose.isValidObjectId(orderId)
+      || price === null
+      || estimatedTime === null
+    ) {
+      return res.status(400).json({
+        error: 'Valid price is required',
+        code: 'INVALID_OFFER_INPUT',
+      });
     }
 
-    const result = await lifecycle.submitOffer({ orderId, providerId: req.userId, price, estimatedTime });
+    const result = await lifecycle.submitOffer({
+      orderId,
+      providerId: req.userId,
+      price,
+      estimatedTime: Math.round(estimatedTime),
+    });
 
     const io = req.app.get('io');
     if (io) {
@@ -73,7 +107,7 @@ router.post('/', auth, requireRole('provider'), async (req, res) => {
         orderId,
         offerId: result.offer._id,
         price,
-        estimatedTime: estimatedTime || 0,
+        estimatedTime: Math.round(estimatedTime),
         providerName: result.providerName,
         providerPhone: result.providerPhone,
       });
@@ -99,7 +133,7 @@ router.post('/', auth, requireRole('provider'), async (req, res) => {
 });
 
 // Resend rejected order to other providers
-router.post('/:orderId/resend', auth, requireRole('customer'), async (req, res) => {
+router.post('/:orderId/resend', auth, requireRole('customer'), orderCreateLimiter, orderCreateIpLimiter, async (req, res) => {
   try {
     const order = await lifecycle.resetOrder({ orderId: req.params.orderId, customerId: req.userId });
 
@@ -110,7 +144,6 @@ router.post('/:orderId/resend', auth, requireRole('customer'), async (req, res) 
         _id: order._id,
         type: order.type,
         description: order.description,
-        phone: order.phone,
         images: order.images || [],
         area: order.area,
         governorate: order.governorate,

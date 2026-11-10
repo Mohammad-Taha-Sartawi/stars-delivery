@@ -128,7 +128,7 @@ test('delegated browser actions replace legacy inline handlers', () => {
   // expose pay and reset actions.
   assert.equal(
     clickActions.length,
-    66,
+    67,
   );
 
   assert.equal(

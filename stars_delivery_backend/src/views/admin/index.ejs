@@ -238,6 +238,7 @@
       <div class="settings-grid">
         <div class="settings-card"><div class="icon"><i class="fas fa-sign-out-alt"></i></div><h3>تسجيل الخروج</h3><p>قم بتسجيل الخروج من لوحة التحكم.</p><form method="POST" action="/admin/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit" class="btn-action logout"><i class="fas fa-door-open"></i> تسجيل الخروج</button></form></div>
         <div class="settings-card"><div class="icon"><i class="fas fa-key"></i></div><h3>إعادة تعيين كلمة المرور</h3><p>تغيير كلمة المرور الخاصة بحساب المدير.</p><button class="btn-action reset" data-admin-action="openResetPassword" data-admin-arg-count="0"><i class="fas fa-undo-alt"></i> إعادة تعيين كلمة المرور</button></div>
+        <div class="settings-card"><div class="icon"><i class="fas fa-shield-alt"></i></div><h3>المصادقة الثنائية</h3><p>أضف طبقة حماية ثانية بحساب مصادقة (TOTP) ورموز استرداد.</p><button class="btn-action reset" data-admin-action="manageTwoFactor" data-admin-arg-count="0"><i class="fas fa-shield-alt"></i> إدارة المصادقة الثنائية</button></div>
         <div class="settings-card">
           <div class="icon"><i class="fas fa-percent"></i></div>
           <h3>عمولة المنصة</h3>

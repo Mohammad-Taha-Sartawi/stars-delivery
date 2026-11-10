@@ -5,6 +5,7 @@ const MOBILE_AUTH_WINDOW_MS =
   15 * 60 * 1000;
 
 const MOBILE_LOGIN_ATTEMPT_LIMIT = 10;
+const MOBILE_LOGIN_ACCOUNT_ATTEMPT_LIMIT = 10;
 const MOBILE_REGISTRATION_ATTEMPT_LIMIT = 5;
 
 const PASSWORD_RECOVERY_WINDOW_MS =
@@ -42,6 +43,41 @@ function createMobileLoginLimiter() {
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     skipSuccessfulRequests: true,
+    handler: (_req, res) =>
+      res
+        .status(429)
+        .json(
+          MOBILE_LOGIN_RATE_LIMIT_RESPONSE,
+        ),
+  });
+}
+
+function mobileLoginAccountKey(req) {
+  const normalizedEmail =
+    typeof req.body?.email === 'string'
+      ? req.body.email.trim().toLowerCase()
+      : '';
+
+  return (
+    'mobile-login:email:'
+    + crypto
+      .createHash('sha256')
+      .update(
+        normalizedEmail
+        || '__invalid_mobile_login__',
+      )
+      .digest('hex')
+  );
+}
+
+function createMobileLoginAccountLimiter() {
+  return rateLimit({
+    windowMs: MOBILE_AUTH_WINDOW_MS,
+    limit: MOBILE_LOGIN_ACCOUNT_ATTEMPT_LIMIT,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: mobileLoginAccountKey,
     handler: (_req, res) =>
       res
         .status(429)
@@ -144,6 +180,7 @@ function createPasswordRecoveryResetIpLimiter() {
 module.exports = {
   MOBILE_AUTH_WINDOW_MS,
   MOBILE_LOGIN_ATTEMPT_LIMIT,
+  MOBILE_LOGIN_ACCOUNT_ATTEMPT_LIMIT,
   MOBILE_REGISTRATION_ATTEMPT_LIMIT,
   PASSWORD_RECOVERY_WINDOW_MS,
   PASSWORD_RECOVERY_REQUEST_IP_LIMIT,
@@ -152,8 +189,10 @@ module.exports = {
   MOBILE_LOGIN_RATE_LIMIT_RESPONSE,
   MOBILE_REGISTRATION_RATE_LIMIT_RESPONSE,
   PASSWORD_RECOVERY_RATE_LIMIT_RESPONSE,
+  mobileLoginAccountKey,
   passwordRecoveryAccountKey,
   createMobileLoginLimiter,
+  createMobileLoginAccountLimiter,
   createMobileRegistrationLimiter,
   createPasswordRecoveryRequestIpLimiter,
   createPasswordRecoveryRequestAccountLimiter,

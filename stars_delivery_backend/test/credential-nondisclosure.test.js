@@ -66,11 +66,11 @@ test(
     assert.equal(
       (
         adminAuthSource.match(
-          /\.select\('\+password'\)/g,
+          /\.select\([^)]*\+password[^)]*\)/g,
         )
         || []
       ).length,
-      2,
+      5,
     );
 
     assert.equal(

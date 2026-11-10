@@ -254,6 +254,7 @@ const adminActionHandlers = Object.freeze({
   freezeDriver,
   freezeUser,
   handleResetPassword,
+  manageTwoFactor,
   markPaid,
   resetAllCommissions,
   resetDriverCommission,
@@ -2918,6 +2919,81 @@ async function handleResetPassword() {
   } catch (err) {
     msgEl.className = 'msg error';
     msgEl.textContent = 'حدث خطأ في الاتصال';
+  }
+}
+
+// ================================================
+// 18. المصادقة الثنائية
+// ================================================
+async function manageTwoFactor() {
+  try {
+    const statusResponse = await adminFetch('/admin/2fa/status');
+    const status = await statusResponse.json();
+
+    if (!status.success) {
+      alert(status.message || 'تعذر قراءة حالة المصادقة الثنائية');
+      return;
+    }
+
+    if (status.enabled) {
+      const password = prompt('أدخل كلمة مرور المدير لتعطيل المصادقة الثنائية:');
+
+      if (password === null) return;
+
+      const code = prompt('أدخل رمز المصادقة أو رمز استرداد:');
+
+      if (code === null) return;
+
+      const response = await adminFetch('/admin/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, code }),
+      });
+      const result = await response.json();
+
+      alert(result.message || (result.success ? 'تم التعطيل' : 'تعذر التعطيل'));
+      return;
+    }
+
+    const setupResponse = await adminFetch('/admin/2fa/setup', {
+      method: 'POST',
+    });
+    const setup = await setupResponse.json();
+
+    if (!setup.success) {
+      alert(setup.message || 'تعذر بدء إعداد المصادقة الثنائية');
+      return;
+    }
+
+    alert(
+      'أضف الحساب في تطبيق المصادقة باستخدام الرابط التالي:\n\n'
+      + setup.otpauthUri
+      + '\n\nأو أدخل السر يدوياً:\n'
+      + setup.secret,
+    );
+
+    const code = prompt('أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة:');
+
+    if (code === null) return;
+
+    const enableResponse = await adminFetch('/admin/2fa/enable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const enabled = await enableResponse.json();
+
+    if (!enabled.success) {
+      alert(enabled.message || 'تعذر تفعيل المصادقة الثنائية');
+      return;
+    }
+
+    alert(
+      'تم تفعيل المصادقة الثنائية.\n\nاحفظ رموز الاسترداد في مكان آمن:\n\n'
+      + (enabled.recoveryCodes || []).join('\n'),
+    );
+  } catch (err) {
+    alert('حدث خطأ في الاتصال');
   }
 }
 

@@ -2,7 +2,11 @@ const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
 
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
+const IMGBB_UPLOAD_ENABLED =
+  process.env.ENABLE_IMGBB_UPLOAD === 'true';
+const IMGBB_API_KEY = IMGBB_UPLOAD_ENABLED
+  ? process.env.IMGBB_API_KEY
+  : '';
 
 async function uploadToCloud(imagePath) {
   if (!IMGBB_API_KEY) return null;
@@ -28,12 +32,17 @@ async function uploadToCloud(imagePath) {
 }
 
 async function uploadImagesToCloud(filePaths) {
-  const urls = [];
-  for (const fp of filePaths) {
-    const url = await uploadToCloud(fp);
-    if (url) urls.push(url);
-  }
-  return urls;
+  const paths = Array.isArray(filePaths) ? filePaths : [];
+
+  // Keep one result slot per input file. The previous implementation
+  // dropped failures, which could attach the wrong cloud URL to a file.
+  return Promise.all(
+    paths.map((filePath) => uploadToCloud(filePath)),
+  );
 }
 
-module.exports = { uploadToCloud, uploadImagesToCloud };
+module.exports = {
+  IMGBB_UPLOAD_ENABLED,
+  uploadToCloud,
+  uploadImagesToCloud,
+};

@@ -1230,7 +1230,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     final dailyCard = _buildMetricCard(
       context,
       label: AppLocalization.get(context, 'daily_earnings'),
-      value: '${s.dailyEarnings.toStringAsFixed(0)} ILS',
+      value: '${_formatMoney(s.dailyEarnings)} ILS',
       tone: AppTone.info,
       footer: _buildMetricFooter(
         context,
@@ -1243,7 +1243,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     final monthlyCard = _buildMetricCard(
       context,
       label: AppLocalization.get(context, 'monthly_earnings'),
-      value: '${s.monthlyEarnings.toStringAsFixed(0)} ILS',
+      value: '${_formatMoney(s.monthlyEarnings)} ILS',
       tone: AppTone.success,
       footer: _buildMetricFooter(
         context,
@@ -1277,6 +1277,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
         );
       },
     );
+  }
+
+  String _formatMoney(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(2);
   }
 
   Widget _buildMetricFooter(
@@ -1444,7 +1451,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              '${s.totalCommissionDue.toStringAsFixed(0)} ILS',
+              '${_formatMoney(s.totalCommissionDue)} ILS',
               style: theme.textTheme.headlineMedium?.copyWith(
                 color: tone.foreground,
                 fontWeight: FontWeight.bold,

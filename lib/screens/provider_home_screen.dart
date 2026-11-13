@@ -496,69 +496,88 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
               _scheduleUnblockRefresh(state.stats.blockedUntil);
             }
           },
-          child: BlocConsumer<ProviderBloc, ProviderState>(
-            listenWhen: (previous, current) {
-              if (current is ProviderStatsLoaded &&
-                  current.stats.isAvailable &&
-                  current.pendingOrders != null &&
-                  current.pendingOrders!.isNotEmpty) {
-                final prev = previous is ProviderStatsLoaded
-                    ? previous.pendingOrders
-                    : null;
-                return prev == null || prev.isEmpty;
-              }
-              return false;
-            },
+          child: BlocListener<ProviderBloc, ProviderState>(
+            // Tell the driver once per failure streak that the figures on
+            // screen are the last known values, not fresh ones.
+            listenWhen: (previous, current) =>
+                current is ProviderStatsLoaded &&
+                current.refreshError != null &&
+                (previous is! ProviderStatsLoaded ||
+                    previous.refreshError == null),
             listener: (context, state) {
-              if (state is ProviderStatsLoaded &&
-                  state.stats.isAvailable &&
-                  state.pendingOrders != null &&
-                  state.pendingOrders!.isNotEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PendingOrdersScreen(
-                        orders: state.pendingOrders!,
-                        token: widget.token,
-                        user: _user,
-                        onRefresh: () {
-                          context.read<ProviderBloc>().add(
-                            LoadPendingOrders(token: widget.token),
-                          );
-                          context.read<ProviderBloc>().add(
-                            LoadProviderStats(token: widget.token),
-                          );
-                        },
+              AppFeedback.error(
+                context,
+                AppLocalization.get(context, 'dashboard_refresh_failed'),
+              );
+            },
+            child: BlocConsumer<ProviderBloc, ProviderState>(
+              listenWhen: (previous, current) {
+                if (current is ProviderStatsLoaded &&
+                    current.stats.isAvailable &&
+                    current.pendingOrders != null &&
+                    current.pendingOrders!.isNotEmpty) {
+                  final prev = previous is ProviderStatsLoaded
+                      ? previous.pendingOrders
+                      : null;
+                  return prev == null || prev.isEmpty;
+                }
+                return false;
+              },
+              listener: (context, state) {
+                if (state is ProviderStatsLoaded &&
+                    state.stats.isAvailable &&
+                    state.pendingOrders != null &&
+                    state.pendingOrders!.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PendingOrdersScreen(
+                          orders: state.pendingOrders!,
+                          token: widget.token,
+                          user: _user,
+                          onRefresh: () {
+                            context.read<ProviderBloc>().add(
+                              LoadPendingOrders(token: widget.token),
+                            );
+                            context.read<ProviderBloc>().add(
+                              LoadProviderStats(token: widget.token),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ).then((_) {
-                    if (!context.mounted) return;
-                    context.read<ProviderBloc>().add(
-                      LoadProviderStats(token: widget.token),
-                    );
+                    ).then((_) {
+                      if (!context.mounted) return;
+                      context.read<ProviderBloc>().add(
+                        LoadProviderStats(token: widget.token),
+                      );
+                    });
                   });
-                });
-              }
-            },
-            builder: (context, state) {
-              if (state is ProviderLoading) {
-                return const AppLoadingState();
-              }
-              if (state is ProviderError) {
-                return AppErrorState(
-                  message: state.message,
-                  onRetry: () {
-                    _refreshDashboard();
-                  },
-                );
-              }
-              if (state is ProviderStatsLoaded) {
-                return _buildDashboard(context, state.stats);
-              }
-              return const SizedBox.shrink();
-            },
+                }
+              },
+              builder: (context, state) {
+                if (state is ProviderLoading) {
+                  return const AppLoadingState();
+                }
+                if (state is ProviderError) {
+                  return AppErrorState(
+                    message: AppLocalization.get(
+                      context,
+                      'dashboard_load_failed',
+                    ),
+                    retryLabel: AppLocalization.get(context, 'retry'),
+                    onRetry: () {
+                      _refreshDashboard();
+                    },
+                  );
+                }
+                if (state is ProviderStatsLoaded) {
+                  return _buildDashboard(context, state.stats);
+                }
+                return const SizedBox.shrink();
+              },
+            ),
           ),
         ),
       ),

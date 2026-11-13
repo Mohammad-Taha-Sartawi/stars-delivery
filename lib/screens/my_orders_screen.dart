@@ -13,6 +13,7 @@ import '../services/socket_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
+import '../widgets/ui/app_state_views.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
 import '../bloc/app/app_bloc.dart';
@@ -38,6 +39,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   final OfferService _offerService = OfferService();
   List<Map<String, dynamic>>? _orders;
   bool _loading = true;
+  bool _loadFailed = false;
   Timer? _clockTimer;
   Timer? _refreshTimer;
   final List<StreamSubscription> _socketSubs = [];
@@ -95,13 +97,27 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                   (order) => statuses.contains(order['status']?.toString()),
                 )
                 .toList();
+      // The user may leave the screen before the request finishes.
+      if (!mounted) return;
       setState(() {
         _orders = filtered;
+        _loadFailed = false;
         _loading = false;
       });
     } catch (e) {
-      setState(() => _loading = false);
+      if (!mounted) return;
+      // Keep any list already on screen; with nothing to show, render the
+      // error view instead of the misleading "No orders" empty state.
+      setState(() {
+        _loadFailed = true;
+        _loading = false;
+      });
     }
+  }
+
+  Future<void> _retryLoad() async {
+    setState(() => _loading = true);
+    await _loadOrders();
   }
 
   void _openTracking(String orderId) {
@@ -302,6 +318,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         return AppLocalization.get(context, 'status_fulfilling');
       case 'completed':
         return AppLocalization.get(context, 'status_completed');
+      case 'cancelled':
+        return AppLocalization.get(context, 'status_cancelled');
+      case 'expired':
+        return AppLocalization.get(context, 'status_expired');
       default:
         return status ?? '';
     }
@@ -319,6 +339,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         return AppTone.accent;
       case 'completed':
         return AppTone.success;
+      case 'cancelled':
+        return AppTone.danger;
       default:
         return AppTone.neutral;
     }
@@ -342,6 +364,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               constraints: const BoxConstraints(maxWidth: 600),
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
+                  : _loadFailed && (_orders == null || _orders!.isEmpty)
+                  ? AppErrorState(
+                      message: AppLocalization.get(
+                        context,
+                        'orders_load_failed',
+                      ),
+                      retryLabel: AppLocalization.get(context, 'retry'),
+                      onRetry: _retryLoad,
+                    )
                   : _orders == null || _orders!.isEmpty
                   ? Center(
                       child: Text(

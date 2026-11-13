@@ -194,6 +194,7 @@ const ContactRequest = require('./models/ContactRequest');
 const BroadcastMessage = require('./models/BroadcastMessage');
 const CommissionPayment = require('./models/CommissionPayment');
 const Rating = require('./models/Rating');
+const CustomerRating = require('./models/CustomerRating');
 const CommissionSetting = require('./models/CommissionSetting');
 const PushToken = require('./models/PushToken');
 const AdminAuditLog = require('./models/AdminAuditLog');
@@ -222,6 +223,7 @@ async function ensureMongoIndexes() {
     BroadcastMessage.createIndexes(),
     CommissionPayment.createIndexes(),
     Rating.createIndexes(),
+    CustomerRating.createIndexes(),
     CommissionSetting.createIndexes(),
     PushToken.createIndexes(),
     AdminAuditLog.createIndexes(),

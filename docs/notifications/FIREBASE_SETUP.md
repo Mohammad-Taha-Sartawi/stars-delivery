@@ -58,7 +58,24 @@ service-account JSON or `.env` to Git.
   who are available and support the order type.
 - The app registers its FCM token after login and removes it on logout.
 
-## 5. Verification
+## 5. App behaviour
+
+- **App closed or in the background:** Android shows the notification in the
+  tray by itself (the server sends a `notification` block). The app creates the
+  `stars_delivery_default` channel with high importance ("Order updates" /
+  "تحديثات الطلبات"), so order pushes appear as heads-up alerts.
+- **Tapping a notification** opens the related screen: offers for a customer's
+  order, the order detail for drivers, in-progress orders for delivery
+  confirmation, the rejected-orders report for "offer not selected", and the
+  notifications list otherwise (`lib/services/notification_router.dart`). This
+  also works when the tap launches the closed app.
+- **App open:** the push is shown as a short in-app message (Android does not
+  put foreground pushes in the tray).
+- **Logout:** the app removes its device token before revoking the session, and
+  the server deletes all of the account's tokens on logout, so a signed-out
+  phone stops receiving that account's pushes.
+
+## 6. Verification
 
 1. Start the API with Firebase credentials configured.
 2. Build and install the app with the Firebase dart-defines.

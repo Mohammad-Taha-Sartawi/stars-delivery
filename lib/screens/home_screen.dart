@@ -19,6 +19,7 @@ import '../services/localization_service.dart';
 import '../services/location_catalog.dart';
 import '../services/location_service.dart';
 import '../services/order_service.dart';
+import '../services/notification_router.dart';
 import '../services/push_notification_service.dart';
 import '../services/support_chat_service.dart';
 import '../widgets/ui/app_action_tile.dart';
@@ -98,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     SocketService.instance.connect(token: widget.token);
     unawaited(PushNotificationService.instance.start(widget.token));
+    _listenToPushNotifications();
 
     _socketConnectedSub = SocketService.instance.onConnected.listen((_) {
       if (!mounted) return;
@@ -376,9 +378,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  StreamSubscription<Map<String, dynamic>>? _pushOpenedSub;
+  StreamSubscription<ForegroundPush>? _pushForegroundSub;
+
+  /// Push notifications: a tap opens the related screen; a push that arrives
+  /// while the app is open is shown as a short message.
+  void _listenToPushNotifications() {
+    final push = PushNotificationService.instance;
+    _pushOpenedSub = push.onOpened.listen(_openFromPush);
+    _pushForegroundSub = push.onForeground.listen((message) {
+      if (!mounted) return;
+      final text = [
+        message.title,
+        message.body,
+      ].where((part) => part.trim().isNotEmpty).join(' — ');
+      if (text.isNotEmpty) AppFeedback.info(context, text);
+    });
+    final pending = push.takePendingOpen();
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openFromPush(pending);
+      });
+    }
+  }
+
+  void _openFromPush(Map<String, dynamic> data) {
+    if (!mounted) return;
+    NotificationRouter.openFromPush(context, data: data, token: widget.token);
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pushOpenedSub?.cancel();
+    _pushForegroundSub?.cancel();
     _notifTimer?.cancel();
     _newOfferSub?.cancel();
     _deliveryConfirmationSub?.cancel();
@@ -806,6 +839,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               return;
             }
 
+            // Remove this device's push token while the session is still
+            // valid; revoking first made the removal fail with 401.
+            await PushNotificationService.instance.stop().timeout(
+              const Duration(seconds: 5),
+              onTimeout: () {},
+            );
+            if (!context.mounted) return;
             unawaited(AuthService().revokeSession(widget.token));
             SocketService.instance.disconnect();
             context.read<AuthBloc>().add(LogoutEvent());

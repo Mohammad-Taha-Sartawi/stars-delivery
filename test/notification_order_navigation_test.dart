@@ -4,11 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('order notifications open the related order instead of the dialog', () {
-    final source = File(
+    final screen = File(
       'lib/screens/notifications_screen.dart',
     ).readAsStringSync();
+    // The list and push-notification taps share one router.
+    expect(screen, contains('_openNotification'));
+    expect(screen, contains('NotificationRouter.pageFor'));
 
-    expect(source, contains('_openNotification'));
+    final source = File(
+      'lib/services/notification_router.dart',
+    ).readAsStringSync();
 
     expect(source, contains('OrderDetailScreen'));
 

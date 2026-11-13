@@ -160,3 +160,23 @@ test('an active account still blocks its email', async () => {
     .expect(400);
   assert.equal(res.body.error, 'Email already registered');
 });
+
+test('logout removes the push tokens of the account', async () => {
+  const reg = await request(app)
+    .post('/api/auth/register')
+    .send(registration('customer', 'push-logout@example.test'))
+    .expect(201);
+  const login = await request(app)
+    .post('/api/auth/login')
+    .send({ email: 'push-logout@example.test', password: PASSWORD, role: 'customer' })
+    .expect(200);
+  await PushToken.create({ userId: reg.body.user.id, token: 'device-a', platform: 'android' });
+  await PushToken.create({ userId: reg.body.user.id, token: 'device-b', platform: 'android' });
+
+  await request(app)
+    .post('/api/auth/logout')
+    .set('Authorization', `Bearer ${login.body.token}`)
+    .expect(200);
+
+  assert.equal(await PushToken.countDocuments({ userId: reg.body.user.id }), 0);
+});

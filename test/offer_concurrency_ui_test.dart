@@ -44,7 +44,12 @@ void main() {
 
     expect(source, contains("'offer_not_selected'"));
 
-    expect(source, contains('RejectedOrdersScreen'));
+    // Routing for notification taps lives in the shared router.
+    final router = File(
+      'lib/services/notification_router.dart',
+    ).readAsStringSync();
+    expect(router, contains("'offer_not_selected'"));
+    expect(router, contains('RejectedOrdersScreen'));
   });
 
   test('providers are notified and pending lists drop selected orders', () {

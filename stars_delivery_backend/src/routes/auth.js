@@ -26,6 +26,7 @@ const {
 } = require('../services/mobileSession');
 const { governorateKey } = require('../services/registrationLocation');
 const { findActiveAccountByEmail } = require('../services/accountRelease');
+const PushToken = require('../models/PushToken');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
   MAX_MOBILE_PASSWORD_LENGTH,
@@ -287,6 +288,11 @@ router.post(
           'Concurrent session revocation',
         );
       }
+
+      // Logout ends every session of this account, so stop push delivery to
+      // all of its devices too (the app's own token removal can race the
+      // revocation and fail with 401).
+      await PushToken.deleteMany({ userId: req.userId });
 
       const io = req.app.get('io');
 

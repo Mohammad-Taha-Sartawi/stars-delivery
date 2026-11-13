@@ -43,6 +43,8 @@ const reportRoutes = require('./routes/reports');
 const chatRoutes = require('./routes/chat');
 const userRoutes = require('./routes/users');
 const adRoutes = require('./routes/ads');
+const locationRoutes = require('./routes/locations');
+const { seedLocationCatalog } = require('./services/locationCatalog');
 
 const adminAuthRoutes = require('./routes/adminAuth');
 const adminDriverRoutes = require('./routes/adminDrivers');
@@ -283,6 +285,13 @@ async function connectMongo() {
   } catch (err) {
     console.error('MongoDB index initialization failed:', String(err?.message || err).split('\n')[0]);
   }
+
+  try {
+    const { seeded, count } = await seedLocationCatalog();
+    console.log(`Location catalog ${seeded ? 'seeded' : 'up to date'} (${count} governorates)`);
+  } catch (err) {
+    console.error('Location catalog seed failed:', String(err?.message || err).split('\n')[0]);
+  }
 }
 
 connectMongo();
@@ -503,6 +512,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/ads', adRoutes);
+app.use('/api/locations', locationRoutes);
 
 app.use('/admin', adminAuthRoutes);
 

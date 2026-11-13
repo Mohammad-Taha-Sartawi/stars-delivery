@@ -1,8 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
-/// One governorate from the bundled Palestine location asset.
+import 'api_config.dart';
+import 'mobile_api_client.dart';
+
+/// One Palestine governorate, served by the backend's location catalog
+/// (`GET /api/locations/governorates`, stored in MongoDB).
 class GovernorateOption {
   const GovernorateOption({
     required this.name,
@@ -26,10 +28,13 @@ class GovernorateOption {
   String get displayName => name.replaceFirst(' (Quds)', '').trim();
 }
 
-/// Loads the Palestine governorate/city asset once and exposes the same
-/// canonical values to registration and profile editing.
+/// Loads the Palestine governorates/cities from the backend once and exposes
+/// the same canonical values to registration and profile editing.
+///
+/// The app used to bundle and decode a 46.5 MB worldwide JSON asset for this
+/// on the UI thread; the backend now serves only Palestine from MongoDB.
 abstract final class LocationCatalog {
-  static const String assetPath = 'assets/countries+states+cities.json';
+  static const String governoratesPath = '/locations/governorates';
 
   static const Map<String, String> legacyAreaValues = {
     'Jerusalem (Quds)': 'القدس',
@@ -55,45 +60,63 @@ abstract final class LocationCatalog {
   };
 
   static List<GovernorateOption>? _cache;
+  static Future<List<GovernorateOption>>? _inFlight;
 
   @visibleForTesting
   static void clearCache() {
     _cache = null;
+    _inFlight = null;
   }
 
-  static Future<List<GovernorateOption>> load() async {
+  /// Returns the cached catalog, or fetches it. Concurrent callers share one
+  /// request. A failure is not cached, so a later call retries.
+  static Future<List<GovernorateOption>> load() {
     final cached = _cache;
     if (cached != null) {
-      return cached;
+      return Future.value(cached);
     }
+    return _inFlight ??= _fetch().whenComplete(() => _inFlight = null);
+  }
 
-    final json = await rootBundle.loadString(assetPath);
-    final list = jsonDecode(json) as List;
-    final palestine = list.cast<Map<String, dynamic>>().firstWhere(
-      (country) => country['iso2'] == 'PS',
+  static Future<List<GovernorateOption>> _fetch() async {
+    final dio = MobileApiClient.create(
+      baseUrl: ApiConfig.apiUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
     );
-    final states = palestine['states'] as List;
-
-    final governorates = states.cast<Map<String, dynamic>>().map((state) {
-      final name = state['name'].toString().trim();
-      final native = state['native']?.toString().trim() ?? '';
-      final nativeName = native.isEmpty ? name : native;
-      final cities = ((state['cities'] as List?) ?? const [])
-          .cast<Map<String, dynamic>>()
-          .map((city) => city['name'].toString().trim())
-          .where((city) => city.isNotEmpty)
-          .toList();
-
-      return GovernorateOption(
-        name: name,
-        nativeName: nativeName,
-        areaValue: _legacyAreaValuesTrimmed[name] ?? nativeName,
-        cities: cities,
-      );
-    }).toList();
-
+    final response = await dio.get(governoratesPath);
+    final governorates = parse(response.data);
+    if (governorates.isEmpty) {
+      throw StateError('Location catalog is empty');
+    }
     _cache = governorates;
     return governorates;
+  }
+
+  /// Parses the `GET /api/locations/governorates` payload:
+  /// `[{name, native, cities: [String]}]`.
+  @visibleForTesting
+  static List<GovernorateOption> parse(Object? data) {
+    if (data is! List) return const [];
+    return data
+        .whereType<Map>()
+        .map((raw) {
+          final name = raw['name']?.toString().trim() ?? '';
+          final native = raw['native']?.toString().trim() ?? '';
+          final nativeName = native.isEmpty ? name : native;
+          final cities = ((raw['cities'] as List?) ?? const [])
+              .map((city) => city.toString().trim())
+              .where((city) => city.isNotEmpty)
+              .toList();
+          return GovernorateOption(
+            name: name,
+            nativeName: nativeName,
+            areaValue: _legacyAreaValuesTrimmed[name] ?? nativeName,
+            cities: cities,
+          );
+        })
+        .where((option) => option.name.isNotEmpty)
+        .toList();
   }
 
   /// Finds the governorate/current village for an existing account, including

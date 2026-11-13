@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -15,7 +16,10 @@ import 'screens/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiConfig.init();
-  await LocationService.initialize();
+  // Location permission, the GPS fix (up to 10 s) and the nearest-area
+  // lookup run in the background instead of delaying the first frame. The
+  // detected area is advisory: the server uses the account's saved area.
+  unawaited(LocationService.initialize());
   final initialTheme = await ThemePreferences.load();
   final initialLocale = await LocalePreferences.load();
   runApp(

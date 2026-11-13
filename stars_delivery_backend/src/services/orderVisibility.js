@@ -8,10 +8,11 @@ function normalizeArea(value) {
 }
 
 /**
- * A provider can see:
+ * The order scope is the driver's choice alone. A provider can see:
  *  - orders from their own village/city, always;
- *  - orders from other villages/cities in their governorate only when both
- *    the provider and the customer enabled governorate-level mode.
+ *  - orders from every other village/city in their governorate when the
+ *    provider enabled governorate-level mode.
+ * Customers only send orders; they have no scope setting.
  */
 function providerVisibilityConditions(provider = {}) {
   const area = normalizeArea(provider.area);
@@ -24,10 +25,9 @@ function providerVisibilityConditions(provider = {}) {
   const governorate = governorateKey(provider);
 
   if (governorate && provider.governorateLevel === true) {
-    conditions.push({
-      governorate,
-      governorateLevel: true,
-    });
+    conditions.push({ governorate });
+    // Older orders may lack a stored governorate; match their village.
+    conditions.push({ area: { $in: legacyAreasForGovernorate(governorate) } });
   }
 
   return conditions;
@@ -45,10 +45,7 @@ function canProviderSeeOrder(provider = {}, order = {}) {
   if (!providerArea) return true;
   if (!orderArea || orderArea === providerArea) return true;
 
-  if (
-    provider.governorateLevel !== true
-    || order.governorateLevel !== true
-  ) {
+  if (provider.governorateLevel !== true) {
     return false;
   }
 
@@ -61,7 +58,8 @@ function canProviderSeeOrder(provider = {}, order = {}) {
 
 /**
  * Providers who should receive an order. Same-village providers always do;
- * cross-village providers only when both sides enabled governorate mode.
+ * providers elsewhere in the governorate do when they enabled governorate
+ * mode.
  */
 function orderResponderConditions(order = {}) {
   const area = normalizeArea(order.area);
@@ -70,7 +68,7 @@ function orderResponderConditions(order = {}) {
   const conditions = [{ area }];
   const governorate = governorateKey(order);
 
-  if (order.governorateLevel === true && governorate) {
+  if (governorate) {
     conditions.push({
       governorateLevel: true,
       $or: [
@@ -89,8 +87,8 @@ function orderResponderFilter(order = {}) {
 }
 
 /**
- * Drivers that can fulfil a customer order under the customer's current
- * governorate-level preference.
+ * Drivers who would receive an order from this customer: drivers in the
+ * customer's village, plus governorate-level drivers in the governorate.
  */
 function customerProviderVisibilityFilter(customer = {}) {
   const area = normalizeArea(customer.area);
@@ -99,7 +97,7 @@ function customerProviderVisibilityFilter(customer = {}) {
   const conditions = [{ area }];
   const governorate = governorateKey(customer);
 
-  if (customer.governorateLevel === true && governorate) {
+  if (governorate) {
     conditions.push({
       governorateLevel: true,
       $or: [

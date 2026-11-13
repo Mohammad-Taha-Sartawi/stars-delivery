@@ -77,7 +77,9 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
     // Registered area is authoritative; GPS-detected area is a fallback only
     const orderArea = user.area || area || '';
     const orderGovernorate = governorateKey(user);
-    const orderGovernorateLevel = user.governorateLevel === true;
+    // Scope is the driver's choice; customers no longer have a governorate
+    // setting, so new orders never carry one.
+    const orderGovernorateLevel = false;
     console.log(`[CREATE] data received — area="${orderArea}" (reqBody="${area}") userArea="${user.area}" governorate="${orderGovernorate}" governorateLevel=${orderGovernorateLevel}`);
 
     const order = await Order.create({
@@ -121,7 +123,9 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
         phoneMasked: maskedPhone(order.phone),
       };
       const areaRoom = `area:${orderArea || ''}`;
-      if (orderGovernorateLevel && orderGovernorate) {
+      // Governorate-level drivers sit in the governorate room; reach them
+      // too, without sending the same-village drivers a duplicate.
+      if (orderGovernorate) {
         const governorateRoom = `governorate:${orderGovernorate}`;
         io.to(areaRoom).except(governorateRoom).emit('new_order', payload);
         io.to(governorateRoom).emit('new_order', payload);

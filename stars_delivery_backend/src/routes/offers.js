@@ -157,7 +157,7 @@ router.post('/:orderId/resend', auth, requireRole('customer'), orderCreateLimite
         phoneMasked: phone.length > 3 ? `${phone.slice(0, -3)}***` : '***',
       };
       const areaRoom = `area:${order.area || ''}`;
-      if (order.governorateLevel && order.governorate) {
+      if (order.governorate) {
         const governorateRoom = `governorate:${order.governorate}`;
         io.to(areaRoom).except(governorateRoom).emit('new_order', payload);
         io.to(governorateRoom).emit('new_order', payload);

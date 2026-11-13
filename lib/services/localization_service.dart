@@ -907,9 +907,9 @@ class AppLocalization {
     },
     'governorate_scope_provider_subtitle': {
       'ar':
-          'عند التفعيل تستقبل طلبات كل قرى ومدن محافظة %s التي سمح أصحابها بالعمل على مستوى المحافظة.',
+          'عند التفعيل تستقبل الطلبات من كل قرى ومدن محافظة %s. عند الإيقاف تستقبل طلبات منطقتك فقط.',
       'en':
-          'When enabled, you receive orders from across %s governorate when the customer also enabled governorate-level mode.',
+          'When on, you receive orders from every city and village in %s governorate. When off, only orders from your own area.',
     },
     'governorate_scope_enabled': {
       'ar': 'تم تفعيل العمل على مستوى المحافظة.',

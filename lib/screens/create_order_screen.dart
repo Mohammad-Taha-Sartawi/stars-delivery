@@ -11,19 +11,12 @@ import '../services/theme_service.dart';
 import '../widgets/ui/app_button_loading_indicator.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_tone.dart';
-import '../widgets/ui/governorate_scope_warning.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   final UserModel user;
   final String token;
-  final bool governorateLevel;
 
-  const CreateOrderScreen({
-    super.key,
-    required this.user,
-    required this.token,
-    this.governorateLevel = false,
-  });
+  const CreateOrderScreen({super.key, required this.user, required this.token});
 
   @override
   State<CreateOrderScreen> createState() => _CreateOrderScreenState();
@@ -35,12 +28,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
-  String get _governorateName {
-    final governorate = widget.user.governorate.trim();
-    if (governorate.isNotEmpty) return governorate;
-    return widget.user.area.trim();
-  }
 
   @override
   void dispose() {
@@ -72,10 +59,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ),
               child: Column(
                 children: [
-                  if (widget.governorateLevel) ...[
-                    _buildGovernorateBanner(context),
-                    const SizedBox(height: 16),
-                  ],
                   _OptionCard(
                     icon: Icons.shopping_bag_outlined,
                     label: AppLocalization.get(context, 'product'),
@@ -246,72 +229,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _buildGovernorateBanner(BuildContext context) {
-    final tone = appToneStyle(context, AppTone.warning);
-    final governorate = _governorateName.isNotEmpty
-        ? _governorateName
-        : AppLocalization.get(context, 'your_governorate');
-
-    return Container(
-      key: const Key('governorateOrderBanner'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: tone.background,
-        borderRadius: BorderRadiusDirectional.circular(AppRadius.md),
-        border: Border.all(color: tone.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.map_outlined, color: tone.foreground),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              AppLocalization.get(
-                context,
-                'governorate_scope_banner_customer',
-              ).replaceAll('%s', governorate),
-              style: TextStyle(
-                color: tone.foreground,
-                fontSize: 13,
-                height: 1.45,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
-    if (widget.governorateLevel) {
-      final governorate = _governorateName.isNotEmpty
-          ? _governorateName
-          : AppLocalization.get(context, 'your_governorate');
-      final area = widget.user.area.trim().isEmpty
-          ? AppLocalization.get(context, 'area_region')
-          : widget.user.area.trim();
-
-      final proceed = await showGovernorateScopeWarning(
-        context,
-        title: AppLocalization.get(context, 'governorate_order_warning_title'),
-        message: AppLocalization.get(
-          context,
-          'governorate_order_warning_message',
-        ).replaceFirst('%s', governorate).replaceFirst('%s', area),
-        note: AppLocalization.get(context, 'governorate_order_warning_note'),
-        confirmLabel: AppLocalization.get(
-          context,
-          'governorate_order_warning_confirm',
-        ),
-      );
-
-      if (!proceed || !mounted) return;
-    }
 
     context.read<OrderBloc>().add(
       CreateOrderEvent(

@@ -11,18 +11,18 @@ void main() {
       expect(home, contains('createOrderCta'));
       expect(home, contains('_buildPrimaryOrderCard'));
       expect(home, contains("'my_orders_section'"));
-      expect(home, contains("'order_settings_section'"));
       expect(home, contains("'help_and_report_section'"));
+      // Customers have no order-scope setting any more (the governorate
+      // choice belongs to drivers), so the order settings section is gone.
+      expect(home, isNot(contains("'order_settings_section'")));
 
       final ctaIndex = home.indexOf('_buildPrimaryOrderCard(context)');
       final ordersIndex = home.indexOf("'my_orders_section'");
-      final settingsIndex = home.indexOf("'order_settings_section'");
       final helpIndex = home.indexOf("'help_and_report_section'");
 
       expect(ctaIndex, greaterThanOrEqualTo(0));
       expect(ordersIndex, greaterThan(ctaIndex));
-      expect(settingsIndex, greaterThan(ordersIndex));
-      expect(helpIndex, greaterThan(settingsIndex));
+      expect(helpIndex, greaterThan(ordersIndex));
     },
   );
 

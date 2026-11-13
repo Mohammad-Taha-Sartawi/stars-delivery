@@ -679,7 +679,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? null
                   : (value) => setState(() => _selectedArea = value),
             ),
-            if (_currentUser.governorateLevel) ...[
+            if (_currentUser.governorateLevel &&
+                _currentUser.role == 'provider') ...[
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(10),

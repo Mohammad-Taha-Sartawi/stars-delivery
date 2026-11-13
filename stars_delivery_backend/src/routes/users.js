@@ -207,9 +207,16 @@ router.get('/location', async (req, res) => {
 
 router.put('/governorate-level', async (req, res) => {
   try {
-    const enabled = req.body.enabled === true;
+    const enabled = req.body?.enabled === true;
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    // Only drivers choose their order scope (own village vs. governorate).
+    if (user.role !== 'provider') {
+      return res.status(403).json({
+        error: 'Only drivers can change the order scope',
+        code: 'PROVIDER_ONLY',
+      });
+    }
 
     const derivedGovernorate = governorateKey(user);
     if (!user.governorate && derivedGovernorate) {

@@ -197,28 +197,29 @@ void main() {
     expect(find.text('Outside your area'), findsNothing);
   });
 
-  testWidgets('create order shows the active governorate-level banner', (
-    tester,
-  ) async {
-    final user = UserModel(
-      id: 'customer-1',
-      fullName: 'Customer',
-      email: 'customer@example.com',
-      phone: '111',
-      role: 'customer',
-      area: 'Bethlehem',
-      governorate: 'بيت لحم',
-      governorateLevel: true,
-      publicId: 'CUS-1',
-    );
+  testWidgets(
+    'customers have no governorate scope: create order shows no banner',
+    (tester) async {
+      // Even an account that enabled the old customer setting gets no
+      // governorate banner or warning; the scope is the driver's choice.
+      final user = UserModel(
+        id: 'customer-1',
+        fullName: 'Customer',
+        email: 'customer@example.com',
+        phone: '111',
+        role: 'customer',
+        area: 'Bethlehem',
+        governorate: 'بيت لحم',
+        governorateLevel: true,
+        publicId: 'CUS-1',
+      );
 
-    await tester.pumpWidget(
-      _app(
-        CreateOrderScreen(user: user, token: 'token', governorateLevel: true),
-      ),
-    );
+      await tester.pumpWidget(
+        _app(CreateOrderScreen(user: user, token: 'token')),
+      );
 
-    expect(find.byKey(const Key('governorateOrderBanner')), findsOneWidget);
-    expect(find.textContaining('Governorate mode is on'), findsOneWidget);
-  });
+      expect(find.byKey(const Key('governorateOrderBanner')), findsNothing);
+      expect(find.textContaining('Governorate mode is on'), findsNothing);
+    },
+  );
 }

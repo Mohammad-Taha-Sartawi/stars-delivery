@@ -27,7 +27,6 @@ import '../widgets/ui/app_confirm_dialog.dart';
 import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_section_header.dart';
 import '../widgets/ui/app_tone.dart';
-import '../widgets/governorate_scope_card.dart';
 import 'create_order_screen.dart';
 import 'my_orders_screen.dart';
 import 'notifications_screen.dart';
@@ -76,7 +75,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription? _supportReplySub;
   bool _sessionExitStarted = false;
   late UserModel _user = widget.user;
-  late bool _governorateLevel = _user.governorateLevel;
   String? _openingOffersOrderId;
   bool _openingDeliveryConfirmation = false;
 
@@ -504,25 +502,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       AppSectionHeader(
                         title: AppLocalization.get(
                           context,
-                          'order_settings_section',
-                        ),
-                      ),
-                      GovernorateScopeCard(
-                        token: widget.token,
-                        initialEnabled: _governorateLevel,
-                        isProvider: false,
-                        governorateName: _user.governorate.trim().isNotEmpty
-                            ? _user.governorate
-                            : _user.area,
-                        onChanged: (enabled) {
-                          setState(() => _governorateLevel = enabled);
-                          _loadAvailableDriversCount();
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      AppSectionHeader(
-                        title: AppLocalization.get(
-                          context,
                           'help_and_report_section',
                         ),
                       ),
@@ -590,11 +569,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       MaterialPageRoute(
         builder: (_) => BlocProvider(
           create: (_) => OrderBloc(),
-          child: CreateOrderScreen(
-            user: _user,
-            token: widget.token,
-            governorateLevel: _governorateLevel,
-          ),
+          child: CreateOrderScreen(user: _user, token: widget.token),
         ),
       ),
     ).then((_) => _loadOrderCounts());
@@ -694,7 +669,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   onUserUpdated: (updated) {
                     setState(() {
                       _user = updated;
-                      _governorateLevel = updated.governorateLevel;
                     });
                     _loadAvailableDriversCount();
                   },
@@ -903,17 +877,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final noDrivers = _availableDriversCount == 0;
     final hint = AppLocalization.get(context, 'recommend_driver_share_hint');
     final message = noDrivers
-        ? AppLocalization.get(
-            context,
-            _governorateLevel
-                ? 'no_available_drivers_governorate'
-                : 'no_available_drivers',
-          )
+        ? AppLocalization.get(context, 'no_available_drivers')
         : AppLocalization.get(
             context,
-            _governorateLevel
-                ? 'available_drivers_count_governorate'
-                : 'available_drivers_count',
+            'available_drivers_count',
           ).replaceAll('%d', '${_availableDriversCount!}');
 
     return Semantics(

@@ -1,17 +1,17 @@
 [Unit]
-Description=Stars Delivery Backend
+Description=Swifora Backend
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 
-User=stars-delivery
-Group=stars-delivery
+User=swifora
+Group=swifora
 
-WorkingDirectory=/opt/stars-delivery/current/swifora_backend
+WorkingDirectory=/opt/swifora/current/swifora_backend
 
-EnvironmentFile=/etc/stars-delivery/stars-delivery.env
+EnvironmentFile=/etc/swifora/swifora.env
 
 ExecStart=/usr/bin/node src/index.js
 

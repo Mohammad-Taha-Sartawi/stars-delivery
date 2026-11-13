@@ -12,10 +12,36 @@ const fsPromises = fs.promises;
 const MANIFEST_VERSION = 1;
 
 const BACKUP_QUIESCED_TOKEN =
-  'STARS_BACKUP_WRITES_QUIESCED';
+  'SWIFORA_BACKUP_WRITES_QUIESCED';
 
 const RESTORE_CONFIRM_TOKEN =
+  'RESTORE_SWIFORA_DATA';
+
+// Pre-rebrand (Stars Delivery) names, still accepted so existing operator
+// scripts and runbooks keep working.
+const LEGACY_BACKUP_QUIESCED_TOKEN =
+  'STARS_BACKUP_WRITES_QUIESCED';
+
+const LEGACY_RESTORE_CONFIRM_TOKEN =
   'RESTORE_STARS_DELIVERY_DATA';
+
+const LEGACY_ENV_NAMES = Object.freeze({
+  SWIFORA_BACKUP_ROOT: 'STARS_BACKUP_ROOT',
+  SWIFORA_BACKUP_QUIESCED: 'STARS_BACKUP_QUIESCED',
+  SWIFORA_RESTORE_FROM: 'STARS_RESTORE_FROM',
+  SWIFORA_RESTORE_CONFIRM: 'STARS_RESTORE_CONFIRM',
+});
+
+/** Copy of env where each SWIFORA_* name falls back to its STARS_* name. */
+function withLegacyEnvNames(env) {
+  const resolved = { ...env };
+  for (const [name, legacy] of Object.entries(LEGACY_ENV_NAMES)) {
+    if (resolved[name] === undefined && resolved[legacy] !== undefined) {
+      resolved[name] = resolved[legacy];
+    }
+  }
+  return resolved;
+}
 
 const backendRoot =
   path.resolve(__dirname, '../..');
@@ -283,12 +309,13 @@ function defaultRunner(
 }
 
 async function createBackup({
-  env = process.env,
+  env: rawEnv = process.env,
   now = new Date(),
   runner = defaultRunner,
   providerRoot,
   uploadsRoot,
 } = {}) {
+  const env = withLegacyEnvNames(rawEnv);
   const mongoUri =
     requiredEnv(
       'MONGODB_URI',
@@ -296,21 +323,22 @@ async function createBackup({
     );
 
   if (
-    env.STARS_BACKUP_QUIESCED
-    !== BACKUP_QUIESCED_TOKEN
+    env.SWIFORA_BACKUP_QUIESCED !== BACKUP_QUIESCED_TOKEN
+    && env.SWIFORA_BACKUP_QUIESCED !== LEGACY_BACKUP_QUIESCED_TOKEN
   ) {
     throw new Error(
-      'Backup requires STARS_BACKUP_QUIESCED acknowledgement.',
+      'Backup requires SWIFORA_BACKUP_QUIESCED acknowledgement '
+      + '(legacy name: STARS_BACKUP_QUIESCED).',
     );
   }
 
   const backupRoot =
     requireAbsoluteOutsideRepository(
       requiredEnv(
-        'STARS_BACKUP_ROOT',
+        'SWIFORA_BACKUP_ROOT',
         env,
       ),
-      'STARS_BACKUP_ROOT',
+      'SWIFORA_BACKUP_ROOT',
     );
 
   const resolvedProviderRoot =
@@ -335,7 +363,7 @@ async function createBackup({
   const backupDir =
     path.join(
       backupRoot,
-      `stars-backup-${timestampForPath(now)}`,
+      `swifora-backup-${timestampForPath(now)}`,
     );
 
   await fsPromises.mkdir(
@@ -632,11 +660,12 @@ async function replaceDirectory(
 }
 
 async function restoreBackup({
-  env = process.env,
+  env: rawEnv = process.env,
   runner = defaultRunner,
   providerRoot,
   uploadsRoot,
 } = {}) {
+  const env = withLegacyEnvNames(rawEnv);
   const mongoUri =
     requiredEnv(
       'MONGODB_URI',
@@ -644,21 +673,22 @@ async function restoreBackup({
     );
 
   if (
-    env.STARS_RESTORE_CONFIRM
-    !== RESTORE_CONFIRM_TOKEN
+    env.SWIFORA_RESTORE_CONFIRM !== RESTORE_CONFIRM_TOKEN
+    && env.SWIFORA_RESTORE_CONFIRM !== LEGACY_RESTORE_CONFIRM_TOKEN
   ) {
     throw new Error(
-      'Restore requires explicit STARS_RESTORE_CONFIRM acknowledgement.',
+      'Restore requires explicit SWIFORA_RESTORE_CONFIRM acknowledgement '
+      + '(legacy name: STARS_RESTORE_CONFIRM).',
     );
   }
 
   const backupDir =
     requireAbsoluteOutsideRepository(
       requiredEnv(
-        'STARS_RESTORE_FROM',
+        'SWIFORA_RESTORE_FROM',
         env,
       ),
-      'STARS_RESTORE_FROM',
+      'SWIFORA_RESTORE_FROM',
     );
 
   const resolvedProviderRoot =
@@ -759,6 +789,9 @@ if (require.main === module) {
 module.exports = {
   BACKUP_QUIESCED_TOKEN,
   RESTORE_CONFIRM_TOKEN,
+  LEGACY_BACKUP_QUIESCED_TOKEN,
+  LEGACY_RESTORE_CONFIRM_TOKEN,
+  withLegacyEnvNames,
   createBackup,
   restoreBackup,
   verifyBackup,

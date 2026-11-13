@@ -113,7 +113,7 @@ before(async () => {
 
       instance: {
         dbName:
-          'stars_delivery_integration',
+          'swifora_integration',
       },
     });
 

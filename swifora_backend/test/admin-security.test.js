@@ -142,7 +142,7 @@ test('admin session middleware uses persistent session store and secure cookie s
   store.destroy = () => {};
   const options = createAdminSessionOptions({ mongoUri: 'mongodb://unused/test', sessionSecret: secret, store });
   assert.equal(options.store, store);
-  assert.equal(options.name, 'stars_admin.sid');
+  assert.equal(options.name, 'swifora_admin.sid');
   assert.equal(options.resave, false);
   assert.equal(options.saveUninitialized, false);
   assert.equal(options.cookie.httpOnly, true);

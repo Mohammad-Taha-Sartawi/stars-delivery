@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart';
 
 class ApiConfig {
   static const String _configuredServerUrl = String.fromEnvironment(
-    'STARS_SERVER_URL',
+    'SWIFORA_SERVER_URL',
+    // Pre-rebrand name, still accepted by existing build scripts.
+    defaultValue: String.fromEnvironment('STARS_SERVER_URL'),
   );
 
   static const String _defaultDevelopmentServerUrl = 'http://192.168.1.7:3000';
@@ -61,7 +63,7 @@ class ApiConfig {
     if (configuredServerUrl.trim().isEmpty) {
       if (!allowHttp) {
         throw StateError(
-          'STARS_SERVER_URL is required outside '
+          'SWIFORA_SERVER_URL is required outside '
           'Android debug builds.',
         );
       }
@@ -77,7 +79,7 @@ class ApiConfig {
     final uri = Uri.tryParse(value);
 
     if (uri == null || !uri.hasAuthority || uri.host.isEmpty) {
-      throw StateError('STARS_SERVER_URL must be an absolute HTTP(S) origin.');
+      throw StateError('SWIFORA_SERVER_URL must be an absolute HTTP(S) origin.');
     }
 
     final secure = uri.scheme == 'https';
@@ -85,7 +87,7 @@ class ApiConfig {
     final allowedDevelopmentHttp = allowHttp && uri.scheme == 'http';
 
     if (!secure && !allowedDevelopmentHttp) {
-      throw StateError('STARS_SERVER_URL must use HTTPS.');
+      throw StateError('SWIFORA_SERVER_URL must use HTTPS.');
     }
 
     if (uri.userInfo.isNotEmpty ||
@@ -93,7 +95,7 @@ class ApiConfig {
         uri.fragment.isNotEmpty ||
         (uri.path.isNotEmpty && uri.path != '/')) {
       throw StateError(
-        'STARS_SERVER_URL must contain only '
+        'SWIFORA_SERVER_URL must contain only '
         'scheme, host, and optional port.',
       );
     }

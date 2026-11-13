@@ -36,8 +36,8 @@ Stop or otherwise quiesce application writes before taking a backup so MongoDB m
 From `swifora_backend`:
 
 ```bash
-export STARS_BACKUP_ROOT="/absolute/protected/backup/root"
-export STARS_BACKUP_QUIESCED="STARS_BACKUP_WRITES_QUIESCED"
+export SWIFORA_BACKUP_ROOT="/absolute/protected/backup/root"
+export SWIFORA_BACKUP_QUIESCED="SWIFORA_BACKUP_WRITES_QUIESCED"
 npm run ops:backup
 ```
 
@@ -54,11 +54,11 @@ The manifest contains SHA-256 integrity information but never stores the MongoDB
 
 Restores are destructive. Stop the application first and verify that the selected backup is the intended recovery point.
 
-Set `STARS_RESTORE_FROM` to the timestamped backup directory:
+Set `SWIFORA_RESTORE_FROM` to the timestamped backup directory:
 
 ```bash
-export STARS_RESTORE_FROM="/absolute/protected/backup/root/stars-backup-YYYYMMDDTHHMMSSZ"
-export STARS_RESTORE_CONFIRM="RESTORE_STARS_DELIVERY_DATA"
+export SWIFORA_RESTORE_FROM="/absolute/protected/backup/root/swifora-backup-YYYYMMDDTHHMMSSZ"
+export SWIFORA_RESTORE_CONFIRM="RESTORE_SWIFORA_DATA"
 npm run ops:restore
 ```
 

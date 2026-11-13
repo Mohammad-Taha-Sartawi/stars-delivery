@@ -1,4 +1,4 @@
-# STARS Delivery Android release signing template.
+# Swifora Android release signing template.
 #
 # Copy this file to android/key.properties.
 # NEVER commit android/key.properties or the referenced keystore.

@@ -38,7 +38,7 @@ Release builds must use the same values or a CI secret store that injects them.
 
 Simpler: keep the values in a JSON file **outside the repository** and pass it
 with `--dart-define-from-file`. The keys are the same names as above (plus
-`STARS_SERVER_URL`); the values come from `google-services.json`:
+`SWIFORA_SERVER_URL`); the values come from `google-services.json`:
 
 | Define | `google-services.json` field |
 |---|---|
@@ -69,7 +69,7 @@ Grant the service account Firebase Cloud Messaging permissions. Never commit the
 service-account JSON or `.env` to Git.
 
 On the production server: copy the service-account JSON to a protected path
-readable only by the service user (for example `/etc/stars-delivery/firebase.json`,
+readable only by the service user (for example `/etc/swifora/firebase.json`,
 mode 600), set `FIREBASE_SERVICE_ACCOUNT_PATH` to it in the service environment,
 and restart the API. A wrong or missing key only disables pushes; the log then
 shows `Firebase Admin initialization skipped: …`.

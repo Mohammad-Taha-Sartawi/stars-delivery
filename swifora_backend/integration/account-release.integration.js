@@ -60,7 +60,7 @@ before(async () => {
       downloadDir: path.join(os.tmpdir(), 'swifora-mongodb-binaries'),
     },
   });
-  await mongoose.connect(mongoServer.getUri('stars_account_release'));
+  await mongoose.connect(mongoServer.getUri('swifora_account_release'));
   app = express();
   app.use(express.json());
   app.use('/api/auth', authRoutes);

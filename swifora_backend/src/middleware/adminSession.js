@@ -1,7 +1,7 @@
 const session = require('express-session');
 const MongoStore = require('connect-mongo').default;
 
-const ADMIN_SESSION_COOKIE = 'stars_admin.sid';
+const ADMIN_SESSION_COOKIE = 'swifora_admin.sid';
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
 
 function createAdminSessionOptions({ mongoUri, sessionSecret, store, clientPromise, isProduction = process.env.NODE_ENV === 'production' }) {

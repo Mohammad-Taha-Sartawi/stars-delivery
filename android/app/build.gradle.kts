@@ -45,7 +45,7 @@ val releaseSigningStoreFile =
 fun requireReleaseSigning() {
     if (!releaseSigningPropertiesFile.isFile) {
         throw GradleException(
-            "STARS_ANDROID_RELEASE_SIGNING_REQUIRED: " +
+            "SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED: " +
                 "android/key.properties is required " +
                 "for Android release artifacts.",
         )
@@ -62,7 +62,7 @@ fun requireReleaseSigning() {
 
     if (missing.isNotEmpty()) {
         throw GradleException(
-            "STARS_ANDROID_RELEASE_SIGNING_REQUIRED: " +
+            "SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED: " +
                 "missing required signing properties: " +
                 missing.joinToString(", "),
         )
@@ -70,7 +70,7 @@ fun requireReleaseSigning() {
 
     if (releaseSigningStoreFile?.isFile != true) {
         throw GradleException(
-            "STARS_ANDROID_RELEASE_SIGNING_REQUIRED: " +
+            "SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED: " +
                 "the configured release keystore " +
                 "does not exist or is not a file.",
         )

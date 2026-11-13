@@ -5,7 +5,7 @@
 // written as PNGs under <Desktop>/UX-01-remediation-screenshots/.
 //
 // It writes nothing unless explicitly enabled:
-//   STARS_UX01_SCREENSHOTS=1 flutter test test/ux01_screenshots_test.dart
+//   SWIFORA_UX01_SCREENSHOTS=1 flutter test test/ux01_screenshots_test.dart
 // so the normal `flutter test` run stays a pure CI check (this trivial stub
 // test runs and passes without touching the capture path).
 //
@@ -103,15 +103,15 @@ UserModel _mockUser() {
 }
 
 /// Fonts shipped with the local Flutter SDK cache; override with
-/// STARS_FONT_DIR when the SDK lives elsewhere.
+/// SWIFORA_FONT_DIR when the SDK lives elsewhere.
 String get _fontDir =>
-    Platform.environment['STARS_FONT_DIR'] ??
+    Platform.environment['SWIFORA_FONT_DIR'] ??
     r'C:\src\flutter\bin\cache\artifacts\material_fonts';
 
 /// Evidence output directory (outside the repository). Override with
-/// STARS_UX01_SCREENSHOT_DIR; defaults to the current user's Desktop.
+/// SWIFORA_UX01_SCREENSHOT_DIR; defaults to the current user's Desktop.
 String get _captureDir =>
-    Platform.environment['STARS_UX01_SCREENSHOT_DIR'] ??
+    Platform.environment['SWIFORA_UX01_SCREENSHOT_DIR'] ??
     '${Platform.environment['USERPROFILE'] ?? Directory.current.path}'
         r'\Desktop\UX-01-remediation-screenshots';
 
@@ -171,13 +171,13 @@ Future<void> capture(
 }
 
 Future<void> main() async {
-  if (Platform.environment['STARS_UX01_SCREENSHOTS'] != '1') {
+  if (Platform.environment['SWIFORA_UX01_SCREENSHOTS'] != '1') {
     // Capture mode is opt-in. Registering a trivial test keeps the suite
     // green in normal `flutter test` runs while writing nothing.
     testWidgets('screenshots capture is disabled unless explicitly enabled', (
       tester,
     ) async {
-      expect(Platform.environment['STARS_UX01_SCREENSHOTS'], isNot('1'));
+      expect(Platform.environment['SWIFORA_UX01_SCREENSHOTS'], isNot('1'));
     });
     return;
   }

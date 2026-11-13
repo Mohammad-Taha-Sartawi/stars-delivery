@@ -26,7 +26,7 @@ before(async () => {
       downloadDir: path.join(os.tmpdir(), 'swifora-mongodb-binaries'),
     },
   });
-  await mongoose.connect(mongoServer.getUri('stars_locations_integration'));
+  await mongoose.connect(mongoServer.getUri('swifora_locations_integration'));
   app = express();
   app.use('/api/locations', locationRoutes);
 });

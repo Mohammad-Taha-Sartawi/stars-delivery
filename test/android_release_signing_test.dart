@@ -167,7 +167,7 @@ void main() {
       expect(
         gradle,
         contains(
-          'STARS_ANDROID_RELEASE_SIGNING_REQUIRED',
+          'SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED',
         ),
       );
 

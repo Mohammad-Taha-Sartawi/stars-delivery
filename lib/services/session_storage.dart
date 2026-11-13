@@ -30,7 +30,10 @@ class FlutterSecureTokenVault implements TokenVault {
 }
 
 class SessionStorage {
-  static const secureTokenKey = 'stars_auth_token';
+  static const secureTokenKey = 'swifora_auth_token';
+
+  /// Secure-storage key used before the Swifora rebrand; moved on read.
+  static const preRebrandTokenKey = 'stars_auth_token';
 
   // Previous STARS releases stored these in SharedPreferences.
   static const legacyTokenKey = 'auth_token';
@@ -47,6 +50,15 @@ class SessionStorage {
     if (secureToken != null && secureToken.trim().isNotEmpty) {
       await _clearLegacyPreferences();
       return secureToken;
+    }
+
+    final preRebrandToken = await _vault.read(preRebrandTokenKey);
+    if (preRebrandToken != null && preRebrandToken.trim().isNotEmpty) {
+      // Write first. Never delete the old token if the write fails.
+      await _vault.write(secureTokenKey, preRebrandToken);
+      await _vault.delete(preRebrandTokenKey);
+      await _clearLegacyPreferences();
+      return preRebrandToken;
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -82,6 +94,7 @@ class SessionStorage {
 
   Future<void> clear() async {
     await _vault.delete(secureTokenKey);
+    await _vault.delete(preRebrandTokenKey);
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(legacyTokenKey);

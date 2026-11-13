@@ -21,7 +21,13 @@ test(
 
     assert.match(
       source,
-      /String\.fromEnvironment\(\s*['"]STARS_SERVER_URL['"]\s*,?\s*\)/,
+      /String\.fromEnvironment\(\s*['"]SWIFORA_SERVER_URL['"]/,
+    );
+
+    // The pre-rebrand define is still accepted as a fallback.
+    assert.match(
+      source,
+      /defaultValue:\s*String\.fromEnvironment\(['"]STARS_SERVER_URL['"]\)/,
     );
 
     assert.match(
@@ -31,12 +37,12 @@ test(
 
     assert.match(
       source,
-      /STARS_SERVER_URL is required outside/,
+      /SWIFORA_SERVER_URL is required outside/,
     );
 
     assert.match(
       source,
-      /STARS_SERVER_URL must use HTTPS/,
+      /SWIFORA_SERVER_URL must use HTTPS/,
     );
 
     assert.match(

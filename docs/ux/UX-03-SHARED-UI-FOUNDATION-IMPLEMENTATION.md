@@ -271,7 +271,7 @@ flutter test
 
 **Reproduce:**
 ```
-STARS_UX03_SCREENSHOTS=1 flutter test test/ux03_screenshots_test.dart
+SWIFORA_UX03_SCREENSHOTS=1 flutter test test/ux03_screenshots_test.dart
 → 00:07 +31: All tests passed!
 ```
 

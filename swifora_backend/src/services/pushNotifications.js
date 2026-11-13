@@ -42,7 +42,7 @@ function getFirebaseApp() {
     const { getMessaging } = require('firebase-admin/messaging');
     firebaseApp = initializeApp(
       { credential: cert(credentials) },
-      'stars-delivery-push',
+      'swifora-push',
     );
     messagingClient = getMessaging(firebaseApp);
     return firebaseApp;

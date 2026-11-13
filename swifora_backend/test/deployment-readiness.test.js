@@ -29,17 +29,17 @@ function read(relative) {
 
 const nginx =
   read(
-    'deployment/nginx/stars-delivery.conf',
+    'deployment/nginx/swifora.conf',
   );
 
 const systemd =
   read(
-    'deployment/systemd/stars-delivery.service',
+    'deployment/systemd/swifora.service',
   );
 
 const envExample =
   read(
-    'deployment/stars-delivery.env.example',
+    'deployment/swifora.env.example',
   );
 
 const runbook =
@@ -66,9 +66,9 @@ test(
   'deployment package contains the four operator artifacts',
   () => {
     for (const relative of [
-      'deployment/nginx/stars-delivery.conf',
-      'deployment/systemd/stars-delivery.service',
-      'deployment/stars-delivery.env.example',
+      'deployment/nginx/swifora.conf',
+      'deployment/systemd/swifora.service',
+      'deployment/swifora.env.example',
       'deployment/README.md',
     ]) {
       assert.equal(
@@ -159,7 +159,7 @@ test(
   () => {
     assert.match(
       nginx,
-      /map \$http_upgrade \$stars_connection_upgrade/,
+      /map \$http_upgrade \$swifora_connection_upgrade/,
     );
 
     assert.match(
@@ -184,22 +184,22 @@ test(
   () => {
     assert.match(
       systemd,
-      /^User=stars-delivery$/m,
+      /^User=swifora$/m,
     );
 
     assert.match(
       systemd,
-      /^Group=stars-delivery$/m,
+      /^Group=swifora$/m,
     );
 
     assert.match(
       systemd,
-      /^WorkingDirectory=\/opt\/stars-delivery\/current\/swifora_backend$/m,
+      /^WorkingDirectory=\/opt\/swifora\/current\/swifora_backend$/m,
     );
 
     assert.match(
       systemd,
-      /^EnvironmentFile=\/etc\/stars-delivery\/stars-delivery\.env$/m,
+      /^EnvironmentFile=\/etc\/swifora\/swifora\.env$/m,
     );
 
     assert.match(
@@ -239,7 +239,7 @@ test(
 
     assert.match(
       envExample,
-      /^PROVIDER_DOCUMENTS_DIR=\/var\/lib\/stars-delivery\/provider-documents$/m,
+      /^PROVIDER_DOCUMENTS_DIR=\/var\/lib\/swifora\/provider-documents$/m,
     );
 
     for (const name of [
@@ -274,7 +274,7 @@ test(
   () => {
     assert.match(
       runbook,
-      /\/var\/lib\/stars-delivery\/uploads/,
+      /\/var\/lib\/swifora\/uploads/,
     );
 
     assert.match(
@@ -289,7 +289,7 @@ test(
 
     assert.match(
       runbook,
-      /PROVIDER_DOCUMENTS_DIR=\/var\/lib\/stars-delivery\/provider-documents/,
+      /PROVIDER_DOCUMENTS_DIR=\/var\/lib\/swifora\/provider-documents/,
     );
   },
 );
@@ -299,7 +299,7 @@ test(
   () => {
     for (const marker of [
       'sudo nginx -t',
-      'sudo systemctl enable --now stars-delivery',
+      'sudo systemctl enable --now swifora',
       '/api/health',
       'SMTP',
       'mongodump',
@@ -320,7 +320,7 @@ test(
   () => {
     assert.match(
       runbook,
-      /--dart-define=STARS_SERVER_URL=https:\/\/api\.example\.com/,
+      /--dart-define=SWIFORA_SERVER_URL=https:\/\/api\.example\.com/,
     );
 
     assert.match(
@@ -370,7 +370,7 @@ test(
 
     assert.match(
       apiConfig,
-      /STARS_SERVER_URL/,
+      /SWIFORA_SERVER_URL/,
     );
 
     assert.match(
@@ -380,7 +380,7 @@ test(
 
     assert.match(
       androidGradle,
-      /STARS_ANDROID_RELEASE_SIGNING_REQUIRED/,
+      /SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED/,
     );
   },
 );

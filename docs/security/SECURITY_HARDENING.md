@@ -84,7 +84,7 @@ broadcasts have explicit maximum lengths.
 6. Persist and back up `uploads/` and the private provider-document directory.
 7. Monitor disk usage and the `adminauditlogs` collection.
 8. Run `npm audit --omit=dev` regularly and review transitive advisories.
-9. Rebuild the mobile app with `STARS_SERVER_URL` pointing to the HTTPS origin.
+9. Rebuild the mobile app with `SWIFORA_SERVER_URL` pointing to the HTTPS origin.
 
 ## Remaining residual risks
 

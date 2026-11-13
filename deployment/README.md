@@ -1,8 +1,38 @@
-# Stars Delivery production deployment
+# Swifora production deployment
 
-This directory is the final production deployment contract for Stars Delivery.
+This directory is the final production deployment contract for Swifora.
 
 It does not contain production passwords, certificates, signing keys, MongoDB credentials, or other secrets.
+
+## Migrating a server installed as "Stars Delivery"
+
+The project was renamed to Swifora. Servers installed from the earlier
+templates use `stars-delivery` names; nothing changes until you move them.
+Stored data (MongoDB) is not affected. Take a backup first (see below).
+
+1. Stop the old service: `sudo systemctl stop stars-delivery`.
+2. Move the data and configuration directories:
+   - `sudo mv /var/lib/stars-delivery /var/lib/swifora`
+   - `sudo mv /etc/stars-delivery /etc/swifora`
+   - `sudo mv /etc/swifora/stars-delivery.env /etc/swifora/swifora.env`
+   - `sudo mv /opt/stars-delivery /opt/swifora`
+3. In `/etc/swifora/swifora.env`, update paths that point at the old
+   directories, especially `PROVIDER_DOCUMENTS_DIR=/var/lib/swifora/provider-documents`
+   and `FIREBASE_SERVICE_ACCOUNT_PATH`.
+4. Service user: either create `swifora` and `chown -R swifora:swifora`
+   the moved directories, or keep the existing user by editing `User=` and
+   `Group=` in the new unit file.
+5. The application folder inside a release is now `swifora_backend`
+   (was `stars_delivery_backend`); deploy a release built from this version.
+6. Install the new unit and nginx site, then remove the old ones:
+   - `sudo cp deployment/systemd/swifora.service /etc/systemd/system/`
+   - `sudo systemctl disable stars-delivery && sudo rm /etc/systemd/system/stars-delivery.service`
+   - replace the nginx site `stars-delivery.conf` with `deployment/nginx/swifora.conf`
+   - `sudo systemctl daemon-reload && sudo systemctl enable --now swifora && sudo nginx -t && sudo systemctl reload nginx`
+7. Admins sign in again once (the session cookie is now `swifora_admin.sid`).
+
+Old environment names are still accepted: `STARS_SERVER_URL` at app build
+time, and `STARS_BACKUP_*` / `STARS_RESTORE_*` for backup and restore.
 
 ## Production topology
 
@@ -31,20 +61,20 @@ Port 3000 should not be exposed publicly.
 
 ## Service account and persistent storage
 
-Create a dedicated non-login service user named `stars-delivery`.
+Create a dedicated non-login service user named `swifora`.
 
 Create persistent paths owned by that account:
 
-- `/var/lib/stars-delivery/uploads`
-- `/var/lib/stars-delivery/provider-documents`
+- `/var/lib/swifora/uploads`
+- `/var/lib/swifora/provider-documents`
 
 Create the private configuration directory:
 
-- `/etc/stars-delivery`
+- `/etc/swifora`
 
 The real environment file must be installed as:
 
-- `/etc/stars-delivery/stars-delivery.env`
+- `/etc/swifora/swifora.env`
 
 Restrict it so it is not world-readable.
 
@@ -52,11 +82,11 @@ Restrict it so it is not world-readable.
 
 Deploy an approved Git commit beneath:
 
-`/opt/stars-delivery/releases/<commit-sha>`
+`/opt/swifora/releases/<commit-sha>`
 
 Point:
 
-`/opt/stars-delivery/current`
+`/opt/swifora/current`
 
 to the approved release.
 
@@ -72,7 +102,7 @@ For persistent deployments, make:
 
 point to:
 
-`/var/lib/stars-delivery/uploads`
+`/var/lib/swifora/uploads`
 
 using an operating-system symlink.
 
@@ -80,7 +110,7 @@ If migrating an existing deployment, copy existing upload data into the persiste
 
 Provider verification documents use:
 
-`PROVIDER_DOCUMENTS_DIR=/var/lib/stars-delivery/provider-documents`
+`PROVIDER_DOCUMENTS_DIR=/var/lib/swifora/provider-documents`
 
 and must never be placed under the public uploads or `src/public` directories.
 
@@ -88,11 +118,11 @@ and must never be placed under the public uploads or `src/public` directories.
 
 Copy:
 
-`deployment/stars-delivery.env.example`
+`deployment/swifora.env.example`
 
 to:
 
-`/etc/stars-delivery/stars-delivery.env`
+`/etc/swifora/swifora.env`
 
 and supply the real deployment values.
 
@@ -120,11 +150,11 @@ Do not commit the real environment file.
 
 Install:
 
-`deployment/systemd/stars-delivery.service`
+`deployment/systemd/swifora.service`
 
 as:
 
-`/etc/systemd/system/stars-delivery.service`
+`/etc/systemd/system/swifora.service`
 
 Verify `/usr/bin/node` is the intended Node.js 24.13.1 executable.
 
@@ -134,11 +164,11 @@ Operational commands:
 
 `sudo systemctl daemon-reload`
 
-`sudo systemctl enable --now stars-delivery`
+`sudo systemctl enable --now swifora`
 
-`sudo systemctl status stars-delivery`
+`sudo systemctl status swifora`
 
-`sudo journalctl -u stars-delivery`
+`sudo journalctl -u swifora`
 
 The application handles SIGTERM and systemd uses SIGTERM for controlled shutdown.
 
@@ -146,7 +176,7 @@ The application handles SIGTERM and systemd uses SIGTERM for controlled shutdown
 
 Copy:
 
-`deployment/nginx/stars-delivery.conf`
+`deployment/nginx/swifora.conf`
 
 into the appropriate Nginx server configuration location.
 
@@ -232,7 +262,7 @@ Production/profile Flutter builds require an HTTPS endpoint at compile time.
 
 Build using the real production origin, for example:
 
-`flutter build appbundle --release --dart-define=STARS_SERVER_URL=https://api.example.com`
+`flutter build appbundle --release --dart-define=SWIFORA_SERVER_URL=https://api.example.com`
 
 Before the release build, install the permanent Android signing material outside Git and configure:
 

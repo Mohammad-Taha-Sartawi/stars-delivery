@@ -211,10 +211,12 @@ test('documents, financial rows, orders, broadcast, and pending providers encode
 
   assert.match(
     source,
-    /\/admin\/drivers\/pending\/\$\{encodedId\}\/documents/,
+    /\/admin\/drivers\/pending\/\$\{encodedId\}`\s*\+\s*`\/documents\//,
   );
 
-  assert.match(
+  // Document upload was removed, so approval must not depend on
+  // documents being complete (that gate blocked every new applicant).
+  assert.doesNotMatch(
     source,
     /metadata\.complete !== true/,
   );

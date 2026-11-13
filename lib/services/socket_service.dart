@@ -94,6 +94,12 @@ class SocketService {
           .setAuth({'token': token})
           .setQuery({'area': area ?? ''})
           .setTransports(['websocket', 'polling'])
+          // socket_io_client caches one Manager per URI and hands back the
+          // previous socket, including its auth payload. Without a fresh
+          // Manager, the first connection after logout reused the revoked
+          // token, the server rejected it, and the new login was ended as
+          // "session revoked" until the app was restarted.
+          .enableForceNew()
           .enableAutoConnect()
           .build(),
     );

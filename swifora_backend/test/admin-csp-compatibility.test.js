@@ -79,10 +79,11 @@ test('presentation tokens preserve all migrated inline styles externally', () =>
   ];
 
   // Three fake trend chips were replaced by real order counters, and the
-  // commissions dash placeholder was replaced by a reset action.
+  // commissions dash placeholder was replaced by a reset action. The guest
+  // chat note became a styled reply note (guest replies are now possible).
   assert.equal(
     tokenMatches.length,
-    74,
+    73,
   );
 
   const tokens = new Set(
@@ -125,10 +126,11 @@ test('delegated browser actions replace legacy inline handlers', () => {
   ) || [];
 
   // The pending-payout dashboard card, driver details and commissions table
-  // expose pay and reset actions.
+  // expose pay and reset actions; customers have an edit form, and the
+  // today/month commission cards open their driver report.
   assert.equal(
     clickActions.length,
-    70,
+    74,
   );
 
   assert.equal(
@@ -183,12 +185,12 @@ test('delegated admin actions require the admin session capability', () => {
 
   assert.equal(
     generatedActions.length,
-    45,
+    46,
   );
 
   assert.equal(
     generatedCapabilities.length,
-    45,
+    46,
   );
 
   const generatedActionLines = browserSource

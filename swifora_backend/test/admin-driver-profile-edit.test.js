@@ -15,7 +15,9 @@ test('admin can update every driver profile field', () => {
   assert.match(route, /router\.put\('\/:id\/profile'/);
   assert.match(route, /fullName/);
   assert.match(route, /normalizeMobileEmail/);
-  assert.match(route, /phoneNumbers:\s*\[\{\s*number:\s*phone,\s*primary:\s*true\s*\}\]/s);
+  // The edited number becomes the primary one; other numbers are kept.
+  assert.match(route, /phoneNumbers: replacePrimaryPhone\(driver\.phoneNumbers, phone\)/);
+  assert.match(route, /isValidPhoneNumber\(phone\)/);
   assert.match(route, /isValidAreaForGovernorate/);
   assert.match(route, /normalizeServiceTypes/);
   assert.match(route, /isValidAdminPublicId/);

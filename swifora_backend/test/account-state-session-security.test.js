@@ -180,119 +180,41 @@ test(
   },
 );
 
-test(
-  'customer soft-delete rotates generation atomically and disconnects sockets',
-  () => {
-    const text =
-      source(
-        'src/routes/adminUsers.js',
+for (const [label, file, regionEnd, role] of [
+  ['customer', 'src/routes/adminUsers.js', 'module.exports = router;', "account.role !== 'customer'"],
+  ['provider', 'src/routes/adminDrivers.js', '// Pending Provider Signups', "account.role !== 'provider'"],
+]) {
+  test(
+    `${label} permanent delete removes the account and disconnects sockets`,
+    () => {
+      const route =
+        region(
+          source(file),
+          "router.delete('/:id'",
+          regionEnd,
+        );
+
+      assert.ok(route.includes(role));
+      assert.match(
+        route,
+        /await permanentlyDeleteAccount\(account, \{ io: req\.app\.get\('io'\) \}\)/,
       );
+      // An order in progress blocks the delete with a clear message.
+      assert.match(route, /AccountDeletionBlockedError/);
 
-    const route =
-      region(
-        text,
-        "router.delete('/:id'",
-        'module.exports = router;',
+      const service = source('src/services/accountDeletion.js');
+      // Every device is told and disconnected before the account goes.
+      assert.match(
+        service,
+        /try\s*\{[\s\S]*account_deleted[\s\S]*\}\s*finally\s*\{[\s\S]*disconnectSockets\(true\)/,
       );
-
-    assert.match(
-      route,
-      /const stateChanged\s*=\s*user\.deleted !== true[\s\S]*user\.status !== 'blocked'/,
-    );
-
-    assert.match(
-      route,
-      /mobileSessionRotationFilter\(user\)/,
-    );
-
-    assert.match(
-      route,
-      /\$set:\s*\{[\s\S]*deleted:\s*true,[\s\S]*status:\s*'blocked'/,
-    );
-
-    assert.match(
-      route,
-      /\$inc:\s*\{\s*sessionVersion:\s*1/,
-    );
-
-    assert.match(
-      route,
-      /account_deleted/,
-    );
-
-    assert.match(
-      route,
-      /disconnectSockets\(true\)/,
-    );
-
-    assert.match(
-      route,
-      /try\s*\{[\s\S]*account_deleted[\s\S]*\}\s*finally\s*\{[\s\S]*disconnectSockets\(true\)/,
-    );
-
-    assert.doesNotMatch(
-      route,
-      /await user\.save\(\)/,
-    );
-  },
-);
-
-test(
-  'provider soft-delete rotates generation atomically and disconnects sockets',
-  () => {
-    const text =
-      source(
-        'src/routes/adminDrivers.js',
-      );
-
-    const route =
-      region(
-        text,
-        "router.delete('/:id'",
-        '// Pending Provider Signups',
-      );
-
-    assert.match(
-      route,
-      /const stateChanged\s*=\s*driver\.deleted !== true[\s\S]*driver\.status !== 'blocked'/,
-    );
-
-    assert.match(
-      route,
-      /mobileSessionRotationFilter\(driver\)/,
-    );
-
-    assert.match(
-      route,
-      /\$set:\s*\{[\s\S]*deleted:\s*true,[\s\S]*status:\s*'blocked'/,
-    );
-
-    assert.match(
-      route,
-      /\$inc:\s*\{\s*sessionVersion:\s*1/,
-    );
-
-    assert.match(
-      route,
-      /account_deleted/,
-    );
-
-    assert.match(
-      route,
-      /disconnectSockets\(true\)/,
-    );
-
-    assert.match(
-      route,
-      /try\s*\{[\s\S]*account_deleted[\s\S]*\}\s*finally\s*\{[\s\S]*disconnectSockets\(true\)/,
-    );
-
-    assert.doesNotMatch(
-      route,
-      /await driver\.save\(\)/,
-    );
-  },
-);
+      // The account document itself is removed (its sessions then fail auth).
+      assert.match(service, /await User\.deleteOne\(\{ _id: user\._id \}\)/);
+      assert.match(service, /PushToken\.deleteMany\(\{ userId: user\._id \}\)/);
+      assert.match(service, /IN_PROGRESS_STATUSES = \['accepted', 'fulfilling'\]/);
+    },
+  );
+}
 
 test(
   'pending-provider approval remains onboarding rather than session revocation',

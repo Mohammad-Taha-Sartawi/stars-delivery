@@ -30,12 +30,15 @@ test('platform commission card shows a clear shekel amount without percentages',
   assert.match(css, /\.commission-item\.total-commission/);
   assert.match(css, /\.commission-item\.total-commission \.currency/);
 
-  // "Today" means today's commission ledger, not every historical order.
-  assert.match(adminApi, /startOfToday/);
+  // "Today" means today's commission ledger, not every historical order:
+  // commission is booked at acceptance, counted from local midnight.
+  const report = source('src/services/commissionReport.js');
+  assert.match(adminApi, /commissionTotal\(commissionToday\)/);
   assert.match(
-    adminApi,
+    report,
     /\$ifNull: \['\$acceptedAt', '\$createdAt'\]/,
   );
+  assert.match(report, /Asia\/Hebron/);
 });
 
 

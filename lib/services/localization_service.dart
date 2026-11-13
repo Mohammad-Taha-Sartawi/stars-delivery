@@ -310,6 +310,32 @@ class AppLocalization {
       'en': 'Optional comment about the service',
     },
     'submit_rating': {'ar': 'إرسال التقييم', 'en': 'Submit rating'},
+    'rate_customer': {'ar': 'قيّم الزبون', 'en': 'Rate the customer'},
+    'guest_waiting_reply': {
+      'ar': 'وصلت رسالتك. سيظهر رد فريق الدعم هنا، وعلى بريدك الإلكتروني أيضاً.',
+      'en': 'Message received. The support reply will appear here and in your email.',
+    },
+    'guest_thread_closed': {
+      'ar': 'لم تعد هذه المحادثة متاحة. يمكنك إرسال رسالة جديدة.',
+      'en': 'This conversation is no longer available. You can send a new message.',
+    },
+    'guest_new_message': {'ar': 'رسالة جديدة', 'en': 'New message'},
+    'rate_customer_title': {
+      'ar': 'كيف كان التعامل مع هذا الزبون؟',
+      'en': 'How was this customer?',
+    },
+    'rate_customer_body': {
+      'ar': 'تقييمك يساعد السائقين الآخرين. اختر عدد النجوم.',
+      'en': 'Your rating helps other drivers. Choose the stars.',
+    },
+    'your_customer_rating': {
+      'ar': 'تقييمك للزبون: %d من 5',
+      'en': 'Your rating: %d of 5',
+    },
+    'customer_rating_label': {
+      'ar': 'تقييم الزبون',
+      'en': 'Customer rating',
+    },
     'rating_thanks': {
       'ar': 'شكراً لك، تم إرسال تقييمك.',
       'en': 'Thank you, your rating was submitted.',
@@ -506,6 +532,14 @@ class AppLocalization {
     'send_offer': {'ar': 'إرسال العرض', 'en': 'Send Offer'},
     'price_required': {'ar': 'السعر مطلوب', 'en': 'Price required'},
     'invalid_price': {'ar': 'سعر غير صالح', 'en': 'Invalid price'},
+    'price_below_minimum': {
+      'ar': 'أقل سعر مسموح هو {min} شيكل',
+      'en': 'The lowest allowed price is {min} ILS',
+    },
+    'min_offer_price_hint': {
+      'ar': 'أقل سعر مسموح: {min} شيكل',
+      'en': 'Lowest allowed price: {min} ILS',
+    },
     'time_required': {'ar': 'الوقت مطلوب', 'en': 'Time required'},
     'invalid_time': {'ar': 'وقت غير صالح', 'en': 'Invalid time'},
     'offer_sent': {'ar': 'تم إرسال عرض السعر', 'en': 'Offer sent successfully'},
@@ -867,6 +901,14 @@ class AppLocalization {
           'Agreeing to the Terms of Service and Privacy Policy is a required part of using this app. You cannot create an account without agreeing to them.',
     },
     'ok': {'ar': 'حسناً', 'en': 'OK'},
+    'account_under_review': {
+      'ar': 'حسابك قيد المراجعة',
+      'en': 'Your account is under review',
+    },
+    'invalid_credentials': {
+      'ar': 'البريد الإلكتروني أو كلمة المرور أو نوع الحساب غير صحيح',
+      'en': 'Wrong email, password or account type',
+    },
 
     // UX-03 shared UI foundation.
     'logout_confirm_title': {'ar': 'تسجيل الخروج؟', 'en': 'Log out?'},
@@ -888,6 +930,16 @@ class AppLocalization {
       'en': 'Message failed to send',
     },
     'add_phone': {'ar': 'إضافة رقم هاتف', 'en': 'Add phone number'},
+    'edit_phone': {'ar': 'تعديل رقم الهاتف', 'en': 'Change phone number'},
+    'new_phone_number': {'ar': 'الرقم الجديد', 'en': 'New number'},
+    'phone_updated': {
+      'ar': 'تم تحديث رقم الهاتف',
+      'en': 'Phone number updated',
+    },
+    'phone_update_failed': {
+      'ar': 'تعذر حفظ رقم الهاتف',
+      'en': 'Could not save the phone number',
+    },
     'delete': {'ar': 'حذف', 'en': 'Delete'},
 
     // Governorate-level work mode.

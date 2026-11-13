@@ -23,7 +23,21 @@ class AuthSuccess extends AuthState {
 class AuthError extends AuthState {
   final String message;
 
-  AuthError({required this.message});
+  /// Server error code, e.g. `INVALID_CREDENTIALS`, when one was sent.
+  final String? code;
+
+  AuthError({required this.message, this.code});
+
+  @override
+  List<Object?> get props => [message, code];
+}
+
+/// A driver account that exists but still waits for admin approval: after a
+/// driver signs up, or when they try to sign in before approval.
+class AuthPendingApproval extends AuthState {
+  final String message;
+
+  AuthPendingApproval({required this.message});
 
   @override
   List<Object?> get props => [message];

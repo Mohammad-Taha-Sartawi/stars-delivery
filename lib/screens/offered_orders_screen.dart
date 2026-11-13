@@ -6,6 +6,7 @@ import '../bloc/app/app_bloc.dart';
 import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
 import '../services/location_catalog.dart';
+import '../widgets/ui/star_rating_dialog.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
@@ -248,6 +249,7 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
     final customerPublicId = customer is Map
         ? (customer['publicId'] ?? '').toString()
         : '';
+    final customerRating = ratingSummaryLabel(o['customerRatingSummary']);
     final phone = (o['phone'] ?? '').toString();
     final area = LocationCatalog.localize(
       context,
@@ -366,6 +368,19 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
                           fontWeight: FontWeight.bold,
                           color: scheme.onSecondaryContainer,
                         ),
+                      ),
+                    ),
+                  ],
+                  if (customerRating.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      customerRating,
+                      semanticsLabel:
+                          '${AppLocalization.get(context, 'customer_rating_label')} $customerRating',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: appToneStyle(context, AppTone.warning).foreground,
                       ),
                     ),
                   ],

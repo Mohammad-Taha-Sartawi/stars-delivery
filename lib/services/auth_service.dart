@@ -15,6 +15,18 @@ class SessionRejectedException implements Exception {
   String toString() => message;
 }
 
+/// A login or sign-up request the server refused, with its machine-readable
+/// code when the server sent one (for example `INVALID_CREDENTIALS`).
+class AuthRequestException implements Exception {
+  final String message;
+  final String? code;
+
+  const AuthRequestException(this.message, {this.code});
+
+  @override
+  String toString() => message;
+}
+
 abstract interface class AuthGateway {
   Future<Map<String, dynamic>> login(
     String email,
@@ -67,8 +79,10 @@ class AuthService implements AuthGateway {
 
       return _asMap(response.data);
     } on DioException catch (e) {
-      final message = _serverMessage(e) ?? _dioErrorMessage(e);
-      throw Exception(message);
+      throw AuthRequestException(
+        _serverMessage(e) ?? _dioErrorMessage(e),
+        code: _serverCode(e),
+      );
     }
   }
 
@@ -103,9 +117,10 @@ class AuthService implements AuthGateway {
 
       return _asMap(response.data);
     } on DioException catch (e) {
-      final message = _serverMessage(e) ?? _dioErrorMessage(e);
-
-      throw Exception(message);
+      throw AuthRequestException(
+        _serverMessage(e) ?? _dioErrorMessage(e),
+        code: _serverCode(e),
+      );
     }
   }
 
@@ -166,6 +181,12 @@ class AuthService implements AuthGateway {
     }
 
     return null;
+  }
+
+  String? _serverCode(DioException e) {
+    final data = e.response?.data;
+    final code = data is Map ? data['code'] : null;
+    return code is String && code.isNotEmpty ? code : null;
   }
 
   String _dioErrorMessage(DioException e) {

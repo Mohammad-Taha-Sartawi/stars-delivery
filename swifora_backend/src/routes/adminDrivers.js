@@ -31,9 +31,18 @@ const PendingProvider = require('../models/PendingProvider');
 const {
   findActiveAccountByEmail,
   findActiveAccountByPublicId,
-  releaseDeletedAccountIdentity,
 } = require('../services/accountRelease');
+const {
+  permanentlyDeleteAccount,
+  AccountDeletionBlockedError,
+} = require('../services/accountDeletion');
 const CommissionPayment = require('../models/CommissionPayment');
+const {
+  normalizePhoneNumber,
+  isValidPhoneNumber,
+  replacePrimaryPhone,
+  INVALID_PHONE_MESSAGE,
+} = require('../services/phoneNumbers');
 const { generatePublicId, isValidAdminPublicId } = require('../utils/publicId');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
@@ -517,7 +526,7 @@ router.put('/:id/profile', async (req, res) => {
     const body = req.body || {};
     const fullName = String(body.fullName || body.name || '').trim();
     const email = normalizeMobileEmail(body.email);
-    const phone = String(body.phone || '').trim();
+    const phone = normalizePhoneNumber(body.phone);
     const requestedGovernorate = String(body.governorate || '').trim();
     const requestedArea = String(body.area || '').trim();
     const governorate =
@@ -538,10 +547,10 @@ router.put('/:id/profile', async (req, res) => {
       });
     }
 
-    if (phone.length < 6 || phone.length > 30) {
+    if (!isValidPhoneNumber(phone)) {
       return res.json({
         success: false,
-        message: 'رقم الجوال غير صالح.',
+        message: INVALID_PHONE_MESSAGE,
       });
     }
 
@@ -630,7 +639,7 @@ router.put('/:id/profile', async (req, res) => {
       fullName,
       name: fullName,
       email,
-      phoneNumbers: [{ number: phone, primary: true }],
+      phoneNumbers: replacePrimaryPhone(driver.phoneNumbers, phone),
       area: requestedArea,
       governorate,
       governorateLevel,
@@ -944,70 +953,26 @@ router.put('/:id/password', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const driver = await User.findById(req.params.id);
-    if (!driver || driver.role !== 'provider') return res.json({ success: false, message: 'السائق غير موجود' });
-
-    const stateChanged =
-      driver.deleted !== true
-      || driver.status !== 'blocked';
-
-    if (stateChanged) {
-      const rotationFilter =
-        mobileSessionRotationFilter(driver);
-
-      if (!rotationFilter) {
-        throw new Error(
-          'Invalid mobile session version',
-        );
-      }
-
-      const rotation =
-        await User.updateOne(
-          {
-            _id: driver._id,
-            role: 'provider',
-            ...rotationFilter,
-          },
-          {
-            $set: {
-              deleted: true,
-              status: 'blocked',
-            },
-            $inc: {
-              sessionVersion: 1,
-            },
-          },
-          {
-            runValidators: true,
-          },
-        );
-
-      if (rotation.matchedCount !== 1) {
-        throw new Error(
-          'Concurrent account-state rotation',
-        );
-      }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.json({ success: false, message: 'السائق غير موجود' });
+    }
+    const account = await User.findById(req.params.id);
+    if (!account || account.role !== 'provider') {
+      return res.json({ success: false, message: 'السائق غير موجود' });
     }
 
-    const io = req.app.get('io');
+    // Removes the account and its personal data from the database, so the
+    // same email, phone and ID can be used again (see accountDeletion.js).
+    await permanentlyDeleteAccount(account, { io: req.app.get('io') });
 
-    if (io) {
-      try {
-        io.to(`user:${driver._id}`)
-          .emit('account_deleted', {});
-      } finally {
-        io.in(`user:${driver._id}`)
-          .disconnectSockets(true);
-      }
-    }
-
-    // Release the email and ID so the driver can register again.
-    await releaseDeletedAccountIdentity(
-      await User.findById(driver._id),
-    );
-
-    res.json({ success: true, message: `تم حذف السائق (${driver.fullName}) بنجاح` });
+    res.json({
+      success: true,
+      message: `تم حذف السائق (${account.fullName}) نهائياً من قاعدة البيانات`,
+    });
   } catch (err) {
+    if (err instanceof AccountDeletionBlockedError) {
+      return res.json({ success: false, code: err.code, message: err.message });
+    }
     sendInternalServerFailure(res);
   }
 });

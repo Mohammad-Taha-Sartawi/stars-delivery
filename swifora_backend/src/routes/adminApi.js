@@ -13,6 +13,11 @@ const {
   orderStatBoundaries,
   normalizeOrderTypeCounts,
 } = require('../services/orderStats');
+const {
+  reportPeriod,
+  commissionTotal,
+  commissionReport,
+} = require('../services/commissionReport');
 
 router.get('/stats', async (req, res) => {
   try {
@@ -42,21 +47,14 @@ router.get('/stats', async (req, res) => {
 
     const { startOfToday, startOfMonth } = orderStatBoundaries();
 
-    const commissionAgg = await Order.aggregate([
-      {
-        $match: {
-          status: { $in: ['accepted', 'fulfilling', 'completed'] },
-          $expr: {
-            $gte: [
-              { $ifNull: ['$acceptedAt', '$createdAt'] },
-              startOfToday,
-            ],
-          },
-        },
-      },
-      { $group: { _id: null, total: { $sum: '$platformCommission' } } }
+    // Platform commission booked today and this month (Palestine time),
+    // see services/commissionReport.js.
+    const commissionToday = reportPeriod('today');
+    const [todayCommission, monthCommission] = await Promise.all([
+      commissionTotal(commissionToday),
+      commissionTotal(reportPeriod('month')),
     ]);
-    const totalCommission = commissionAgg[0]?.total || 0;
+    const totalCommission = todayCommission.total;
 
     // Drivers who still have unpaid platform commission and the amount due.
     // Commission accrued after the driver's last payment timestamp is unpaid;
@@ -179,9 +177,28 @@ router.get('/stats', async (req, res) => {
       totalDrivers, activeDrivers, inactiveDrivers,
       totalUsers, activeUsers, inactiveUsers,
       totalCommission, pendingAmount, pendingDrivers,
+      monthCommission: monthCommission.total,
+      commissionOrdersToday: todayCommission.orders,
+      commissionOrdersMonth: monthCommission.orders,
+      commissionDate: {
+        year: commissionToday.year,
+        month: commissionToday.month,
+        day: commissionToday.day,
+        timeZone: commissionToday.timeZone,
+      },
       driverReportsPending, userReportsPending,
       orderTypeCounts,
     });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+// Which drivers today's / this month's platform commission came from.
+router.get('/commission-report', async (req, res) => {
+  try {
+    const period = req.query.period === 'month' ? 'month' : 'today';
+    res.json(await commissionReport(period));
   } catch (err) {
     sendInternalServerError(res);
   }

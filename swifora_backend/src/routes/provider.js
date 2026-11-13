@@ -6,6 +6,8 @@ const Offer = require('../models/Offer');
 const RejectedOrder = require('../models/RejectedOrder');
 const User = require('../models/User');
 const Rating = require('../models/Rating');
+const CustomerRating = require('../models/CustomerRating');
+const { attachCustomerRatings } = require('../services/customerRatings');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const lifecycle = require('../services/orderLifecycle');
@@ -275,6 +277,8 @@ router.get('/pending-orders', async (req, res) => {
 
     console.log(`[PENDING] userId=${req.userId} area="${qArea}" count=${orders.length}`);
 
+    // Drivers see how other drivers rated the customer before offering.
+    await attachCustomerRatings(orders);
     res.json(orders.map(maskedOrder));
   } catch (err) {
     sendInternalServerError(res);
@@ -294,6 +298,7 @@ router.get('/offered-orders', async (req, res) => {
       _id: { $in: offeredIds },
       status: { $in: ['pending', 'offered'] },
     }).populate('customerId', 'fullName publicId').sort({ createdAt: -1 }).lean();
+    await attachCustomerRatings(orders);
 
     const offerMap = {};
     offers.forEach(o => { offerMap[o.orderId.toString()] = { price: o.price, estimatedTime: o.estimatedTime || 0 }; });
@@ -412,10 +417,20 @@ router.get('/rejected-orders', async (req, res) => {
       })
       .filter(Boolean);
 
+    const givenRatings = await CustomerRating.find({
+      providerId: req.userId,
+      orderId: { $in: deliveredOrders.map(o => o._id) },
+    }).select('orderId rating').lean();
+    const givenByOrder = new Map(
+      givenRatings.map(r => [r.orderId.toString(), r.rating]),
+    );
+
     const delivered = deliveredOrders.map(o => ({
       ...o,
       recordType: 'delivered',
       reportAt: o.completedAt || o.createdAt,
+      // The driver's own rating of this customer, or null if not rated yet.
+      customerRating: givenByOrder.get(o._id.toString()) ?? null,
     }));
 
     const notSelectedByOrder = new Map();

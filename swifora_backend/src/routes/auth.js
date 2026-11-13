@@ -199,9 +199,30 @@ router.post('/login', mobileLoginLimiter, mobileLoginAccountLimiter, async (req,
         user?.password || DUMMY_PASSWORD_HASH,
       );
 
+    if (!user && role === 'provider') {
+      // A driver whose sign-up still waits for admin approval. Answer with a
+      // clear status instead of "invalid credentials", and as a 200 so these
+      // retries do not count towards the failed-login lockout.
+      const pending = await PendingProvider.findOne({
+        email: normalizedEmail,
+      }).select('+password');
+      if (
+        pending
+        && await bcrypt.compare(suppliedPassword, pending.password || DUMMY_PASSWORD_HASH)
+      ) {
+        return res.json({
+          pending: true,
+          code: 'ACCOUNT_PENDING_APPROVAL',
+          message:
+            'حسابك قيد المراجعة من قبل الإدارة. ستتمكن من تسجيل الدخول بعد الموافقة عليه.',
+        });
+      }
+    }
+
     if (!user || !match || user.role !== role) {
       return res.status(400).json({
         error: invalidCredentialsMessage,
+        code: 'INVALID_CREDENTIALS',
       });
     }
 

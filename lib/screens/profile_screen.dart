@@ -193,7 +193,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _client().post('/users/phones', data: {'number': phone});
       _phoneCtrl.clear();
       _loadPhones();
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) AppFeedback.error(context, _requestError(e));
+    }
+  }
+
+  String _requestError(Object error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      final message = data is Map ? data['error'] ?? data['message'] : null;
+      if (message is String && message.trim().isNotEmpty) return message;
+    }
+    return AppLocalization.get(context, 'phone_update_failed');
+  }
+
+  /// Replaces [number] with a new one; a primary number stays primary.
+  Future<void> _editPhone(String number) async {
+    final newNumber = await showDialog<String>(
+      context: context,
+      builder: (_) => _PhoneEditDialog(initial: number),
+    );
+    if (newNumber == null || newNumber.isEmpty || newNumber == number) return;
+    try {
+      await _client().put(
+        '/users/phones',
+        data: {'number': number, 'newNumber': newNumber},
+      );
+      if (!mounted) return;
+      AppFeedback.success(
+        context,
+        AppLocalization.get(context, 'phone_updated'),
+      );
+      _loadPhones();
+    } catch (e) {
+      if (mounted) AppFeedback.error(context, _requestError(e));
+    }
   }
 
   Future<void> _removePhone(String number) async {
@@ -498,6 +532,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          IconButton(
+                            tooltip: AppLocalization.get(
+                              context,
+                              'edit_phone',
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            onPressed: () => _editPhone(number),
+                          ),
                           if (!isPrimary)
                             TextButton(
                               onPressed: () => _setPrimaryPhone(number),
@@ -768,6 +810,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Asks for a replacement phone number. The dialog owns its controller so it
+/// is disposed only after the closing animation has finished.
+class _PhoneEditDialog extends StatefulWidget {
+  final String initial;
+
+  const _PhoneEditDialog({required this.initial});
+
+  @override
+  State<_PhoneEditDialog> createState() => _PhoneEditDialogState();
+}
+
+class _PhoneEditDialogState extends State<_PhoneEditDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() => Navigator.pop(context, _controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(AppLocalization.get(context, 'edit_phone')),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: TextInputType.phone,
+        textDirection: TextDirection.ltr,
+        decoration: InputDecoration(
+          labelText: AppLocalization.get(context, 'new_phone_number'),
+          border: const OutlineInputBorder(),
+        ),
+        onSubmitted: (_) => _save(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppLocalization.get(context, 'cancel')),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: Text(AppLocalization.get(context, 'save')),
+        ),
+      ],
     );
   }
 }

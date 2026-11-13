@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:swifora/bloc/app/app_bloc.dart';
 import 'package:swifora/bloc/auth/auth_bloc.dart';
 import 'package:swifora/bloc/auth/auth_state.dart';
@@ -91,6 +92,8 @@ Future<void> main() async {
   setUp(() {
     mockApi.reset();
     mockApi.contactDelay = const Duration(milliseconds: 400);
+    // No saved guest support conversation on this "device".
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
   tearDownAll(() {

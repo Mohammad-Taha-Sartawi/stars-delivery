@@ -318,6 +318,8 @@ const adminActionHandlers = Object.freeze({
   openEditDriver,
   openInlineDriverEdit,
   closeDriverEdit,
+  openEditUser,
+  closeUserEdit,
   openListModal,
   openOrderDetails,
   selectDriverFromList,
@@ -363,6 +365,20 @@ function stampStaticAdminActionCapabilities() {
 }
 
 stampStaticAdminActionCapabilities();
+
+// Cards that act as buttons (role="button") open with Enter or Space too.
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const target = event.target;
+  if (
+    target instanceof Element
+    && target.getAttribute('role') === 'button'
+    && target.hasAttribute('data-admin-action')
+  ) {
+    event.preventDefault();
+    target.click();
+  }
+});
 
 
 document.addEventListener(
@@ -638,8 +654,8 @@ async function ensureAdminAreasLoaded() {
   await loadAreasForDropdown();
 }
 
-function fillEditGovernorateSelect(selected) {
-  const select = document.getElementById('driverEditGovernorate');
+function fillEditGovernorateSelect(selected, selectId = 'driverEditGovernorate') {
+  const select = document.getElementById(selectId);
   if (!select) return;
   select.innerHTML = '<option value="">اختر المحافظة...</option>';
   Object.keys(adminAreasByGovernorate).sort().forEach((governorate) => {
@@ -651,8 +667,8 @@ function fillEditGovernorateSelect(selected) {
   select.value = selected || '';
 }
 
-function fillEditAreaSelect(governorate, selected) {
-  const select = document.getElementById('driverEditArea');
+function fillEditAreaSelect(governorate, selected, selectId = 'driverEditArea') {
+  const select = document.getElementById(selectId);
   if (!select) return;
   select.innerHTML = '<option value="">اختر القرية أو المدينة...</option>';
 
@@ -1172,8 +1188,10 @@ function renderUserResultFromDB(user) {
     <div class="row"><span class="label">المدينة / القرية</span><span class="value">${escapeHtml(user.city || user.area || 'غير محدد')}</span></div>
     <div class="row"><span class="label">الحالة</span><span class="value">${getStatusBadge(user.status)}</span></div>
     <div class="row"><span class="label">عدد الطلبات</span><span class="value">${escapeHtml(orderCount)}</span></div>
+    <div class="row"><span class="label">تقييم السائقين له</span><span class="value">${user.rating && user.rating.count > 0 ? `⭐ ${escapeHtml(user.rating.average)} من 5 (${escapeHtml(user.rating.count)} تقييم)` : 'لا توجد تقييمات بعد'}</span></div>
     <div class="action-buttons">
       <button class="action-btn chat" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openChat" data-admin-arg-count="2" data-admin-arg-1="user" data-admin-arg-2="${escapeHtml(String(user._id))}">مراسلة</button>
+      <button class="action-btn edit" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="openEditUser" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(user._id))}">تعديل البيانات</button>
       <button class="action-btn orders-report" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="viewUserOrdersViaDB" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(user._id))}">تقرير الطلبات</button>
       <button class="action-btn change-password" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="changeUserPassword" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(user._id))}" data-presentation="p020">تغيير كلمة المرور</button>
       <button class="action-btn freeze" data-admin-capability="${escapeHtml(adminActionCapability || '')}" data-admin-action="freezeUser" data-admin-arg-count="1" data-admin-arg-1="${escapeHtml(String(user._id))}">تجميد</button>
@@ -1332,6 +1350,20 @@ async function loadDashboardStats() {
     const totalCommission = Number(data.totalCommission) || 0;
     document.getElementById('totalCommission').textContent =
       totalCommission.toLocaleString('en-US');
+    const monthCommissionEl = document.getElementById('monthCommission');
+    if (monthCommissionEl) {
+      monthCommissionEl.textContent =
+        (Number(data.monthCommission) || 0).toLocaleString('en-US');
+    }
+    const commissionDate = data.commissionDate || {};
+    const todayDateEl = document.getElementById('commissionTodayDate');
+    if (todayDateEl && commissionDate.year) {
+      todayDateEl.textContent = commissionDayLabel(commissionDate);
+    }
+    const monthLabelEl = document.getElementById('commissionMonthLabel');
+    if (monthLabelEl && commissionDate.year) {
+      monthLabelEl.textContent = commissionMonthLabel(commissionDate);
+    }
     document.getElementById('pendingDrivers').textContent = data.pendingDrivers;
     document.getElementById('pendingAmount').textContent =
       (Number(data.pendingAmount) || 0).toLocaleString('en-US');
@@ -1860,13 +1892,19 @@ async function activateDriver(id) {
   } catch (err) { alert('حدث خطأ'); }
 }
 
+const PERMANENT_DELETE_WARNING =
+  'سيُحذف الحساب وبياناته الشخصية نهائياً من قاعدة البيانات ولا يمكن التراجع.\n'
+  + 'تبقى الطلبات السابقة وسجل العمولات كسجلات مالية.\n\nهل تريد المتابعة؟';
+
 async function deleteDriver(id) {
-  if (!confirm('هل أنت متأكد من حذف السائق نهائياً؟')) return;
+  if (!confirm(PERMANENT_DELETE_WARNING)) return;
   try {
     const res = await adminFetch(`/admin/drivers/${id}`, { method: 'DELETE' });
     const data = await res.json();
     alert(data.message);
+    if (!data.success) return;
     document.getElementById('driverResult').classList.remove('show');
+    loadDriversList();
     loadDashboardStats();
   } catch (err) { alert('حدث خطأ'); }
 }
@@ -1914,15 +1952,105 @@ async function activateUser(id) {
 }
 
 async function deleteUser(id) {
-  alert('هذه الميزة غير مفعلة حالياً.');
-  // if (!confirm('هل أنت متأكد من حذف المستخدم نهائياً؟')) return;
-  // try {
-  //   const res = await adminFetch(`/admin/users/${id}`, { method: 'DELETE' });
-  //   const data = await res.json();
-  //   alert(data.message);
-  //   document.getElementById('userResult').classList.remove('show');
-  //   loadDashboardStats();
-  // } catch (err) { alert('حدث خطأ'); }
+  if (!confirm(PERMANENT_DELETE_WARNING)) return;
+  try {
+    const res = await adminFetch(`/admin/users/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    alert(data.message);
+    if (!data.success) return;
+    document.getElementById('userResult').classList.remove('show');
+    loadDashboardStats();
+  } catch (err) { alert('حدث خطأ'); }
+}
+
+// ---- Customer details editor (same fields as the driver editor) ----
+async function openEditUser(userId) {
+  try {
+    const res = await adminFetch(`/admin/users/search?id=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    if (data.error || !data.user) {
+      alert(data.error || 'تعذر تحميل بيانات المستخدم.');
+      return;
+    }
+    await ensureAdminAreasLoaded();
+    const user = data.user;
+    document.getElementById('userEditId').value = user._id;
+    document.getElementById('userEditSub').textContent = `${user.name} — ${user.userId}`;
+    document.getElementById('userEditName').value = user.name || '';
+    document.getElementById('userEditEmail').value = user.email || '';
+    document.getElementById('userEditPhone').value = user.phone || '';
+    document.getElementById('userEditPublicId').value = user.publicId || user.userId || '';
+    fillEditGovernorateSelect(user.governorate || '', 'userEditGovernorate');
+    fillEditAreaSelect(
+      user.governorate || '',
+      user.area === 'غير محدد' ? '' : (user.area || ''),
+      'userEditArea',
+    );
+    const msg = document.getElementById('userEditMsg');
+    msg.textContent = '';
+    msg.className = 'msg';
+    document.getElementById('userEditModal').classList.add('show');
+  } catch (err) {
+    alert('تعذر تحميل بيانات المستخدم.');
+  }
+}
+
+function closeUserEdit() {
+  document.getElementById('userEditModal').classList.remove('show');
+}
+
+async function saveUserEdits(event) {
+  event.preventDefault();
+  const id = document.getElementById('userEditId').value;
+  const msg = document.getElementById('userEditMsg');
+  const payload = {
+    fullName: document.getElementById('userEditName').value.trim(),
+    email: document.getElementById('userEditEmail').value.trim(),
+    phone: document.getElementById('userEditPhone').value.trim(),
+    publicId: document.getElementById('userEditPublicId').value.trim(),
+    governorate: document.getElementById('userEditGovernorate').value,
+    area: document.getElementById('userEditArea').value,
+  };
+  try {
+    const res = await adminFetch(`/admin/users/${encodeURIComponent(id)}/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      msg.textContent = data.message || 'تعذر حفظ التعديلات.';
+      msg.className = 'msg error';
+      return;
+    }
+    msg.textContent = data.message || 'تم تحديث بيانات المستخدم بنجاح.';
+    msg.className = 'msg success';
+    setTimeout(() => {
+      closeUserEdit();
+      searchUserById(id);
+      loadDashboardStats();
+    }, 600);
+  } catch (err) {
+    msg.textContent = 'تعذر حفظ التعديلات.';
+    msg.className = 'msg error';
+  }
+}
+
+const userEditGovernorate = document.getElementById('userEditGovernorate');
+if (userEditGovernorate) {
+  userEditGovernorate.addEventListener('change', () => {
+    fillEditAreaSelect(userEditGovernorate.value, '', 'userEditArea');
+  });
+}
+const userEditForm = document.getElementById('userEditForm');
+if (userEditForm) {
+  userEditForm.addEventListener('submit', saveUserEdits);
+}
+const userEditModal = document.getElementById('userEditModal');
+if (userEditModal) {
+  userEditModal.addEventListener('click', function (event) {
+    if (event.target === this) closeUserEdit();
+  });
 }
 
 async function changeUserPassword(userId) {
@@ -2736,6 +2864,90 @@ document.getElementById('reportDetailModal').addEventListener('click', function 
 // ================================================
 // 16. مودال القوائم الإحصائية
 // ================================================
+const ARABIC_MONTHS = [
+  'كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
+  'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول',
+];
+const ARABIC_WEEKDAYS = [
+  'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت',
+];
+
+// "الجمعة 13/11/2026" for the day the server reported (Palestine time).
+function commissionDayLabel({ year, month, day }) {
+  if (!day) return commissionMonthLabel({ year, month });
+  const weekday = ARABIC_WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  return `${weekday} ${day}/${month}/${year}`;
+}
+
+// "تشرين الثاني 2026"
+function commissionMonthLabel({ year, month }) {
+  return `${ARABIC_MONTHS[month - 1] || month} ${year}`;
+}
+
+function money(value) {
+  return (Number(value) || 0).toLocaleString('en-US');
+}
+
+async function renderCommissionReport(period, subEl, content) {
+  const res = await adminFetch(
+    `/admin/api/commission-report?period=${period === 'month' ? 'month' : 'today'}`,
+  );
+  const data = await res.json();
+  const when = period === 'month'
+    ? commissionMonthLabel(data)
+    : commissionDayLabel(data);
+
+  subEl.textContent =
+    `${when} — الإجمالي: ${money(data.total)} شيكل من ${money(data.orders)} طلب`;
+
+  const drivers = Array.isArray(data.drivers) ? data.drivers : [];
+  if (drivers.length === 0) {
+    content.innerHTML = '<p>لا توجد عمولات في هذه الفترة بعد.</p>';
+    return;
+  }
+
+  const rows = drivers.map((driver) => {
+    const share = data.total > 0
+      ? Math.round((driver.commission / data.total) * 100)
+      : 0;
+    const name = driver.deleted
+      ? `<em>${escapeHtml(driver.name)}</em>`
+      : `<strong>${escapeHtml(driver.name)}</strong>`;
+    return `
+      <tr>
+        <td>${name}<br><small>${escapeHtml(driver.publicId ? `ID ${driver.publicId}` : '')}</small></td>
+        <td>${escapeHtml(driver.phone || '—')}</td>
+        <td>${escapeHtml(money(driver.orders))}</td>
+        <td>${escapeHtml(money(driver.revenue))} شيكل</td>
+        <td><strong>${escapeHtml(money(driver.commission))} شيكل</strong><br><small>${escapeHtml(share)}٪ من الإجمالي</small></td>
+      </tr>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="commissions-table-container">
+      <table class="orders-table commission-report-table">
+        <thead>
+          <tr>
+            <th>السائق</th>
+            <th>الجوال</th>
+            <th>الطلبات</th>
+            <th>قيمة الطلبات</th>
+            <th>عمولة المنصة</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr>
+            <th colspan="2">الإجمالي</th>
+            <th>${escapeHtml(money(data.orders))}</th>
+            <th>—</th>
+            <th>${escapeHtml(money(data.total))} شيكل</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
+}
+
 async function openListModal(type, filter, title) {
   const modal = document.getElementById('listModal');
   const titleEl = document.getElementById('listModalTitle');
@@ -2745,6 +2957,18 @@ async function openListModal(type, filter, title) {
   if (!modal || !titleEl || !subEl || !content) return;
 
   titleEl.textContent = title || 'القائمة';
+
+  if (type === 'commissionReport') {
+    modal.classList.add('show');
+    subEl.textContent = '';
+    content.innerHTML = '<p>جاري التحميل...</p>';
+    try {
+      await renderCommissionReport(filter, subEl, content);
+    } catch (err) {
+      content.innerHTML = '<p>حدث خطأ في تحميل تقرير العمولة.</p>';
+    }
+    return;
+  }
 
   if (type === 'payouts') {
     modal.classList.add('show');
@@ -3448,10 +3672,18 @@ async function openSupportChat(
       <div class="chat-messages" id="chatMessagesArea">
         <p data-presentation="p006">جاري التحميل...</p>
       </div>
+      <p class="guest-reply-note">
+        زائر غير مسجل — يصله ردك داخل التطبيق في نافذة "التواصل مع الدعم"، وعلى بريده الإلكتروني إن كان قد كتبه.
+      </p>
       <div class="chat-input-area">
-        <span data-presentation="p032">
-          طلب تواصل من زائر — استخدم البريد الإلكتروني أو رقم الهاتف الظاهر في الرسالة للرد.
-        </span>
+        <input
+          type="text"
+          id="adminChatInput"
+          placeholder="اكتب ردك للزائر..."
+        >
+        <button id="adminChatSendButton">
+          <i class="fas fa-paper-plane"></i> إرسال
+        </button>
       </div>
     `
     : `
@@ -3498,7 +3730,7 @@ async function openSupportChat(
     );
   }
 
-  if (!isPublicContact) {
+  {
     const input =
       document.getElementById('adminChatInput');
 
@@ -3584,11 +3816,7 @@ async function sendAdminReply() {
   const input =
     document.getElementById('adminChatInput');
 
-  if (
-    !input
-    || !activeChatUserId
-    || activeChatUserId.startsWith('contact:')
-  ) {
+  if (!input || !activeChatUserId) {
     return;
   }
 

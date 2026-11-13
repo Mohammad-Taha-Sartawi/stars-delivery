@@ -81,9 +81,27 @@ function createPasswordRecoveryMailer({
     });
   }
 
+  async function sendSupportReply({
+    to,
+    name,
+    text,
+  }) {
+    return transporter.sendMail({
+      from: smtpFrom,
+      to,
+      subject:
+        'رد فريق دعم Swifora',
+      text:
+        `مرحباً ${name || ''}،\n\n${text}\n\n`
+        + 'يمكنك متابعة المحادثة من نافذة "التواصل مع الدعم" في تطبيق Swifora.\n\n'
+        + 'فريق Swifora',
+    });
+  }
+
   return {
     sendRecoveryCode,
     sendPasswordChangedNotice,
+    sendSupportReply,
   };
 }
 

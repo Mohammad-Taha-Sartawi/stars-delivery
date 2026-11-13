@@ -470,7 +470,7 @@ test('support header does not interpolate untrusted identity into HTML', () => {
   );
 });
 
-test('public contacts cannot receive in-app administrator replies', () => {
+test('administrator replies to guests stay on the contact request', () => {
   const route = fs.readFileSync(
     path.join(
       __dirname,
@@ -482,10 +482,22 @@ test('public contacts cannot receive in-app administrator replies', () => {
     'utf8',
   );
 
+  // Guests are still not application Users: the reply is stored on the
+  // ContactRequest thread, never as a ChatMessage or a User.
   assert.match(
     route,
-    /CONTACT_REPLY_EXTERNAL_ONLY/,
+    /contact\.messages\.push\(\{ sender: 'admin', text: checked\.text, emailed \}\)/,
   );
+  assert.doesNotMatch(route, /CONTACT_REPLY_EXTERNAL_ONLY/);
+
+  // Only the device that sent the request can read or continue it: the
+  // random access key is returned once and stored as a SHA-256 hash.
+  assert.match(route, /crypto\.randomBytes\(32\)\.toString\('base64url'\)/);
+  assert.match(route, /accessTokenHash: hashContactToken\(accessToken\)/);
+  assert.match(route, /crypto\.timingSafeEqual\(expected, actual\)/);
+  assert.match(route, /req\.get\('x-contact-token'\)/);
+  // A wrong key looks exactly like a missing conversation.
+  assert.match(route, /code: 'CONTACT_NOT_FOUND'/);
 });
 
 test('ContactRequest indexes are initialized by server startup', () => {

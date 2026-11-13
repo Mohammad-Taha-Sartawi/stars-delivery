@@ -37,6 +37,11 @@ const {
   MAX_MOBILE_PASSWORD_LENGTH,
   isValidMobilePassword,
 } = require('../security/passwordPolicy');
+const {
+  normalizePhoneNumber,
+  isValidPhoneNumber,
+  INVALID_PHONE_MESSAGE,
+} = require('../services/phoneNumbers');
 
 const router = express.Router();
 router.use(auth, requireRole('customer', 'provider'));
@@ -694,13 +699,44 @@ router.get('/phones', async (req, res) => {
 
 router.post('/phones', async (req, res) => {
   try {
-    const { number } = req.body;
+    const number = normalizePhoneNumber(req.body?.number);
     if (!number) return res.status(400).json({ error: 'Phone required' });
+    if (!isValidPhoneNumber(number)) {
+      return res.status(400).json({ error: INVALID_PHONE_MESSAGE, code: 'INVALID_PHONE' });
+    }
     const user = await User.findById(req.userId);
     if (!user.phoneNumbers.some(p => p.number === number)) {
       user.phoneNumbers.push({ number, primary: false });
       await user.save();
     }
+    res.json({ phones: user.phoneNumbers });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+// Changes one of the account's numbers in place; a primary number stays
+// primary, so the driver or customer can switch to a new number directly.
+router.put('/phones', async (req, res) => {
+  try {
+    const number = typeof req.body?.number === 'string' ? req.body.number : '';
+    const newNumber = normalizePhoneNumber(req.body?.newNumber);
+    if (!number) return res.status(400).json({ error: 'Phone required' });
+    if (!isValidPhoneNumber(newNumber)) {
+      return res.status(400).json({ error: INVALID_PHONE_MESSAGE, code: 'INVALID_PHONE' });
+    }
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const entry = user.phoneNumbers.find(p => p.number === number);
+    if (!entry) {
+      return res.status(404).json({ error: 'الرقم غير موجود في حسابك.', code: 'PHONE_NOT_FOUND' });
+    }
+    if (number !== newNumber && user.phoneNumbers.some(p => p.number === newNumber)) {
+      return res.status(409).json({ error: 'هذا الرقم مضاف إلى حسابك بالفعل.', code: 'PHONE_EXISTS' });
+    }
+    entry.number = newNumber;
+    user.markModified('phoneNumbers');
+    await user.save();
     res.json({ phones: user.phoneNumbers });
   } catch (err) {
     sendInternalServerError(res);

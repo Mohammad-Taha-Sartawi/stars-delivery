@@ -5,6 +5,7 @@ const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const RejectedOrder = require('../models/RejectedOrder');
 const Rating = require('../models/Rating');
+const CustomerRating = require('../models/CustomerRating');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
@@ -434,6 +435,78 @@ router.post('/:id/rating', auth, requireRole('customer'), async (req, res) => {
       type: 'new_rating',
       title: 'تقييم جديد',
       body: `قيّم الزبون خدمتك بـ ${rating} من 5.`,
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    }).catch(() => {});
+
+    res.status(201).json({
+      rating: created.rating,
+      comment: created.comment,
+      createdAt: created.createdAt,
+    });
+  } catch (err) {
+    sendInternalServerError(res);
+  }
+});
+
+// The driver rates the customer once the order is completed (the mirror of
+// POST /:id/rating, where the customer rates the driver).
+router.post('/:id/customer-rating', auth, requireRole('provider'), async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const rating = Number(req.body?.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        error: 'Rating must be an integer from 1 to 5',
+        code: 'INVALID_RATING',
+      });
+    }
+
+    const comment = typeof req.body?.comment === 'string'
+      ? req.body.comment.trim().slice(0, 500)
+      : '';
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      providerId: req.userId,
+      status: 'completed',
+    }).lean();
+
+    if (!order) {
+      return res.status(409).json({
+        error: 'يمكن تقييم الزبون بعد اكتمال الطلب فقط.',
+        code: 'ORDER_NOT_RATEABLE',
+      });
+    }
+
+    let created;
+    try {
+      created = await CustomerRating.create({
+        orderId: order._id,
+        customerId: order.customerId,
+        providerId: req.userId,
+        rating,
+        comment,
+      });
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(409).json({
+          error: 'لقد قيّمت هذا الزبون على هذا الطلب مسبقاً.',
+          code: 'RATING_EXISTS',
+        });
+      }
+      throw error;
+    }
+
+    await createUserNotification({
+      io: req.app.get('io'),
+      userId: order.customerId,
+      orderId: order._id,
+      type: 'new_rating',
+      title: 'تقييم جديد',
+      body: `قيّمك السائق بـ ${rating} من 5 على طلبك.`,
       expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     }).catch(() => {});
 

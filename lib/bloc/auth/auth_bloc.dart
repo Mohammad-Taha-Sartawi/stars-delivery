@@ -85,6 +85,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         event.role,
       );
 
+      if (data['pending'] == true) {
+        emit(AuthPendingApproval(message: _pendingMessage(data)));
+        return;
+      }
+
       final user = UserModel.fromJson(Map<String, dynamic>.from(data['user']));
 
       final token = data['token'].toString();
@@ -96,6 +101,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _sessionStorage.writeToken(token);
 
       emit(AuthSuccess(user: user, token: token));
+    } on AuthRequestException catch (e) {
+      emit(AuthError(message: e.message, code: e.code));
     } catch (e) {
       emit(AuthError(message: e.toString().replaceFirst('Exception: ', '')));
     }
@@ -118,13 +125,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
 
       if (data['pending'] == true) {
-        emit(AuthInitial());
-        emit(
-          AuthError(
-            message:
-                data['message'] ?? 'تم تقديم الطلب بنجاح، حسابك قيد المراجعة',
-          ),
-        );
+        emit(AuthPendingApproval(message: _pendingMessage(data)));
         return;
       }
 
@@ -139,9 +140,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _sessionStorage.writeToken(token);
 
       emit(AuthSuccess(user: user, token: token));
+    } on AuthRequestException catch (e) {
+      emit(AuthError(message: e.message, code: e.code));
     } catch (e) {
       emit(AuthError(message: e.toString().replaceFirst('Exception: ', '')));
     }
+  }
+
+  static String _pendingMessage(Map<String, dynamic> data) {
+    final message = data['message'];
+    return message is String && message.trim().isNotEmpty
+        ? message
+        : 'تم تقديم الطلب بنجاح، حسابك قيد المراجعة';
   }
 
   void _onToggle(ToggleAuthModeEvent event, Emitter<AuthState> emit) {

@@ -4,8 +4,12 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const { releaseDeletedAccountIdentity } = require('../services/accountRelease');
+const {
+  permanentlyDeleteAccount,
+  AccountDeletionBlockedError,
+} = require('../services/accountDeletion');
 const Order = require('../models/Order');
+const { customerRatingSummaries } = require('../services/customerRatings');
 const Notification = require('../models/Notification');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
@@ -17,7 +21,24 @@ const {
 } = require('../services/mobileSession');
 const {
   resolveRegistrationLocation,
+  canonicalGovernorate,
+  isValidAreaForGovernorate,
 } = require('../services/registrationLocation');
+const {
+  normalizeMobileEmail,
+  isValidMobileEmail,
+} = require('../security/mobileEmail');
+const {
+  findActiveAccountByEmail,
+  findActiveAccountByPublicId,
+} = require('../services/accountRelease');
+const { isValidAdminPublicId } = require('../utils/publicId');
+const {
+  normalizePhoneNumber,
+  isValidPhoneNumber,
+  INVALID_PHONE_MESSAGE,
+  replacePrimaryPhone,
+} = require('../services/phoneNumbers');
 
 router.get('/', async (req, res) => {
   try {
@@ -76,6 +97,8 @@ router.get('/search', async (req, res) => {
     if (!user) return res.json({ error: 'لم يتم العثور على مستخدم' });
 
     const orders = await Order.find({ customerId: user._id }).lean();
+    const ratingSummary =
+      (await customerRatingSummaries([user._id])).get(user._id.toString()) || null;
     const location = resolveRegistrationLocation(user);
     const mappedUser = {
       _id: user._id.toString(),
@@ -92,6 +115,8 @@ router.get('/search', async (req, res) => {
       governorate: location.governorate,
       city: location.city,
       status: user.status === 'blocked' ? 'inactive' : user.status,
+      publicId: user.publicId || '',
+      rating: ratingSummary,
       orders: orders.map(o => ({
         fullId: o._id.toString(),
         orderId: o._id.toString().slice(-8),
@@ -108,6 +133,97 @@ router.get('/search', async (req, res) => {
     res.json({ user: mappedUser });
   } catch (err) {
     sendInternalServerError(res);
+  }
+});
+
+// Edits a customer's details from the dashboard (the same fields drivers
+// have): name, email, primary phone, governorate/city and public ID.
+router.put('/:id/profile', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ success: false, message: 'المستخدم غير موجود' });
+    }
+    const customer = await User.findById(req.params.id);
+    if (!customer || customer.role !== 'customer' || customer.deleted === true) {
+      return res.status(404).json({ success: false, message: 'المستخدم غير موجود' });
+    }
+
+    const body = req.body || {};
+    const fullName = String(body.fullName || '').trim();
+    const email = normalizeMobileEmail(body.email);
+    const phone = normalizePhoneNumber(body.phone);
+    const requestedGovernorate = String(body.governorate || '').trim();
+    const requestedArea = String(body.area || '').trim();
+    const governorate =
+      canonicalGovernorate(requestedGovernorate)
+      || canonicalGovernorate(requestedArea);
+    const publicId = body.publicId === undefined
+      ? customer.publicId
+      : String(body.publicId || '').trim();
+
+    if (fullName.length < 2 || fullName.length > 120) {
+      return res.json({ success: false, message: 'الاسم يجب أن يكون بين حرفين و120 حرفاً.' });
+    }
+    if (!isValidMobileEmail(email)) {
+      return res.json({ success: false, message: 'البريد الإلكتروني غير صالح.' });
+    }
+    if (!isValidPhoneNumber(phone)) {
+      return res.json({ success: false, message: INVALID_PHONE_MESSAGE });
+    }
+    if (!governorate || !requestedArea || !isValidAreaForGovernorate(governorate, requestedArea)) {
+      return res.json({ success: false, message: 'المحافظة أو القرية/المدينة غير صالحة.' });
+    }
+    if (!publicId || !isValidAdminPublicId(publicId)) {
+      return res.json({ success: false, message: 'ID المستخدم يجب أن يتكون من أرقام فقط.' });
+    }
+
+    if (email !== customer.email) {
+      const owner = await findActiveAccountByEmail(email);
+      if (owner && !owner._id.equals(customer._id)) {
+        return res.json({ success: false, message: 'البريد الإلكتروني مستخدم في حساب آخر.' });
+      }
+    }
+    if (publicId !== customer.publicId) {
+      const owner = await findActiveAccountByPublicId(publicId);
+      if (owner && !owner._id.equals(customer._id)) {
+        return res.json({ success: false, message: 'هذا الـ ID مستخدم في حساب آخر.' });
+      }
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      customer._id,
+      {
+        $set: {
+          fullName,
+          name: fullName,
+          email,
+          phoneNumbers: replacePrimaryPhone(customer.phoneNumbers, phone),
+          area: requestedArea,
+          governorate,
+          publicId,
+        },
+      },
+      { new: true, runValidators: true },
+    ).lean();
+
+    res.json({
+      success: true,
+      message: 'تم تحديث بيانات المستخدم بنجاح.',
+      user: {
+        _id: updated._id.toString(),
+        fullName: updated.fullName,
+        email: updated.email,
+        phone,
+        area: updated.area,
+        governorate: updated.governorate,
+        publicId: updated.publicId || '',
+      },
+    });
+  } catch (err) {
+    if (err?.code === 11000) {
+      return res.json({ success: false, message: 'البريد الإلكتروني أو الـ ID مستخدم بالفعل.' });
+    }
+    sendInternalServerFailure(res);
   }
 });
 
@@ -319,70 +435,26 @@ router.put('/:id/password', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user || user.role === 'admin') return res.json({ success: false, message: 'المستخدم غير موجود' });
-
-    const stateChanged =
-      user.deleted !== true
-      || user.status !== 'blocked';
-
-    if (stateChanged) {
-      const rotationFilter =
-        mobileSessionRotationFilter(user);
-
-      if (!rotationFilter) {
-        throw new Error(
-          'Invalid mobile session version',
-        );
-      }
-
-      const rotation =
-        await User.updateOne(
-          {
-            _id: user._id,
-            role: user.role,
-            ...rotationFilter,
-          },
-          {
-            $set: {
-              deleted: true,
-              status: 'blocked',
-            },
-            $inc: {
-              sessionVersion: 1,
-            },
-          },
-          {
-            runValidators: true,
-          },
-        );
-
-      if (rotation.matchedCount !== 1) {
-        throw new Error(
-          'Concurrent account-state rotation',
-        );
-      }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.json({ success: false, message: 'المستخدم غير موجود' });
+    }
+    const account = await User.findById(req.params.id);
+    if (!account || account.role !== 'customer') {
+      return res.json({ success: false, message: 'المستخدم غير موجود' });
     }
 
-    const io = req.app.get('io');
+    // Removes the account and its personal data from the database, so the
+    // same email, phone and ID can be used again (see accountDeletion.js).
+    await permanentlyDeleteAccount(account, { io: req.app.get('io') });
 
-    if (io) {
-      try {
-        io.to(`user:${user._id}`)
-          .emit('account_deleted', {});
-      } finally {
-        io.in(`user:${user._id}`)
-          .disconnectSockets(true);
-      }
-    }
-
-    // Release the email and ID so the person can register again.
-    await releaseDeletedAccountIdentity(
-      await User.findById(user._id),
-    );
-
-    res.json({ success: true, message: `تم حذف المستخدم (${user.fullName}) بنجاح` });
+    res.json({
+      success: true,
+      message: `تم حذف المستخدم (${account.fullName}) نهائياً من قاعدة البيانات`,
+    });
   } catch (err) {
+    if (err instanceof AccountDeletionBlockedError) {
+      return res.json({ success: false, code: err.code, message: err.message });
+    }
     sendInternalServerFailure(res);
   }
 });

@@ -89,6 +89,22 @@ class ProviderService {
     }
   }
 
+  /// The driver's 1-5 rating of the customer on a completed order.
+  Future<void> rateCustomer(String token, String orderId, int rating) async {
+    try {
+      await _dio.post(
+        '/orders/$orderId/customer-rating',
+        data: {'rating': rating},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      throw Exception(
+        (data is Map ? data['error'] : null) ?? 'Failed to submit rating',
+      );
+    }
+  }
+
   Future<void> setAvailability(String token, bool available) async {
     try {
       await _dio.put('/provider/availability',

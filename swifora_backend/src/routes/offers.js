@@ -29,6 +29,10 @@ const {
 const {
   driverCategoryForProvider,
 } = require('../services/providerServiceTypes');
+const {
+  MIN_OFFER_PRICE,
+  MAX_OFFER_PRICE,
+} = require('../services/offerPricing');
 
 const router = express.Router();
 
@@ -75,9 +79,9 @@ async function notifyDriverTaken(io, customerId, orderId, offerId, providerId) {
 router.post('/', auth, requireRole('provider'), offerCreateLimiter, offerCreateIpLimiter, async (req, res) => {
   try {
     const orderId = boundedTrimmedString(req.body?.orderId, 50);
-    const price = boundedFiniteNumber(req.body?.price, {
+    const rawPrice = boundedFiniteNumber(req.body?.price, {
       min: 0.01,
-      max: 100000,
+      max: MAX_OFFER_PRICE,
     });
     const estimatedTime = req.body?.estimatedTime === undefined
       ? 0
@@ -89,7 +93,7 @@ router.post('/', auth, requireRole('provider'), offerCreateLimiter, offerCreateI
     if (
       !orderId
       || !mongoose.isValidObjectId(orderId)
-      || price === null
+      || rawPrice === null
       || estimatedTime === null
     ) {
       return res.status(400).json({
@@ -97,6 +101,15 @@ router.post('/', auth, requireRole('provider'), offerCreateLimiter, offerCreateI
         code: 'INVALID_OFFER_INPUT',
       });
     }
+
+    if (rawPrice < MIN_OFFER_PRICE) {
+      return res.status(400).json({
+        error: `أقل سعر مسموح لعرض التوصيل هو ${MIN_OFFER_PRICE} شيكل.`,
+        code: 'OFFER_PRICE_TOO_LOW',
+        minPrice: MIN_OFFER_PRICE,
+      });
+    }
+    const price = rawPrice;
 
     const result = await lifecycle.submitOffer({
       orderId,

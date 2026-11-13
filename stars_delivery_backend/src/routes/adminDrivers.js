@@ -28,6 +28,11 @@ const Order = require('../models/Order');
 const Offer = require('../models/Offer');
 const Notification = require('../models/Notification');
 const PendingProvider = require('../models/PendingProvider');
+const {
+  findActiveAccountByEmail,
+  findActiveAccountByPublicId,
+  releaseDeletedAccountIdentity,
+} = require('../services/accountRelease');
 const CommissionPayment = require('../models/CommissionPayment');
 const { generatePublicId, isValidAdminPublicId } = require('../utils/publicId');
 const {
@@ -405,9 +410,9 @@ router.post('/', async (req, res) => {
       String(driverLicenseType || '').trim() === 'بدون رخصة';
 
     const exists =
-      await User.findOne({
-        email: driverEmail.toLowerCase(),
-      });
+      await findActiveAccountByEmail(
+        driverEmail.toLowerCase(),
+      );
 
     if (exists) {
       return res.json({
@@ -429,9 +434,9 @@ router.post('/', async (req, res) => {
     }
 
     if (requestedPublicId) {
-      const idExists = await User.exists({
-        publicId: requestedPublicId,
-      });
+      const idExists = await findActiveAccountByPublicId(
+        requestedPublicId,
+      );
 
       if (idExists) {
         return res.json({
@@ -996,6 +1001,11 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
+    // Release the email and ID so the driver can register again.
+    await releaseDeletedAccountIdentity(
+      await User.findById(driver._id),
+    );
+
     res.json({ success: true, message: `تم حذف السائق (${driver.fullName}) بنجاح` });
   } catch (err) {
     sendInternalServerFailure(res);
@@ -1238,6 +1248,15 @@ router.post(
 
 router.post('/pending/:id/approve', async (req, res) => {
   try {
+    // Free the email if it still belongs to a deleted account.
+    const pendingEmail = await PendingProvider
+      .findById(req.params.id)
+      .select('email')
+      .lean();
+    if (pendingEmail?.email) {
+      await findActiveAccountByEmail(pendingEmail.email);
+    }
+
     // Public-ID discovery is read-only. The unique User.publicId
     // index remains the final concurrency boundary.
     const publicId =

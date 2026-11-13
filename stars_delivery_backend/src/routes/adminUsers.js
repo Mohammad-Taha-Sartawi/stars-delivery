@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const { releaseDeletedAccountIdentity } = require('../services/accountRelease');
 const Order = require('../models/Order');
 const Notification = require('../models/Notification');
 const {
@@ -374,6 +375,11 @@ router.delete('/:id', async (req, res) => {
           .disconnectSockets(true);
       }
     }
+
+    // Release the email and ID so the person can register again.
+    await releaseDeletedAccountIdentity(
+      await User.findById(user._id),
+    );
 
     res.json({ success: true, message: `تم حذف المستخدم (${user.fullName}) بنجاح` });
   } catch (err) {

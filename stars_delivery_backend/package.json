@@ -12,7 +12,7 @@
     "offers:audit-duplicates": "node src/scripts/auditOfferDuplicates.js",
     "data:cleanup-orphans": "node src/scripts/cleanupOrphanRecords.js",
     "contacts:audit-legacy-users": "node src/scripts/auditLegacyContactUsers.js",
-    "test:integration": "node --test integration/mobile-auth.integration.js integration/locations.integration.js",
+    "test:integration": "node --test integration/mobile-auth.integration.js integration/locations.integration.js integration/account-release.integration.js",
     "ops:backup": "node src/scripts/backupRestore.js backup",
     "ops:restore": "node src/scripts/backupRestore.js restore",
     "locations:seed": "node src/scripts/seedLocations.js"

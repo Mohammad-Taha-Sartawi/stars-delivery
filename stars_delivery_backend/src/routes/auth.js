@@ -25,6 +25,7 @@ const {
   mobileSessionRotationFilter,
 } = require('../services/mobileSession');
 const { governorateKey } = require('../services/registrationLocation');
+const { findActiveAccountByEmail } = require('../services/accountRelease');
 const {
   MIN_MOBILE_PASSWORD_LENGTH,
   MAX_MOBILE_PASSWORD_LENGTH,
@@ -94,7 +95,8 @@ router.post('/register', mobileRegistrationLimiter, async (req, res) => {
         ? normalizeServiceTypes(req.body.serviceTypes)
         : [];
 
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    // A deleted account's email is released here, so it can be reused.
+    const existingUser = await findActiveAccountByEmail(normalizedEmail);
     if (existingUser) return res.status(400).json({ error: 'Email already registered' });
     const existingPending = await PendingProvider.findOne({ email: normalizedEmail });
     if (existingPending) return res.status(400).json({ error: 'Email already pending review' });

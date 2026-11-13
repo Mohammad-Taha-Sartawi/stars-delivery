@@ -96,6 +96,11 @@ const userSchema = new mongoose.Schema({
   lastLocationUpdate: { type: Date },
   lastLocationMocked: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+  // Set when an admin deletes the account. The email and publicId are then
+  // released for reuse (see services/accountRelease.js) and kept here.
+  deletedAt: { type: Date, default: null },
+  deletedEmail: { type: String, default: '' },
+  deletedPublicId: { type: String, default: '' },
   // Admin panel fields
   name: { type: String },
   governorate: { type: String },

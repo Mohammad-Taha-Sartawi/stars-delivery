@@ -20,6 +20,8 @@ The capture scripts are in [tooling/](tooling/), as `.txt` files so the analyzer
 
 **Fixture data is synthetic.** Names like "Driver Alpha" and "Test Customer", the `example.test` emails and the `05900000xx` phone numbers are invented. No real customer data appears in any image.
 
+> **Device screenshots added later:** 29 real Android emulator screenshots are in [screenshots/device/](screenshots/device/), described in [DEVICE_TEST_REPORT.md](DEVICE_TEST_REPORT.md).
+
 ## Coverage summary
 
 - Inventory items: **67** (24 screens, 15 dialogs, 28 admin views/modals)

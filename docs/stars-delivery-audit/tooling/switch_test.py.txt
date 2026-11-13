@@ -1,0 +1,68 @@
+"""Cold-start timing + same-process account switching on the emulator."""
+import os, subprocess, sys, time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+os.chdir(HERE)
+ADB = os.path.join(os.environ['LOCALAPPDATA'], 'Android', 'Sdk', 'platform-tools', 'adb.exe')
+DEV = 'emulator-5556'
+PKG = 'com.starsdelivery.stars_delivery'
+acc = {l.split()[0]: l.split('password=')[1].strip() for l in open('test-accounts.txt', encoding='utf-8')}
+
+
+def ui(*a):
+    return subprocess.run([sys.executable, 'ui.py', *a], capture_output=True, text=True, encoding='utf-8').stdout
+
+
+def adb(*a):
+    subprocess.run([ADB, '-s', DEV, *a], capture_output=True)
+
+
+def wait_for(text, timeout=30):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        if text in ui('dump'):
+            return time.time() - t0
+        time.sleep(0.3)
+    return None
+
+
+def login(role_label, email, pw):
+    if role_label:
+        ui('tap', role_label)
+        time.sleep(0.8)
+    ui('tapxy', '540', '1352'); time.sleep(1)
+    ui('type', email); time.sleep(0.3)
+    ui('key', 'TAB'); time.sleep(0.5)
+    ui('type', pw); time.sleep(0.3)
+    ui('key', 'BACK'); time.sleep(1)
+    ui('tap', 'تسجيل الدخول')
+
+
+def still_logged_in(marker, seconds=8):
+    """True if the home marker is visible now AND after `seconds`."""
+    if wait_for(marker, 15) is None:
+        return False
+    time.sleep(seconds)
+    return marker in ui('dump')
+
+
+def logout():
+    ui('tap', 'تسجيل الخروج'); time.sleep(1.2)
+    ui('tapxy', '341', '1370'); time.sleep(3)
+
+
+# Single cold start
+adb('shell', 'am', 'force-stop', PKG); time.sleep(1)
+adb('shell', 'am', 'start', '-n', f'{PKG}/.MainActivity')
+print('login visible after', wait_for('ستارز دليفري', 40))
+time.sleep(4)
+# Same-process switching
+login(None, 'customer@local.test', acc['customer'])
+print('1 customer login stays logged in:', still_logged_in('إنشاء طلب جديد'))
+logout()
+login('سائق. أقدم', 'driver@local.test', acc['provider'])
+print('2 driver login after customer logout stays logged in:', still_logged_in('لوحة تحكم السائق'))
+ui('shot', '../device/16-driver-dashboard.png')
+logout()
+login('زبون. أحتاج', 'customer@local.test', acc['customer'])
+print('3 customer login after driver logout stays logged in:', still_logged_in('إنشاء طلب جديد'))

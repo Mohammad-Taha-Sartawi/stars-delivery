@@ -61,12 +61,15 @@ The only Critical finding is a **dependency advisory**: `mongoose` 8.24.1 has cr
 
 The **test suite** is large: 613 tests ran and all passed. About 42% of it, though, asserts on source text rather than executing behaviour. The core order and offer journeys have no HTTP-level or end-to-end tests.
 
+> **Update, 2026-11-13: device testing.** The real app was later run on an Android emulator against a local copy of the backend (throwaway database, synthetic accounts). The full order journey was confirmed working from both sides. The run also found two **High** defects, both now fixed in PR #4: (1) admins could not approve any new driver, and (2) any login after a logout in the same app session was signed out immediately (this confirms RISK-041). It also found that earnings and commission are counted at acceptance rather than delivery, which needs a product decision, and recorded an ANR at startup. See [DEVICE_TEST_REPORT.md](DEVICE_TEST_REPORT.md).
+
 **Headline numbers**
 
 | Metric | Value | Basis |
 |---|---|---|
 | Mobile screens / dialogs / admin views | **24 / 15 / 28** (67 items) | [SCREEN_INVENTORY.md](SCREEN_INVENTORY.md) |
-| Screenshot files / inventory items captured | **180 files / 49 of 67** | [SCREENSHOT_MANIFEST.md](SCREENSHOT_MANIFEST.md) |
+| Screenshot files / inventory items captured | **180 files / 49 of 67** | [DEVICE_TEST_REPORT.md](DEVICE_TEST_REPORT.md) | Android emulator run against a local backend: journeys, 29 device screenshots, findings D-1…D-7 |
+| [SCREENSHOT_MANIFEST.md](SCREENSHOT_MANIFEST.md) |
 | Confirmed features / features investigated and NOT FOUND | **23 / 14** | [APPLICATION_FLOWS.md §24](APPLICATION_FLOWS.md#24-confirmed-feature-list-and-not-found-list) |
 | HTTP endpoints | **122** (57 mobile/public + 65 admin) | [API_INVENTORY.md §2.13](API_INVENTORY.md#213-endpoint-counts) |
 | Socket.IO events / FCM push types | **15 / 11** | [API_INVENTORY.md](API_INVENTORY.md#3-socketio-events) |

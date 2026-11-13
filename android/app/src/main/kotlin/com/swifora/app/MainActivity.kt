@@ -1,4 +1,4 @@
-package com.starsdelivery.stars_delivery
+package com.swifora.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

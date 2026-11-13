@@ -8,9 +8,9 @@ feature is disabled safely and the rest of the app keeps working.
 
 1. Create a Firebase project in the Firebase console.
 2. Add an Android app with package name:
-   `com.starsdelivery.stars_delivery`
+   `com.swifora.app`
 3. Add an iOS app with bundle id:
-   `com.starsdelivery.starsDelivery`
+   `com.swifora.app`
 4. Enable **Cloud Messaging**.
 5. For iOS, upload an APNs authentication key under
    Project Settings → Cloud Messaging → Apple app configuration.
@@ -29,7 +29,7 @@ flutter run \
   --dart-define=FIREBASE_STORAGE_BUCKET=... \
   --dart-define=FIREBASE_ANDROID_APP_ID=... \
   --dart-define=FIREBASE_IOS_APP_ID=... \
-  --dart-define=FIREBASE_IOS_BUNDLE_ID=com.starsdelivery.starsDelivery
+  --dart-define=FIREBASE_IOS_BUNDLE_ID=com.swifora.app
 ```
 
 Optional: `FIREBASE_MEASUREMENT_ID`.

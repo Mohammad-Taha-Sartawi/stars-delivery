@@ -305,7 +305,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 - **Evidence:** Confirmed defect
 - **Location:** [offers.js:202](../../stars_delivery_backend/src/routes/offers.js#L202), [orderLifecycle.js:571](../../stars_delivery_backend/src/services/orderLifecycle.js#L571), [offers.js:115-116](../../stars_delivery_backend/src/routes/offers.js#L115-L116), [offer_model.dart:63](../../lib/models/offer_model.dart#L63), [order_offers_screen.dart:571-586](../../lib/screens/order_offers_screen.dart#L571-L586)
 - **Description:** `User` has `phoneNumbers[]` and no `phone` field. `populate('providerId','… phone …')` and `provider.phone` therefore always come back undefined, so the customer's phone UI branch never renders. This may be the intended privacy outcome, but it is accidental and the code contradicts itself.
-- **Recommended validation:** Decide whether the driver phone should be shown after acceptance, and implement that explicitly.
+- **Resolution:** The owner decided on 2026-11-13 that customers should **not** see the driver phone. The behaviour stays. The only cleanup worth doing is to drop the dead `phone` populate and the client branch that never renders, so the intent is explicit in the code.
 
 ### RISK-021: `OfferModel.orderId` becomes the `toString()` of a Map
 - **Evidence:** Confirmed defect (latent: the field is currently unused)

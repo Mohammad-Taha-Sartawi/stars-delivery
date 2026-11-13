@@ -23,7 +23,7 @@ This was the first time the real app was run on an Android device during the aud
 | 2 | Customer login | ✅ | [DEVICE-02](screenshots/device/DEVICE-02-customer-after-login.png) |
 | 3 | Customer creates a product order | ✅ | [DEVICE-03](screenshots/device/DEVICE-03-create-order.png), [DEVICE-04](screenshots/device/DEVICE-04-create-order-filled.png), [DEVICE-05](screenshots/device/DEVICE-05-after-submit.png) |
 | 4 | Driver submits an offer (API). The customer receives it live, and the Offers screen **opens by itself**. | ✅ (auto-open confirms UX-09) | [DEVICE-06](screenshots/device/DEVICE-06-customer-home-offer-arrived.png) |
-| 5 | Customer accepts the offer | ✅. No driver phone is ever shown to the customer, and there is no next-step guidance. | [DEVICE-08](screenshots/device/DEVICE-08-after-accept.png) |
+| 5 | Customer accepts the offer | ✅. No driver phone is shown to the customer (intended, per the owner), and there is no next-step guidance. | [DEVICE-08](screenshots/device/DEVICE-08-after-accept.png) |
 | 6 | Driver starts, then completes (API). The customer's confirm screen opens by itself → Approve delivery → rating prompt → 5★ | ✅ | [DEVICE-10](screenshots/device/DEVICE-10-customer-delivery-confirmation.png), [DEVICE-11](screenshots/device/DEVICE-11-rating-prompt.png) |
 | 7 | Customer logs out → driver logs in **in the same app session** | ❌ **Driver thrown back to login** (finding D-2). ✅ after the fix. | [DEVICE-14](screenshots/device/DEVICE-14-driver-dashboard.png) (back on login, before the fix), [DEVICE-16](screenshots/device/DEVICE-16-driver-dashboard.png) (after the fix) |
 | 8 | Login with the wrong role card selected | Shows "Invalid credentials" **in English** inside the Arabic UI, although the credentials are correct | [DEVICE-15](screenshots/device/DEVICE-15-wrong-role-invalid-credentials.png) |
@@ -45,7 +45,7 @@ This was the first time the real app was run on an Android device during the aud
 | D-4 | Medium | Confirmed (UX) | When the customer accepts while the driver is on another screen, the driver gets no in-app signal. `_openAcceptedOrder` only acts when the dashboard is the top route. |
 | D-5 | Medium | Confirmed | Startup jank and one ANR. Every cold start logged "Skipped 33–139 frames … too much work on its main thread". One relaunch produced an **ANR** ("Input dispatching timed out"): [DEVICE-17](screenshots/device/DEVICE-17-anr-app-not-responding.png). Login became usable after 2.4 s on warm relaunches and **12.6 s** on the relaunch after the ANR. This supports RISK-001 and RISK-002; the exact culprit still needs a profiler trace. |
 | D-6 | Low | Confirmed (UX) | Signing in requires choosing a role card, and the wrong card produces an English "Invalid credentials" message (UX-13, RISK-036). |
-| D-7 | Low | Confirmed | The customer's free-text address (`location`) never appears on the driver's Active deliveries card; only the area does. The customer never sees the driver's phone (contract mismatch, see API_INVENTORY §5.7). |
+| D-7 | Low | Confirmed | The customer's free-text address (`location`) never appears on the driver's Active deliveries card; only the area does. The customer never sees the driver's phone; the owner confirmed on 2026-11-13 that this is intended. |
 
 ## Confirmed working at runtime
 

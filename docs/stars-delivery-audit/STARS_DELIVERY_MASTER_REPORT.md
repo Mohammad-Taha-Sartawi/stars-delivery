@@ -297,7 +297,7 @@ Sequence diagrams (end-to-end order, login/session, password recovery): [APPLICA
 - **122 HTTP endpoints:** 57 under `/api` for the mobile app and public use (5 of them have no Flutter caller), plus 65 admin endpoints (session + CSRF). **15 Socket.IO server→client events**; clients emit no custom events. **11 FCM `data.type` values.** Full inventory: [API_INVENTORY.md](API_INVENTORY.md).
 - **Client HTTP behaviour:** Dio with 30 s timeouts (8 s for chat). There are **no retries, no caching and no pagination**. Every 401/403 session failure goes to one session-failure hook, which logs the user out.
 - **Contract mismatches (confirmed):**
-  - Offers populate a `phone` field that doesn't exist on users (they have `phoneNumbers`), so customers never see the driver's phone.
+  - Offers populate a `phone` field that doesn't exist on users (they have `phoneNumbers`), so customers never see the driver's phone. **Owner decision (2026-11-13): hiding the driver phone from customers is intended.**
   - 409 replies carry `message`, but the client reads `error`.
   - `OfferModel.orderId` becomes the `toString()` of a populated Map.
   - The server event `rating_received` has no client listener.
@@ -386,7 +386,7 @@ Full register: [QUALITY_RISK_REGISTER.md](QUALITY_RISK_REGISTER.md). **51 findin
 | RISK-049 | Low | **Confirmed (screenshot)** | The admin dashboard is unusable at phone width |
 | RISK-050 | Low | **Confirmed (screenshot)** | Cancelled and expired statuses show the raw English enum |
 
-Also from the flows analysis ([API_INVENTORY §5.7](API_INVENTORY.md#57-contract-mismatches-client-model--server-response)): the driver phone is never shown to customers, conflict messages are lost, an expired driver can never re-offer, and the driver lock is not tied to the active order.
+Also from the flows analysis ([API_INVENTORY §5.7](API_INVENTORY.md#57-contract-mismatches-client-model--server-response)): the driver phone is never shown to customers (intended, per the owner), conflict messages are lost, an expired driver can never re-offer, and the driver lock is not tied to the active order.
 
 ---
 
@@ -503,7 +503,7 @@ This is a recommendation only. Nothing here has been implemented.
 | P0 | Stop presenting errors as data: emit `ProviderError` and show retry views; add `mounted` guards after awaits | RISK-044, RISK-045, RISK-047 |
 | P0 | Move the location catalog off the startup path: load it lazily in an isolate, shrink the asset (Palestine-only data already exists server-side), and stop blocking on GPS before the first frame | RISK-001, RISK-002 |
 | P1 | Supertest + `MongoMemoryReplSet` suite for orders/offers/provider routes (the full create→offer→accept→deliver→rate path), plus Socket.IO event tests | Test gaps 1–4 |
-| P1 | Fix contract mismatches: driver phone, 409 `message`, `orderId` parsing, `rating_received` | API_INVENTORY §5.7 |
+| P1 | Fix contract mismatches: 409 `message`, `orderId` parsing, `rating_received` | API_INVENTORY §5.7 |
 | P1 | Remove push tokens on logout before revoking the session; add push-tap deep links | RISK-005, UX-08 |
 | P1 | Complete localization: move hard-coded Arabic into the string table, map all statuses, add a key-parity test | UX-04, RISK-050 |
 | P2 | Flutter `integration_test` / Patrol e2e on an emulator against a seeded staging backend; golden tests for key screens in ar/en and light/dark | Visual regression for the redesign |

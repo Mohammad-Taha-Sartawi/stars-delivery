@@ -9,7 +9,6 @@ import '../bloc/provider/provider_bloc.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/location_catalog.dart';
-import '../services/auth_service.dart';
 import '../services/validators.dart';
 import '../services/api_config.dart';
 import '../services/mobile_api_client.dart';

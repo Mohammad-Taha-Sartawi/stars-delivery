@@ -6,7 +6,6 @@ import '../bloc/app/app_bloc.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
-import '../services/theme_service.dart';
 import '../services/socket_service.dart';
 import '../models/user_model.dart';
 import '../widgets/ui/app_confirm_dialog.dart';

@@ -163,6 +163,57 @@ document.querySelectorAll('.sidebar ul li[data-page]').forEach(item => {
   });
 });
 
+// Responsive navigation: on phones and tablets (<= 900px, see style.css)
+// the sidebar is a drawer opened from the top bar.
+(function setUpNavigationDrawer() {
+  const sidebar = document.getElementById('adminSidebar');
+  const toggle = document.getElementById('navToggle');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (!sidebar || !toggle || !backdrop) return;
+
+  const drawerQuery = window.matchMedia('(max-width: 900px)');
+
+  function setOpen(open) {
+    sidebar.classList.toggle('open', open);
+    backdrop.classList.toggle('show', open);
+    document.body.classList.toggle('nav-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'إغلاق القائمة' : 'فتح القائمة');
+    if (open) {
+      const active = sidebar.querySelector('li.active') || sidebar.querySelector('li');
+      if (active) active.focus({ preventScroll: true });
+    }
+  }
+
+  // Keyboard access to the menu items (they are list items, not buttons).
+  sidebar.querySelectorAll('ul li[data-page]').forEach(item => {
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('role', 'button');
+    item.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        item.click();
+      }
+    });
+    item.addEventListener('click', () => {
+      if (drawerQuery.matches) setOpen(false);
+    });
+  });
+
+  toggle.addEventListener('click', () => setOpen(!sidebar.classList.contains('open')));
+  backdrop.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && sidebar.classList.contains('open')) {
+      setOpen(false);
+      toggle.focus();
+    }
+  });
+  // Leaving the drawer layout (rotating a tablet, resizing) resets it.
+  drawerQuery.addEventListener('change', event => {
+    if (!event.matches) setOpen(false);
+  });
+})();
+
 document.querySelectorAll('.back-home').forEach(btn => {
   btn.addEventListener('click', function () {
     switchPage('dashboard');

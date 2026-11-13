@@ -528,3 +528,125 @@ body { background: #0b0e14; color: #e5e9f0; display: flex; height: 100vh; overfl
 .modal-box .row:last-child { border-bottom: none; }
 .modal-box .row .label { color: #8892a8; font-weight: 600; }
 .modal-box .row .value { color: #fff; font-weight: 700; text-align: left; word-break: break-word; }
+
+/* ==========================================================================
+   Responsive / adaptive layout (phones, tablets, iPad)
+   - Desktop (> 1200px): unchanged.
+   - Tablet landscape (<= 1200px): narrower sidebar, tighter spacing.
+   - Phone & tablet portrait (<= 900px): sidebar becomes a slide-in drawer
+     opened from a top bar (behaviour in public/js/main.js).
+   - Phone (<= 600px): single-column grids, scrollable tables, full-width
+     modals, larger touch targets.
+   ========================================================================== */
+/* Menu items: icon and label together; a counter (if any) at the far edge. */
+.sidebar ul li { justify-content: flex-start; gap: 0; }
+.sidebar ul li > span:first-child { flex: 1; }
+.sidebar ul li .badge-counter { margin-inline-start: auto; }
+
+.mobile-topbar,
+.sidebar-backdrop { display: none; }
+
+.nav-toggle {
+  width: 44px; height: 44px; border: 1px solid #2a3546; border-radius: 12px;
+  background: #1e2733; color: #00d4ff; font-size: 20px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.nav-toggle:focus-visible,
+.sidebar ul li:focus-visible { outline: 2px solid #00d4ff; outline-offset: 2px; }
+
+@media (max-width: 1200px) {
+  .sidebar { width: 220px; padding: 20px 10px; }
+  .sidebar ul li { padding: 12px 14px; }
+  .main-content { padding: 22px 22px; }
+  .triple-metrics { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .commissions-summary { grid-template-columns: repeat(2, 1fr); }
+  .chat-conversations { width: 260px; }
+}
+
+@media (max-width: 900px) {
+  body { display: block; height: auto; min-height: 100vh; overflow: auto; }
+  body.nav-open { overflow: hidden; }
+
+  .mobile-topbar {
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 900;
+    padding: 10px 16px; background: #141a24; border-bottom: 1px solid #2a3546;
+  }
+  .mobile-topbar-title { font-size: 20px; font-weight: 800; color: #00d4ff; }
+  .mobile-topbar-title span { color: #fff; }
+
+  /* RTL page: the drawer slides in from the right edge. */
+  .sidebar {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 1100;
+    width: min(300px, 85vw); overflow-y: auto;
+    transform: translateX(100%); transition: transform 0.25s ease;
+    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar .logo { margin-bottom: 24px; }
+  .sidebar ul li { min-height: 48px; }
+
+  .sidebar-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 1050;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+  }
+  .sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
+
+  .main-content { padding: 18px 16px; overflow: visible; }
+  /* Tablets: 6 stat cards as 3 + 3 instead of 4 + 2. */
+  .stats-row { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .top-header { flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .top-header h1 { font-size: 22px; }
+  .top-header h1 small { display: block; margin: 4px 0 0; }
+
+  .settings-grid,
+  .add-driver-form .form-grid,
+  .add-driver-form .doc-grid,
+  .driver-inline-editor .form-grid { grid-template-columns: 1fr; }
+
+  .search-container { padding: 18px; }
+  .search-box > * { flex: 1 1 180px; min-width: 0; }
+
+  /* Wide tables scroll sideways inside their card instead of the page. */
+  .main-content table,
+  .modal-box table {
+    display: block; width: 100%; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; white-space: nowrap;
+  }
+
+  /* Support chat: conversation list above the open conversation. */
+  .chat-layout { flex-direction: column; height: auto; min-height: 70vh; }
+  .chat-conversations {
+    width: 100%; max-height: 35vh; border-left: none;
+    border-bottom: 1px solid #2a3546;
+  }
+  .chat-window { min-height: 55vh; }
+
+  .modal-box { width: 94%; padding: 22px 18px; border-radius: 18px; max-height: 90vh; }
+}
+
+@media (max-width: 600px) {
+  .main-content { padding: 14px 12px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .triple-metrics,
+  .commissions-summary { grid-template-columns: 1fr; }
+  .panel-box { padding: 16px; border-radius: 16px; }
+  .top-header h1 { font-size: 20px; }
+  .live-clock { width: 100%; text-align: center; padding: 8px 14px; }
+
+  /* 16px inputs stop iOS Safari from zooming in on focus. */
+  .main-content input,
+  .main-content select,
+  .main-content textarea,
+  .modal-box input,
+  .modal-box select,
+  .modal-box textarea { font-size: 16px; }
+
+  .action-btn, .main-content button { min-height: 44px; }
+
+  .modal-box { width: 100%; max-width: 100%; max-height: 100vh; height: 100%;
+    border-radius: 0; padding: 18px 14px; }
+  .chat-msg { max-width: 92%; }
+  .chat-input-area { flex-wrap: wrap; }
+}

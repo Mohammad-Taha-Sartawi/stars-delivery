@@ -61,7 +61,7 @@ The only Critical finding is a **dependency advisory**: `mongoose` 8.24.1 has cr
 
 The **test suite** is large: 613 tests ran and all passed. About 42% of it, though, asserts on source text rather than executing behaviour. The core order and offer journeys have no HTTP-level or end-to-end tests.
 
-> **Update, 2026-11-13: device testing.** The real app was later run on an Android emulator against a local copy of the backend (throwaway database, synthetic accounts). The full order journey was confirmed working from both sides. The run also found two **High** defects, both now fixed in PR #4: (1) admins could not approve any new driver, and (2) any login after a logout in the same app session was signed out immediately (this confirms RISK-041). It also found that earnings and commission are counted at acceptance rather than delivery, which needs a product decision, and recorded an ANR at startup. See [DEVICE_TEST_REPORT.md](DEVICE_TEST_REPORT.md).
+> **Update, 2026-11-13: device testing.** The real app was later run on an Android emulator against a local copy of the backend (throwaway database, synthetic accounts). The full order journey was confirmed working from both sides. The run also found two **High** defects, both now fixed in PR #4: (1) admins could not approve any new driver, and (2) any login after a logout in the same app session was signed out immediately (this confirms RISK-041). It also confirmed that earnings and commission are counted when an order is accepted rather than delivered. The owner confirmed this is intended. The run also recorded an ANR at startup. See [DEVICE_TEST_REPORT.md](DEVICE_TEST_REPORT.md).
 
 **Headline numbers**
 
@@ -526,6 +526,7 @@ This is a recommendation only. Nothing here has been implemented.
 9. **Product intent.**
    - Should customers be able to cancel after acceptance?
    - Should commission be enforced?
+   - ~~When should earnings and commission be counted?~~ **Decided (2026-11-13): at acceptance, as currently implemented.**
    - Is the 15-minute driver lock intended?
    - Are the auto-opening screens intended?
 10. **Unverified by runtime:** push notifications, background behaviour, real GPS and map tiles, socket reconnection, SMTP delivery, performance on low-end devices.

@@ -3827,27 +3827,13 @@ async function approveProvider(id) {
         String(id),
       );
 
-    const metadataResponse =
-      await adminFetch(
-        `/admin/drivers/pending/${encodedId}/documents`,
-      );
-
-    const metadata =
-      await metadataResponse.json();
-
-    if (
-      !metadataResponse.ok
-      || metadata.complete !== true
-    ) {
-      alert(
-        'لا يمكن قبول المزود قبل اكتمال رخصة القيادة.',
-      );
-      return;
-    }
-
+    // Driver document upload was removed from the mobile app, so new
+    // applicants have no documents and the review list always enables
+    // "Approve". Documents of older applicants can still be opened from the
+    // review button; they no longer gate approval.
     if (
       !confirm(
-        'تم التحقق من اكتمال الوثيقتين. هل أنت متأكد من قبول طلب هذا السائق؟',
+        'هل أنت متأكد من قبول طلب هذا السائق؟',
       )
     ) {
       return;

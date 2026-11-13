@@ -5,7 +5,7 @@
 // written as PNGs under <Desktop>/UX-01-remediation-screenshots/.
 //
 // It writes nothing unless explicitly enabled:
-//   STARS_UX01_SCREENSHOTS=1 flutter test test/ux01_screenshots_test.dart
+//   SWIFORA_UX01_SCREENSHOTS=1 flutter test test/ux01_screenshots_test.dart
 // so the normal `flutter test` run stays a pure CI check (this trivial stub
 // test runs and passes without touching the capture path).
 //
@@ -24,20 +24,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/bloc/app/app_bloc.dart';
-import 'package:stars_delivery/bloc/app/app_event.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/bloc/notification/notification_bloc.dart';
-import 'package:stars_delivery/bloc/provider/provider_bloc.dart';
-import 'package:stars_delivery/models/user_model.dart';
-import 'package:stars_delivery/screens/login_screen.dart';
-import 'package:stars_delivery/screens/provider_home_screen.dart';
-import 'package:stars_delivery/services/api_config.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/mobile_api_client.dart';
-import 'package:stars_delivery/services/session_storage.dart';
-import 'package:stars_delivery/services/socket_service.dart';
-import 'package:stars_delivery/services/theme_service.dart';
+import 'package:swifora/bloc/app/app_bloc.dart';
+import 'package:swifora/bloc/app/app_event.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/bloc/notification/notification_bloc.dart';
+import 'package:swifora/bloc/provider/provider_bloc.dart';
+import 'package:swifora/models/user_model.dart';
+import 'package:swifora/screens/login_screen.dart';
+import 'package:swifora/screens/provider_home_screen.dart';
+import 'package:swifora/services/api_config.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/mobile_api_client.dart';
+import 'package:swifora/services/session_storage.dart';
+import 'package:swifora/services/socket_service.dart';
+import 'package:swifora/services/theme_service.dart';
 
 import 'mock_api_server.dart';
 
@@ -103,15 +103,15 @@ UserModel _mockUser() {
 }
 
 /// Fonts shipped with the local Flutter SDK cache; override with
-/// STARS_FONT_DIR when the SDK lives elsewhere.
+/// SWIFORA_FONT_DIR when the SDK lives elsewhere.
 String get _fontDir =>
-    Platform.environment['STARS_FONT_DIR'] ??
+    Platform.environment['SWIFORA_FONT_DIR'] ??
     r'C:\src\flutter\bin\cache\artifacts\material_fonts';
 
 /// Evidence output directory (outside the repository). Override with
-/// STARS_UX01_SCREENSHOT_DIR; defaults to the current user's Desktop.
+/// SWIFORA_UX01_SCREENSHOT_DIR; defaults to the current user's Desktop.
 String get _captureDir =>
-    Platform.environment['STARS_UX01_SCREENSHOT_DIR'] ??
+    Platform.environment['SWIFORA_UX01_SCREENSHOT_DIR'] ??
     '${Platform.environment['USERPROFILE'] ?? Directory.current.path}'
         r'\Desktop\UX-01-remediation-screenshots';
 
@@ -171,13 +171,13 @@ Future<void> capture(
 }
 
 Future<void> main() async {
-  if (Platform.environment['STARS_UX01_SCREENSHOTS'] != '1') {
+  if (Platform.environment['SWIFORA_UX01_SCREENSHOTS'] != '1') {
     // Capture mode is opt-in. Registering a trivial test keeps the suite
     // green in normal `flutter test` runs while writing nothing.
     testWidgets('screenshots capture is disabled unless explicitly enabled', (
       tester,
     ) async {
-      expect(Platform.environment['STARS_UX01_SCREENSHOTS'], isNot('1'));
+      expect(Platform.environment['SWIFORA_UX01_SCREENSHOTS'], isNot('1'));
     });
     return;
   }

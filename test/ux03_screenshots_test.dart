@@ -7,10 +7,10 @@
 //   - the localized logout confirmation dialog (English LTR / Arabic RTL).
 //
 // Enabled only with:
-//   STARS_UX03_SCREENSHOTS=1 flutter test test/ux03_screenshots_test.dart
+//   SWIFORA_UX03_SCREENSHOTS=1 flutter test test/ux03_screenshots_test.dart
 //
 // Output: <Desktop>/UX-03-screenshots (override with
-// STARS_UX03_SCREENSHOT_DIR). These are widget-test rasterizations, not device
+// SWIFORA_UX03_SCREENSHOT_DIR). These are widget-test rasterizations, not device
 // screenshots. Arabic glyphs require an Arabic-capable font which this test
 // renderer does not provide; the Arabic dialog capture verifies direction and
 // layout, not glyph fidelity.
@@ -21,9 +21,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/widgets/ui/app_status_chip.dart';
-import 'package:stars_delivery/widgets/ui/app_tone.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/widgets/ui/app_status_chip.dart';
+import 'package:swifora/widgets/ui/app_tone.dart';
 
 import 'ux03_screen_harness.dart';
 
@@ -43,12 +43,12 @@ const _screens = [
 ];
 
 String get _outDir =>
-    Platform.environment['STARS_UX03_SCREENSHOT_DIR'] ??
+    Platform.environment['SWIFORA_UX03_SCREENSHOT_DIR'] ??
     '${Platform.environment['USERPROFILE'] ?? Directory.current.path}'
         r'\Desktop\UX-03-screenshots';
 
 String get _fontDir =>
-    Platform.environment['STARS_FONT_DIR'] ??
+    Platform.environment['SWIFORA_FONT_DIR'] ??
     r'C:\src\flutter\bin\cache\artifacts\material_fonts';
 
 Future<void> _loadFonts() async {
@@ -104,11 +104,11 @@ Future<void> _capture(
 }
 
 Future<void> main() async {
-  if (Platform.environment['STARS_UX03_SCREENSHOTS'] != '1') {
+  if (Platform.environment['SWIFORA_UX03_SCREENSHOTS'] != '1') {
     testWidgets('UX-03 screenshots are disabled unless enabled', (
       tester,
     ) async {
-      expect(Platform.environment['STARS_UX03_SCREENSHOTS'], isNot('1'));
+      expect(Platform.environment['SWIFORA_UX03_SCREENSHOTS'], isNot('1'));
     });
     return;
   }

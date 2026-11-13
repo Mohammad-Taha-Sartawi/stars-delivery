@@ -44,7 +44,12 @@ void main() {
 
     expect(source, contains("'offer_not_selected'"));
 
-    expect(source, contains('RejectedOrdersScreen'));
+    // Routing for notification taps lives in the shared router.
+    final router = File(
+      'lib/services/notification_router.dart',
+    ).readAsStringSync();
+    expect(router, contains("'offer_not_selected'"));
+    expect(router, contains('RejectedOrdersScreen'));
   });
 
   test('providers are notified and pending lists drop selected orders', () {
@@ -102,13 +107,13 @@ void main() {
 
   test('backend cancels stale offers and notifies both sides', () {
     final lifecycle = File(
-      'stars_delivery_backend/src/services/orderLifecycle.js',
+      'swifora_backend/src/services/orderLifecycle.js',
     ).readAsStringSync();
     final offers = File(
-      'stars_delivery_backend/src/routes/offers.js',
+      'swifora_backend/src/routes/offers.js',
     ).readAsStringSync();
     final offerModel = File(
-      'stars_delivery_backend/src/models/Offer.js',
+      'swifora_backend/src/models/Offer.js',
     ).readAsStringSync();
 
     expect(offerModel, contains('rejectionReason'));
@@ -134,7 +139,7 @@ void main() {
     expect(offers, contains("'new_order'"));
 
     final provider = File(
-      'stars_delivery_backend/src/routes/provider.js',
+      'swifora_backend/src/routes/provider.js',
     ).readAsStringSync();
 
     expect(provider, contains("recordType: 'offer_not_selected'"));

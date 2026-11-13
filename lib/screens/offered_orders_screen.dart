@@ -5,11 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
+import '../services/location_catalog.dart';
+import '../widgets/ui/star_rating_dialog.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
 import '../services/socket_service.dart';
-import '../services/theme_service.dart';
 import '../widgets/ui/app_notification_bell.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
@@ -248,8 +249,12 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
     final customerPublicId = customer is Map
         ? (customer['publicId'] ?? '').toString()
         : '';
+    final customerRating = ratingSummaryLabel(o['customerRatingSummary']);
     final phone = (o['phone'] ?? '').toString();
-    final area = (o['area'] ?? '').toString();
+    final area = LocationCatalog.localize(
+      context,
+      (o['area'] ?? '').toString(),
+    );
     final description = (o['description'] ?? '').toString();
     final offeredPrice = (o['offeredPrice'] as num?)?.toDouble() ?? 0;
     final offeredTime = (o['offeredTime'] as num?)?.toInt() ?? 0;
@@ -363,6 +368,19 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
                           fontWeight: FontWeight.bold,
                           color: scheme.onSecondaryContainer,
                         ),
+                      ),
+                    ),
+                  ],
+                  if (customerRating.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      customerRating,
+                      semanticsLabel:
+                          '${AppLocalization.get(context, 'customer_rating_label')} $customerRating',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: appToneStyle(context, AppTone.warning).foreground,
                       ),
                     ),
                   ],

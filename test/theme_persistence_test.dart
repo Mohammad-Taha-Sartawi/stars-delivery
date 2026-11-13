@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stars_delivery/bloc/app/app_bloc.dart';
-import 'package:stars_delivery/bloc/app/app_event.dart';
-import 'package:stars_delivery/services/locale_preferences.dart';
-import 'package:stars_delivery/services/theme_preferences.dart';
+import 'package:swifora/bloc/app/app_bloc.dart';
+import 'package:swifora/bloc/app/app_event.dart';
+import 'package:swifora/services/locale_preferences.dart';
+import 'package:swifora/services/theme_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

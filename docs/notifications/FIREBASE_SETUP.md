@@ -8,9 +8,9 @@ feature is disabled safely and the rest of the app keeps working.
 
 1. Create a Firebase project in the Firebase console.
 2. Add an Android app with package name:
-   `com.starsdelivery.stars_delivery`
+   `com.swifora.app`
 3. Add an iOS app with bundle id:
-   `com.starsdelivery.starsDelivery`
+   `com.swifora.app`
 4. Enable **Cloud Messaging**.
 5. For iOS, upload an APNs authentication key under
    Project Settings → Cloud Messaging → Apple app configuration.
@@ -29,16 +29,35 @@ flutter run \
   --dart-define=FIREBASE_STORAGE_BUCKET=... \
   --dart-define=FIREBASE_ANDROID_APP_ID=... \
   --dart-define=FIREBASE_IOS_APP_ID=... \
-  --dart-define=FIREBASE_IOS_BUNDLE_ID=com.starsdelivery.starsDelivery
+  --dart-define=FIREBASE_IOS_BUNDLE_ID=com.swifora.app
 ```
 
 Optional: `FIREBASE_MEASUREMENT_ID`.
 
 Release builds must use the same values or a CI secret store that injects them.
 
+Simpler: keep the values in a JSON file **outside the repository** and pass it
+with `--dart-define-from-file`. The keys are the same names as above (plus
+`SWIFORA_SERVER_URL`); the values come from `google-services.json`:
+
+| Define | `google-services.json` field |
+|---|---|
+| `FIREBASE_API_KEY` | `client[].api_key[0].current_key` |
+| `FIREBASE_PROJECT_ID` | `project_info.project_id` (`swiforaa`) |
+| `FIREBASE_MESSAGING_SENDER_ID` | `project_info.project_number` |
+| `FIREBASE_STORAGE_BUCKET` | `project_info.storage_bucket` |
+| `FIREBASE_ANDROID_APP_ID` | `client[].client_info.mobilesdk_app_id` |
+
+```bash
+flutter build apk --release --dart-define-from-file=C:/secure/swifora-defines.json
+```
+
+The Android app is registered in the Firebase project `swiforaa` with package
+`com.swifora.app`. The Gradle `google-services` plugin is **not** needed.
+
 ## 3. API server credentials
 
-Set one of these in `stars_delivery_backend/.env`:
+Set one of these in `swifora_backend/.env`:
 
 ```env
 FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
@@ -49,6 +68,15 @@ FIREBASE_SERVICE_ACCOUNT_PATH=C:/secure/firebase-service-account.json
 Grant the service account Firebase Cloud Messaging permissions. Never commit the
 service-account JSON or `.env` to Git.
 
+On the production server: copy the service-account JSON to a protected path
+readable only by the service user (for example `/etc/swifora/firebase.json`,
+mode 600), set `FIREBASE_SERVICE_ACCOUNT_PATH` to it in the service environment,
+and restart the API. A wrong or missing key only disables pushes; the log then
+shows `Firebase Admin initialization skipped: …`.
+
+The server uses the modular `firebase-admin` v14 API (`firebase-admin/app`,
+`firebase-admin/messaging`); the old `admin.credential` API no longer exists.
+
 ## 4. What is sent
 
 - Every persisted user notification is also sent through FCM when a device token
@@ -58,7 +86,24 @@ service-account JSON or `.env` to Git.
   who are available and support the order type.
 - The app registers its FCM token after login and removes it on logout.
 
-## 5. Verification
+## 5. App behaviour
+
+- **App closed or in the background:** Android shows the notification in the
+  tray by itself (the server sends a `notification` block). The app creates the
+  `swifora_default` channel with high importance ("Order updates" /
+  "تحديثات الطلبات"), so order pushes appear as heads-up alerts.
+- **Tapping a notification** opens the related screen: offers for a customer's
+  order, the order detail for drivers, in-progress orders for delivery
+  confirmation, the rejected-orders report for "offer not selected", and the
+  notifications list otherwise (`lib/services/notification_router.dart`). This
+  also works when the tap launches the closed app.
+- **App open:** the push is shown as a short in-app message (Android does not
+  put foreground pushes in the tray).
+- **Logout:** the app removes its device token before revoking the session, and
+  the server deletes all of the account's tokens on logout, so a signed-out
+  phone stops receiving that account's pushes.
+
+## 6. Verification
 
 1. Start the API with Firebase credentials configured.
 2. Build and install the app with the Firebase dart-defines.

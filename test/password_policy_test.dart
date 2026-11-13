@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/validators.dart';
+import 'package:swifora/services/validators.dart';
 
 void main() {
   group('mobile password policy', () {

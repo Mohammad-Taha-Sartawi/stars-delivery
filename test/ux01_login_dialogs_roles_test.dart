@@ -8,29 +8,31 @@
 // UX01-004 (role selection): the selected role card must present a non-color
 // indicator (check icon) in addition to its Semantics.selected state.
 //
-// The area dropdown reads the 46 MB countries/cities asset through the
-// flutter/assets platform channel, which never completes inside an automated
-// widget test (flutter_test only mocks that channel when the UNIT_TEST_ASSETS
-// env var is set). We therefore install a test-only message handler serving a
-// minimal faithful fixture: the actual Palestine entry pre-extracted from the
-// real asset file once per suite.
+// The area dropdown loads governorates from GET /api/locations/governorates.
+// Tests serve that endpoint through the MobileApiClient.testAdapter seam,
+// built from the backend's own Palestine data file
+// (swifora_backend/src/data/palestine-locations.json), so the fixture
+// is the same data the server seeds into MongoDB.
 
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/bloc/app/app_bloc.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/location_catalog.dart';
-import 'package:stars_delivery/services/session_storage.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/screens/login_screen.dart';
+import 'package:swifora/bloc/app/app_bloc.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/api_config.dart';
+import 'package:swifora/services/location_catalog.dart';
+import 'package:swifora/services/mobile_api_client.dart';
+import 'package:swifora/services/session_storage.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/screens/login_screen.dart';
 
 class _TestVault implements TokenVault {
   @override
@@ -82,39 +84,43 @@ class _StubGateway implements AuthGateway {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Serve the area asset through the flutter/assets channel inside widget
-  // tests. The fixture is the genuine Palestine entry verbatim, extracted from
-  // the real asset once (plain IO is allowed at suite level, outside any
-  // test's fake-async zone).
-  const areaAssetKey = 'assets/countries+states+cities.json';
-  final areaFixture = jsonEncode(<Map<String, dynamic>>[
-    (jsonDecode(File('assets/countries+states+cities.json').readAsStringSync())
-            as List)
-        .cast<Map<String, dynamic>>()
-        .firstWhere((country) => country['iso2'] == 'PS'),
-  ]);
+  // Serve GET /api/locations/governorates from the backend data file.
+  final locationData =
+      jsonDecode(
+            File(
+              'swifora_backend/src/data/palestine-locations.json',
+            ).readAsStringSync(),
+          )
+          as Map<String, dynamic>;
+  final governoratesPayload = [
+    for (final g
+        in (locationData['governorates'] as List).cast<Map<String, dynamic>>())
+      {
+        'name': g['name'],
+        'native': g['native'],
+        'cities': [
+          for (final c in (g['cities'] as List).cast<Map<String, dynamic>>())
+            {'name': c['name'], 'native': c['native']},
+        ],
+      },
+  ];
 
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMessageHandler('flutter/assets', (ByteData? message) async {
-        final key = utf8.decode(message!.buffer.asUint8List());
-        if (key == areaAssetKey) {
-          return Uint8List.fromList(
-            utf8.encode(areaFixture),
-          ).buffer.asByteData();
-        }
-        return null;
-      });
+  setUpAll(() {
+    ApiConfig.initForTesting('http://127.0.0.1:1');
+    MobileApiClient.testAdapter = _LocationsAdapter(governoratesPayload);
+  });
 
-  // rootBundle caches the load future. A future created inside one test's
-  // fake-async zone never completes in the next test, so evict it per test.
+  tearDownAll(() {
+    MobileApiClient.testAdapter = null;
+  });
+
   setUp(() {
-    rootBundle.evict(areaAssetKey);
     LocationCatalog.clearCache();
   });
 
   Future<void> waitForGovernorateOptions(WidgetTester tester) async {
-    // _loadAreas reads the asset asynchronously. Asset-channel futures complete
-    // on the real event loop, so let them run before pumping the UI.
+    // _loadAreas fetches the catalog asynchronously; let the request settle
+    // before pumping the UI.
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
@@ -136,7 +142,7 @@ void main() {
         return;
       }
     }
-    fail('The governorate list did not load from the asset fixture.');
+    fail('The governorate list did not load from the location API fixture.');
   }
 
   Widget loginHarness({required Locale locale}) {
@@ -505,4 +511,32 @@ void main() {
       expect(find.text('Service Type'), findsOneWidget);
     });
   });
+}
+
+/// Serves the location catalog endpoint; any other path returns an empty map.
+class _LocationsAdapter implements HttpClientAdapter {
+  _LocationsAdapter(this.governorates);
+
+  final List<Map<String, dynamic>> governorates;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final body = options.uri.path.endsWith('/locations/governorates')
+        ? governorates
+        : <String, dynamic>{};
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

@@ -1,0 +1,46 @@
+{
+  "name": "swifora_backend",
+  "version": "1.0.0",
+  "description": "Swifora Backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test",
+    "check": "node --check src/index.js",
+    "admin:bootstrap": "node src/scripts/adminBootstrap.js",
+    "offers:audit-duplicates": "node src/scripts/auditOfferDuplicates.js",
+    "data:cleanup-orphans": "node src/scripts/cleanupOrphanRecords.js",
+    "contacts:audit-legacy-users": "node src/scripts/auditLegacyContactUsers.js",
+    "test:integration": "node --test integration/mobile-auth.integration.js integration/locations.integration.js integration/account-release.integration.js integration/account-and-support.integration.js",
+    "ops:backup": "node src/scripts/backupRestore.js backup",
+    "ops:restore": "node src/scripts/backupRestore.js restore",
+    "locations:seed": "node src/scripts/seedLocations.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.18.1",
+    "bcryptjs": "^2.4.3",
+    "connect-mongo": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "ejs": "^6.0.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.6.2",
+    "express-session": "^1.19.0",
+    "firebase-admin": "^14.5.0",
+    "helmet": "8.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.24.9",
+    "multer": "^2.2.0",
+    "nodemailer": "10.4.0",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "mongodb-memory-server-core": "11.2.0",
+    "supertest": "7.2.2"
+  }
+}

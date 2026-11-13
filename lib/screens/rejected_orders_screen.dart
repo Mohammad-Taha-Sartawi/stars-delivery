@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/app/app_bloc.dart';
+import '../services/location_catalog.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
+import '../widgets/ui/app_feedback.dart';
 import '../widgets/ui/app_status_chip.dart';
 import '../widgets/ui/app_tone.dart';
+import '../widgets/ui/star_rating_dialog.dart';
 
 class RejectedOrdersScreen extends StatefulWidget {
   final String token;
@@ -41,6 +44,27 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _rateCustomer(String orderId) async {
+    final rating = await showStarRatingDialog(
+      context,
+      title: AppLocalization.get(context, 'rate_customer_title'),
+      body: AppLocalization.get(context, 'rate_customer_body'),
+    );
+    if (rating == null || !mounted) return;
+    try {
+      await _providerService.rateCustomer(widget.token, orderId, rating);
+      if (!mounted) return;
+      AppFeedback.success(context, AppLocalization.get(context, 'rating_thanks'));
+      await _load(showLoading: false);
+    } catch (error) {
+      if (!mounted) return;
+      AppFeedback.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
+      );
+    }
   }
 
   Future<void> _load({bool showLoading = true}) async {
@@ -338,6 +362,45 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                     ],
                   ),
                 ],
+                if (delivered) ...[
+                  const SizedBox(height: 8),
+                  if (order['customerRating'] is num)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: appToneStyle(context, AppTone.warning).solid,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          AppLocalization.get(
+                            context,
+                            'your_customer_rating',
+                          ).replaceAll(
+                            '%d',
+                            '${(order['customerRating'] as num).toInt()}',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            _rateCustomer(order['_id']?.toString() ?? ''),
+                        icon: const Icon(Icons.star_outline_rounded, size: 18),
+                        label: Text(
+                          AppLocalization.get(context, 'rate_customer'),
+                        ),
+                      ),
+                    ),
+                ],
                 if (order['area'] != null &&
                     order['area'].toString().isNotEmpty) ...[
                   const SizedBox(height: 3),
@@ -350,7 +413,10 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        order['area'].toString(),
+                        LocationCatalog.localize(
+                          context,
+                          order['area'].toString(),
+                        ),
                         style: TextStyle(
                           fontSize: 12,
                           color: scheme.onSurfaceVariant,

@@ -5,14 +5,10 @@ import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
 import '../bloc/notification/notification_state.dart';
 import '../services/responsive.dart';
+import '../services/notification_router.dart';
 import '../services/localization_service.dart';
 import '../services/theme_service.dart';
 import '../bloc/app/app_bloc.dart';
-import '../bloc/offer/offer_bloc.dart';
-import 'order_detail_screen.dart';
-import 'order_offers_screen.dart';
-import 'my_orders_screen.dart';
-import 'rejected_orders_screen.dart';
 import '../widgets/ui/app_status_badge.dart';
 import '../widgets/ui/app_tone.dart';
 
@@ -243,79 +239,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _openNotification(BuildContext context, dynamic n) {
-    if (n.orderId.toString().isEmpty) {
+    final page = NotificationRouter.pageFor(
+      type: n.type.toString(),
+      orderId: n.orderId.toString(),
+      token: widget.token,
+    );
+    if (page == null) {
       _showDetail(context, n);
       return;
     }
-
-    const providerTypes = {
-      'new_order',
-      'offer_accepted',
-      'delivery_confirmed',
-      'delivery_rejected',
-      'new_rating',
-    };
-    const customerTypes = {
-      'new_offer',
-      'order_pending',
-      'order_completed',
-      'driver_taken',
-    };
-
-    if (n.type == 'delivery_confirmation') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MyOrdersScreen(
-            token: widget.token,
-            statuses: const {'fulfilling'},
-            titleKey: 'in_progress_orders_btn',
-          ),
-        ),
-      );
-      return;
-    }
-
-    if (n.type == 'offer_not_selected') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RejectedOrdersScreen(token: widget.token),
-        ),
-      );
-      return;
-    }
-
-    if (providerTypes.contains(n.type)) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OrderDetailScreen(
-            token: widget.token,
-            orderId: n.orderId.toString(),
-          ),
-        ),
-      );
-      return;
-    }
-
-    if (customerTypes.contains(n.type)) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (_) => OfferBloc(),
-            child: OrderOffersScreen(
-              token: widget.token,
-              orderId: n.orderId.toString(),
-            ),
-          ),
-        ),
-      );
-      return;
-    }
-
-    _showDetail(context, n);
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   void _showDetail(BuildContext context, dynamic n) {

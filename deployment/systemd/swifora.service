@@ -1,0 +1,33 @@
+[Unit]
+Description=Swifora Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+User=swifora
+Group=swifora
+
+WorkingDirectory=/opt/swifora/current/swifora_backend
+
+EnvironmentFile=/etc/swifora/swifora.env
+
+ExecStart=/usr/bin/node src/index.js
+
+Restart=on-failure
+RestartSec=5s
+
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

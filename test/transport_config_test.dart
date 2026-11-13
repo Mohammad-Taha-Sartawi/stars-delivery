@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/api_config.dart';
+import 'package:swifora/services/api_config.dart';
 
 void main() {
   test('Android debug keeps the local HTTP development fallback', () {

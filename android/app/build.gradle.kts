@@ -45,7 +45,7 @@ val releaseSigningStoreFile =
 fun requireReleaseSigning() {
     if (!releaseSigningPropertiesFile.isFile) {
         throw GradleException(
-            "STARS_ANDROID_RELEASE_SIGNING_REQUIRED: " +
+            "SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED: " +
                 "android/key.properties is required " +
                 "for Android release artifacts.",
         )
@@ -62,7 +62,7 @@ fun requireReleaseSigning() {
 
     if (missing.isNotEmpty()) {
         throw GradleException(
-            "STARS_ANDROID_RELEASE_SIGNING_REQUIRED: " +
+            "SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED: " +
                 "missing required signing properties: " +
                 missing.joinToString(", "),
         )
@@ -70,7 +70,7 @@ fun requireReleaseSigning() {
 
     if (releaseSigningStoreFile?.isFile != true) {
         throw GradleException(
-            "STARS_ANDROID_RELEASE_SIGNING_REQUIRED: " +
+            "SWIFORA_ANDROID_RELEASE_SIGNING_REQUIRED: " +
                 "the configured release keystore " +
                 "does not exist or is not a file.",
         )
@@ -78,7 +78,7 @@ fun requireReleaseSigning() {
 }
 
 android {
-    namespace = "com.starsdelivery.stars_delivery"
+    namespace = "com.swifora.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -89,7 +89,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.starsdelivery.stars_delivery"
+        applicationId = "com.swifora.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = maxOf(flutter.minSdkVersion, 23)

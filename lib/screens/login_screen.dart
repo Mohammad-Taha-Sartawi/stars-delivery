@@ -7,12 +7,10 @@ import '../bloc/app/app_bloc.dart';
 import '../bloc/app/app_event.dart';
 import '../bloc/provider/provider_bloc.dart';
 import '../services/responsive.dart';
+import '../services/guest_support_service.dart';
 import '../services/localization_service.dart';
 import '../services/location_catalog.dart';
-import '../services/auth_service.dart';
 import '../services/validators.dart';
-import '../services/api_config.dart';
-import '../services/mobile_api_client.dart';
 import '../services/theme_service.dart';
 import '../widgets/ui/app_button_loading_indicator.dart';
 import '../widgets/ui/app_feedback.dart';
@@ -20,6 +18,7 @@ import 'home_screen.dart';
 import 'provider_home_screen.dart';
 import 'forgot_password_screen.dart';
 import 'force_change_password_screen.dart';
+import 'guest_support_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,6 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final Set<String> _serviceTypes = {'product', 'people', 'goods'};
 
+  final GuestSupportService _guestSupport = GuestSupportService();
   bool _isLogin = true;
   String _selectedRole = 'customer';
   List<GovernorateOption> _governorates = [];
@@ -70,6 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loadAreas() async {
     try {
       final governorates = await LocationCatalog.load();
+      if (!mounted) return;
       setState(() {
         _governorates = governorates;
       });
@@ -166,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(
-          AppLocalization.get(context, 'stars_delivery'),
+          AppLocalization.get(context, 'app_name'),
           style: theme.textTheme.headlineLarge,
           textAlign: TextAlign.center,
         ),
@@ -302,12 +303,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ' itself',
                             ),
                           ),
-                          ..._currentGovernorate!.cities.map(
-                            (city) => DropdownMenuItem(
-                              value: city,
-                              child: Text(city),
-                            ),
-                          ),
+                          ..._currentGovernorate!
+                              .citiesSortedFor(arabic: isAr)
+                              .map(
+                                (city) => DropdownMenuItem(
+                                  value: city,
+                                  child: Text(
+                                    _currentGovernorate!.cityLabel(
+                                      city,
+                                      arabic: isAr,
+                                    ),
+                                  ),
+                                ),
+                              ),
                         ],
                   onChanged: _currentGovernorate == null
                       ? null
@@ -459,8 +467,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       MaterialPageRoute(builder: (_) => home),
                     );
                   }
+                  if (state is AuthPendingApproval) {
+                    _showPendingApproval(state.message);
+                  }
                   if (state is AuthError) {
-                    AppFeedback.error(context, state.message);
+                    AppFeedback.error(
+                      context,
+                      state.code == 'INVALID_CREDENTIALS'
+                          ? AppLocalization.get(context, 'invalid_credentials')
+                          : state.message,
+                    );
                   }
                 },
                 builder: (context, state) {
@@ -511,7 +527,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               TextButton.icon(
-                onPressed: _showContactDialog,
+                onPressed: _openSupport,
                 icon: Icon(
                   Icons.headset_mic_outlined,
                   size: AppSizes.iconSm,
@@ -548,6 +564,29 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     _emailController.text = recoveredEmail;
+  }
+
+  /// Opens the guest's support conversation if this device has one,
+  /// otherwise the form for a new message.
+  Future<void> _openSupport() async {
+    final thread = await _guestSupport.savedThread();
+    if (!mounted) return;
+    if (thread == null) {
+      _showContactDialog();
+      return;
+    }
+    await _openGuestThread(thread);
+  }
+
+  Future<void> _openGuestThread(GuestSupportThread thread) async {
+    final startNew = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            GuestSupportScreen(thread: thread, service: _guestSupport),
+      ),
+    );
+    if (startNew == true && mounted) _showContactDialog();
   }
 
   void _showContactDialog() {
@@ -652,18 +691,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         setDialogState(() => sending = true);
 
                         try {
-                          final dio = MobileApiClient.create(
-                            baseUrl: ApiConfig.apiUrl,
-                            connectTimeout: const Duration(seconds: 8),
-                          );
-                          await dio.post(
-                            '/chat/contact',
-                            data: {
-                              'name': nameCtrl.text.trim(),
-                              'email': emailCtrl.text.trim(),
-                              'phone': phoneCtrl.text.trim(),
-                              'text': msgCtrl.text.trim(),
-                            },
+                          final thread = await _guestSupport.start(
+                            name: nameCtrl.text.trim(),
+                            email: emailCtrl.text.trim(),
+                            phone: phoneCtrl.text.trim(),
+                            text: msgCtrl.text.trim(),
                           );
 
                           if (!ctx.mounted) {
@@ -675,6 +707,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               context,
                               AppLocalization.get(context, 'contact_success'),
                             );
+                            // Our replies from the dashboard show up here.
+                            if (thread != null) _openGuestThread(thread);
                           }
                         } catch (_) {
                           if (!ctx.mounted) {
@@ -712,10 +746,43 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  /// A driver's sign-up waits for admin approval. Move to the sign-in form
+  /// with the email and password kept, so signing in after approval is one
+  /// tap, and say clearly that this is not an error.
+  void _showPendingApproval(String message) {
+    if (!_isLogin) {
+      setState(() {
+        _isLogin = true;
+        _selectedRole = 'provider';
+      });
+      _confirmPasswordController.clear();
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.hourglass_top_rounded),
+        title: Text(AppLocalization.get(dialogContext, 'account_under_review')),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppLocalization.get(dialogContext, 'ok')),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _toggleAuthMode() {
     setState(() {
       _isLogin = !_isLogin;
     });
+
+    // The governorate list comes from the server; if the first load failed
+    // (e.g. offline at launch), try again when the sign-up form opens.
+    if (!_isLogin && _governorates.isEmpty) {
+      _loadAreas();
+    }
 
     context.read<AuthBloc>().add(ToggleAuthModeEvent(isLogin: _isLogin));
   }

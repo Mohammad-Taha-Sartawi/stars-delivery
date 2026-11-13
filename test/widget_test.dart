@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/main.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/session_storage.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/main.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/session_storage.dart';
 
 class _WidgetTestTokenVault implements TokenVault {
   @override
@@ -55,7 +55,7 @@ void main() {
 
   testWidgets('App shows login screen', (WidgetTester tester) async {
     await tester.pumpWidget(
-      StarsDeliveryApp(
+      SwiforaApp(
         authBlocFactory: () => AuthBloc(
           authService: _WidgetTestAuthGateway(),
           sessionStorage: SessionStorage(vault: _WidgetTestTokenVault()),
@@ -64,13 +64,13 @@ void main() {
       ),
     );
 
-    expect(find.text('ستارز دليفري'), findsOneWidget);
+    expect(find.text('سويفورا'), findsOneWidget);
 
     expect(find.text('زبون'), findsOneWidget);
 
     expect(find.text('سائق'), findsOneWidget);
 
-    // Explicitly dispose StarsDeliveryApp while the test is active.
+    // Explicitly dispose SwiforaApp while the test is active.
     // BlocProvider owns the factory-created AuthBloc and closes it.
     await tester.pumpWidget(const SizedBox.shrink());
   });

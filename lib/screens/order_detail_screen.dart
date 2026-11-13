@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/offer/offer_bloc.dart';
+import '../services/location_catalog.dart';
 import '../services/localization_service.dart';
 import '../services/order_service.dart';
 import '../services/provider_service.dart';
@@ -240,9 +241,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         title: AppLocalization.get(context, 'governorate_outside_area_title'),
         message:
             AppLocalization.get(context, 'governorate_outside_area_message')
-                .replaceFirst('%s', orderArea)
-                .replaceFirst('%s', governorate)
-                .replaceFirst('%s', providerPlace),
+                .replaceFirst(
+                  '%s',
+                  LocationCatalog.localize(context, orderArea),
+                )
+                .replaceFirst(
+                  '%s',
+                  LocationCatalog.localize(context, governorate),
+                )
+                .replaceFirst(
+                  '%s',
+                  LocationCatalog.localize(context, providerPlace),
+                ),
         note: AppLocalization.get(context, 'governorate_outside_area_note'),
         confirmLabel: AppLocalization.get(
           context,
@@ -326,7 +336,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final rejected = order['rejected'] == true;
     final price = (order['price'] as num?)?.toDouble() ?? 0;
     final phone = order['phone']?.toString() ?? '';
-    final area = order['area']?.toString() ?? '';
+    final area = LocationCatalog.localize(
+      context,
+      order['area']?.toString() ?? '',
+    );
     final location = order['location']?.toString() ?? '';
     final customer = order['customerId'];
     final customerName = customer is Map

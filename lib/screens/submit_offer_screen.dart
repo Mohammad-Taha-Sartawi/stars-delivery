@@ -6,6 +6,7 @@ import '../bloc/offer/offer_event.dart';
 import '../bloc/offer/offer_state.dart';
 import '../services/responsive.dart';
 import '../services/localization_service.dart';
+import '../services/offer_service.dart';
 import '../services/theme_service.dart';
 import '../bloc/app/app_bloc.dart';
 import '../widgets/ui/app_button_loading_indicator.dart';
@@ -163,7 +164,7 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
                       Wrap(
                         spacing: AppSpacing.sm,
                         runSpacing: AppSpacing.sm,
-                        children: [5, 10, 15, 20]
+                        children: OfferService.quickPrices
                             .map(
                               (p) => ChoiceChip(
                                 label: Text('$p ILS'),
@@ -186,6 +187,10 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
                           prefixIcon: const Icon(
                             Icons.monetization_on_outlined,
                           ),
+                          helperText: AppLocalization.get(
+                            context,
+                            'min_offer_price_hint',
+                          ).replaceAll('{min}', '${OfferService.minOfferPrice}'),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -202,6 +207,15 @@ class _SubmitOfferScreenState extends State<SubmitOfferScreen> {
                             return AppLocalization.get(
                               context,
                               'invalid_price',
+                            );
+                          }
+                          if (p < OfferService.minOfferPrice) {
+                            return AppLocalization.get(
+                              context,
+                              'price_below_minimum',
+                            ).replaceAll(
+                              '{min}',
+                              '${OfferService.minOfferPrice}',
                             );
                           }
                           return null;

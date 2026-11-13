@@ -1,6 +1,6 @@
 # UX-02 — App-Wide UI/UX Audit and Roadmap
 
-**Project:** Stars Delivery (`stars-delivery`)
+**Project:** Swifora (formerly Stars Delivery)
 **Audit date:** 2026-11-09
 **Canonical branch:** `ux/01-remediation-20261109`
 **Baseline commit at audit start:** `828bc5eebc4b15b4b5bee1fd066b88ef8ceb5d17`

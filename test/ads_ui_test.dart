@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/models/ad_model.dart';
+import 'package:swifora/models/ad_model.dart';
 
 void main() {
   test(

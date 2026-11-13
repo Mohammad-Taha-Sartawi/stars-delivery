@@ -6,6 +6,7 @@ import '../bloc/provider/provider_bloc.dart';
 import '../bloc/provider/provider_event.dart';
 import '../bloc/app/app_bloc.dart';
 import '../services/responsive.dart';
+import '../services/location_catalog.dart';
 import '../services/localization_service.dart';
 import '../services/location_service.dart';
 import '../services/socket_service.dart';
@@ -353,7 +354,10 @@ class _ProviderActiveOrdersScreenState
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            o['area'].toString(),
+                                            LocationCatalog.localize(
+                                              context,
+                                              o['area'].toString(),
+                                            ),
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: Theme.of(

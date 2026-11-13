@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<%= csrfToken %>">
+  <title>Swifora - لوحة التحكم</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Shown on phones and tablets (<= 900px): opens the sidebar as a drawer. -->
+  <header class="mobile-topbar">
+    <button type="button" class="nav-toggle" id="navToggle" aria-label="فتح القائمة" aria-controls="adminSidebar" aria-expanded="false"><i class="fas fa-bars"></i></button>
+    <div class="mobile-topbar-title"><span>🚀</span> Swifora</div>
+  </header>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <%- include('partials/sidebar') %>
+
+  <div class="main-content">
+
+    <!-- الرئيسية - Dashboard -->
+    <div id="page-dashboard" class="page-section active-page">
+      <div class="top-header">
+        <h1>لوحة القيادة <small>التحكم بالعمولات والإحصائيات</small></h1>
+        <div class="live-clock"><i class="fas fa-sync-alt fa-fw" data-presentation="p001"></i> <span id="clockDisplay">جاري التحميل...</span></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card blue" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="drivers" data-admin-arg-2="all" data-admin-arg-3="جميع السائقين"><span class="icon"><i class="fas fa-users"></i></span><div class="number" id="totalDrivers">0</div><div class="label">إجمالي السائقين</div></div>
+        <div class="stat-card green" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="drivers" data-admin-arg-2="active" data-admin-arg-3="السائقين النشطين"><span class="icon"><i class="fas fa-check-circle"></i></span><div class="number" id="activeDrivers">0</div><div class="label">نشطون (سائقين)</div></div>
+        <div class="stat-card red" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="drivers" data-admin-arg-2="inactive" data-admin-arg-3="السائقين غير النشطين"><span class="icon"><i class="fas fa-times-circle"></i></span><div class="number" id="inactiveDrivers">0</div><div class="label">غير نشطين (سائقين)</div></div>
+        <div class="stat-card blue" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="users" data-admin-arg-2="all" data-admin-arg-3="جميع المستخدمين"><span class="icon"><i class="fas fa-user-friends"></i></span><div class="number" id="totalUsers">0</div><div class="label">إجمالي المستخدمين</div></div>
+        <div class="stat-card green" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="users" data-admin-arg-2="active" data-admin-arg-3="المستخدمين النشطين"><span class="icon"><i class="fas fa-check-circle"></i></span><div class="number" id="activeUsers">0</div><div class="label">نشطون (مستخدمين)</div></div>
+        <div class="stat-card red" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="users" data-admin-arg-2="inactive" data-admin-arg-3="المستخدمين غير النشطين"><span class="icon"><i class="fas fa-times-circle"></i></span><div class="number" id="inactiveUsers">0</div><div class="label">غير نشطين (مستخدمين)</div></div>
+      </div>
+      <div class="triple-metrics">
+        <div class="metric-card card-products"><div class="label"><span><i class="fas fa-shopping-bag"></i> طلبات المنتجات</span><span>هذا الشهر</span></div><div class="metric-split"><div class="split-item accepted"><span class="split-label">مقبولة</span><span class="split-value" id="prodAccepted">0</span></div><div class="split-item not-accepted"><span class="split-label">غير مقبولة</span><span class="split-value" id="prodNotAccepted">0</span></div></div></div>
+        <div class="metric-card card-passengers"><div class="label"><span><i class="fas fa-user-friends"></i> طلبات الركاب</span><span>هذا الشهر</span></div><div class="metric-split"><div class="split-item accepted"><span class="split-label">مقبولة</span><span class="split-value" id="passAccepted">0</span></div><div class="split-item not-accepted"><span class="split-label">غير مقبولة</span><span class="split-value" id="passNotAccepted">0</span></div></div></div>
+        <div class="metric-card card-cargo"><div class="label"><span><i class="fas fa-truck"></i> طلبات البضائع</span><span>هذا الشهر</span></div><div class="metric-split"><div class="split-item accepted"><span class="split-label">مقبولة</span><span class="split-value" id="cargoAccepted">0</span></div><div class="split-item not-accepted"><span class="split-label">غير مقبولة</span><span class="split-value" id="cargoNotAccepted">0</span></div></div></div>
+      </div>
+      <div class="bottom-grid">
+        <div class="panel-box">
+          <h3><i class="fas fa-hand-holding-usd"></i> ملخص العمولات والإيرادات</h3>
+          <div class="commission-stats">
+            <div class="commission-period-row">
+            <div class="commission-item total-commission"><div class="info commission-report-link" role="button" tabindex="0" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="commissionReport" data-admin-arg-2="today" data-admin-arg-3="تقرير عمولة المنصة — اليوم"><span class="title"><i class="fas fa-coins"></i> عمولة المنصة اليوم</span><span class="commission-date" id="commissionTodayDate">---</span><span class="number"><span id="totalCommission">0</span><span class="currency">شيكل</span></span><span class="report-hint"><i class="fas fa-list"></i> اضغط لعرض التقرير حسب السائق</span></div></div>
+            <div class="commission-item total-commission month-commission"><div class="info commission-report-link" role="button" tabindex="0" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="commissionReport" data-admin-arg-2="month" data-admin-arg-3="تقرير عمولة المنصة — هذا الشهر"><span class="title"><i class="fas fa-calendar-alt"></i> عمولة المنصة هذا الشهر</span><span class="commission-date" id="commissionMonthLabel">---</span><span class="number"><span id="monthCommission">0</span><span class="currency">شيكل</span></span><span class="report-hint"><i class="fas fa-list"></i> اضغط لعرض التقرير حسب السائق</span></div></div>
+            </div>
+            <div class="commission-item top-driver" data-presentation="p004"><div class="info"><span class="title"><i class="fas fa-trophy"></i> أعلى سائق تحقيقاً للأرباح</span><span class="driver-name" id="topDriver">---</span><span class="driver-earnings">الأرباح: <span id="topDriverEarn">0</span> شيكل</span></div></div>
+            <div class="commission-item pending-payout" data-admin-action="openListModal" data-admin-arg-count="3" data-admin-arg-1="payouts" data-admin-arg-2="unpaid" data-admin-arg-3="السائقون المستحقون للدفع" data-presentation="p005"><div class="info"><span class="title"><i class="fas fa-hand-holding-usd"></i> السائقون المستحقون للدفع</span><span class="payout-count" id="pendingDrivers">0</span><span class="payout-amount">المبلغ المستحق: <span id="pendingAmount">0</span> شيكل</span><button class="payout-reset-btn" data-admin-action="resetAllCommissions" data-admin-arg-count="0">تصفير عدادات العمولات للجميع</button></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- الطلبات -->
+    <div id="page-orders" class="page-section">
+      <div class="top-header"><h1>الطلبات <small>جميع طلبات التوصيل والنقل</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplayOrders">جاري التحميل...</span></div></div>
+      <div class="search-container">
+        <div class="search-box">
+          <input id="orderSearchInput" type="text" placeholder="رقم الطلب أو وصف الطلب...">
+          <select id="orderStatusFilter">
+            <option value="all">كل الحالات</option>
+            <option value="pending">قيد الانتظار</option>
+            <option value="offered">عروض متوفرة</option>
+            <option value="accepted">تم قبول عرض</option>
+            <option value="fulfilling">جاري العمل على الطلب</option>
+            <option value="completed">تم انجاز الطلب</option>
+            <option value="cancelled">تم إلغاء الطلب</option>
+            <option value="expired">انتهت مدة قبول السعر</option>
+          </select>
+          <select id="orderTypeFilter">
+            <option value="all">كل الأنواع</option>
+            <option value="product">طلب منتج</option>
+            <option value="people">نقل أشخاص</option>
+            <option value="goods">نقل بضاعة</option>
+          </select>
+          <input id="orderAreaFilter" type="text" placeholder="المنطقة (اختياري)">
+          <button id="orderSearchBtn"><i class="fas fa-search"></i> بحث</button>
+        </div>
+      </div>
+      <div id="ordersContent" class="result-card"></div>
+    </div>
+
+    <!-- السائقين -->
+    <div id="page-drivers" class="page-section">
+      <div class="top-header"><h1>إدارة السائقين <small>بحث برقم السائق (أرقام فقط)</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay2">جاري التحميل...</span></div></div>
+      <div class="search-container">
+        <div class="search-box">
+          <input type="text" id="driverSearchInput" placeholder="أدخل ID السائق أو الاسم">
+          <button id="driverSearchBtn"><i class="fas fa-search"></i> بحث</button>
+          <button class="back-home" data-page="dashboard"><i class="fas fa-arrow-right"></i> الرئيسية</button>
+        </div>
+        <div id="driverResult" class="result-card"></div>
+        <div id="driversList" class="result-card"></div>
+      </div>
+    </div>
+
+    <!-- المستخدمين -->
+    <div id="page-users" class="page-section">
+      <div class="top-header"><h1>إدارة المستخدمين <small>بحث برقم المستخدم (أرقام فقط)</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay3">جاري التحميل...</span></div></div>
+      <div class="search-container">
+        <div class="search-box">
+          <input type="text" id="userSearchInput" placeholder="أدخل ID المستخدم أو الاسم">
+          <button id="userSearchBtn"><i class="fas fa-search"></i> بحث</button>
+          <button class="back-home" data-page="dashboard"><i class="fas fa-arrow-right"></i> الرئيسية</button>
+        </div>
+        <div id="userResult" class="result-card"></div>
+        <div id="usersList" class="result-card"></div>
+      </div>
+    </div>
+
+    <!-- العمولات -->
+    <div id="page-commissions" class="page-section">
+      <div class="top-header"><h1>إدارة العمولات <small>أرباح المنصة من العمولات المستحقة</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay4">جاري التحميل...</span></div></div>
+      <div id="commissionsContent"></div>
+    </div>
+
+    <!-- إضافة سائق جديد -->
+    <div id="page-add-driver" class="page-section">
+      <div class="top-header"><h1>إضافة سائق جديد <small>تسجيل وتفعيل سائق على المنصة</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay10">جاري التحميل...</span></div></div>
+      <div class="add-driver-form">
+        <form id="addDriverForm">
+          <div class="form-grid">
+            <div class="form-group"><label>رقم ID السائق (اختياري)</label><input type="text" name="driverCustomId" maxlength="50" inputmode="numeric" pattern="[0-9]*" placeholder="أرقام فقط — اتركه فارغاً للتوليد التلقائي"></div>
+            <div class="form-group"><label><span class="required">*</span> الاسم الكامل</label><input type="text" name="driverName" placeholder="أدخل الاسم الكامل" required></div>
+            <div class="form-group"><label><span class="required">*</span> البريد الإلكتروني</label><input type="email" name="driverEmail" placeholder="أدخل البريد الإلكتروني" required></div>
+            <div class="form-group"><label><span class="required">*</span> رقم الجوال</label><input type="text" name="driverPhone" placeholder="أدخل رقم الجوال" required></div>
+            <div class="form-group"><label><span class="required">*</span> كلمة المرور الأولية <small>(للإضافة المباشرة)</small></label><input type="password" name="driverPassword" minlength="12" maxlength="128" autocomplete="new-password" placeholder="12 حرفاً على الأقل"></div>
+            <div class="form-group"><label><span class="required">*</span> تأكيد كلمة المرور <small>(للإضافة المباشرة)</small></label><input type="password" name="driverPasswordConfirm" minlength="12" maxlength="128" autocomplete="new-password" placeholder="أعد إدخال كلمة المرور"></div>
+            <div class="form-group"><label><span class="required">*</span> نوع الخدمة</label>
+              <select name="driverServiceType" required>
+                <option value="توصيل ركاب">توصيل ركاب</option><option value="نقل بضائع">نقل بضائع</option>
+                <option value="توصيل منتجات">توصيل منتجات</option><option value="توصيل ركاب + منتجات">توصيل ركاب + منتجات</option>
+                <option value="توصيل ركاب + بضائع">توصيل ركاب + بضائع</option><option value="توصيل منتجات + بضائع">توصيل منتجات + بضائع</option>
+                <option value="توصيل ركاب + منتجات + بضائع">الكل (ركاب + منتجات + بضائع)</option>
+              </select>
+            </div>
+            <div class="form-group"><label><span class="required">*</span> نوع السائق</label>
+              <select name="driverLicenseType" required>
+                <option value="بدون رخصة">بدون رخصة</option>
+                <option value="سائق عمومي مرخص">سائق عمومي مرخص</option>
+                <option value="سائق نقل ركاب خاص">سائق نقل ركاب خاص</option>
+                <option value="سائق نقل بضائع خاص">سائق نقل بضائع خاص</option>
+                <option value="سائق توصيل منتجات خاص">سائق توصيل منتجات خاص</option>
+                <option value="سائق متعدد (مرخص لجميع الخدمات)">سائق متعدد (مرخص لجميع الخدمات)</option>
+              </select>
+            </div>
+            <div class="form-group"><label><span class="required">*</span> المحافظة</label>
+              <select name="driverGovernorate" id="driverGovernorateSelect" required>
+                <option value="">اختر المحافظة...</option>
+              </select>
+            </div>
+            <div class="form-group"><label><span class="required">*</span> القرية / المدينة</label>
+              <select name="driverArea" id="driverAreaSelect" required>
+                <option value="">اختر القرية أو المدينة...</option>
+              </select>
+            </div>
+            <div id="formSuccessMsg" class="success-msg">✅ تم إضافة السائق بنجاح!</div>
+            <div id="formErrorMsg" class="error-msg-form">❌ الرجاء ملء جميع الحقول المطلوبة.</div>
+            <button type="submit" class="btn-submit-driver"><i class="fas fa-user-plus"></i> إضافة السائق</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- طلبات التسجيل -->
+    <div id="page-pending-providers" class="page-section">
+      <div class="top-header"><h1>طلبات تسجيل السائقين <small>طلبات التسجيل الجديدة للمراجعة والقبول</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay14">جاري التحميل...</span></div></div>
+      <div id="pendingProvidersContent"></div>
+    </div>
+
+    <!-- إبلاغات السائقين -->
+    <div id="page-driver-reports" class="page-section">
+      <div class="top-header"><h1>إبلاغات السائقين <small>الشكاوى والملاحظات المقدمة من السائقين</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay5">جاري التحميل...</span></div></div>
+      <div id="driverReportsContent"></div>
+    </div>
+
+    <!-- إبلاغات المستخدمين -->
+    <div id="page-user-reports" class="page-section">
+      <div class="top-header"><h1>إبلاغات المستخدمين <small>الشكاوى والملاحظات المقدمة من المستخدمين</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay6">جاري التحميل...</span></div></div>
+      <div id="userReportsContent"></div>
+    </div>
+
+    <!-- محادثات الدعم -->
+    <div id="page-support-chat" class="page-section">
+      <div class="top-header"><h1>محادثات الدعم <small>الدردشة المباشرة مع المستخدمين والسائقين</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay13">جاري التحميل...</span></div></div>
+      <div class="chat-layout">
+        <div class="chat-conversations" id="chatConversations">
+          <p data-presentation="p006">جاري تحميل المحادثات...</p>
+        </div>
+        <div class="chat-window" id="chatWindow">
+          <div class="chat-empty-state">
+            <i class="fas fa-comments" data-presentation="p007"></i>
+            <p data-presentation="p008">اختر محادثة من القائمة لعرضها</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- إرسال رسالة للسائقين -->
+    <div id="page-broadcast-drivers" class="page-section">
+      <div class="top-header"><h1>إرسال رسالة للسائقين <small>إرسال إشعار جماعي لجميع السائقين</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay11">جاري التحميل...</span></div></div>
+      <div class="broadcast-form">
+        <div class="form-group"><label>عنوان الرسالة</label><input type="text" id="driverBroadcastTitle" placeholder="أدخل عنوان الرسالة"></div>
+        <div class="form-group"><label>نص الرسالة</label><textarea id="driverBroadcastBody" placeholder="أدخل محتوى الرسالة..."></textarea></div>
+        <button class="btn-send" data-admin-action="sendBroadcast" data-admin-arg-count="1" data-admin-arg-1="drivers"><i class="fas fa-paper-plane"></i> إرسال إلى جميع السائقين</button>
+        <div id="driverBroadcastResult" class="broadcast-result"></div>
+      </div>
+      <div class="broadcast-archive">
+        <div class="archive-header"><h3><i class="fas fa-box-archive"></i> أرشيف الرسائل المرسلة</h3><span>يُحذف تلقائياً بعد 30 يوماً</span></div>
+        <div id="driverBroadcastArchive" class="archive-list"><p>جاري التحميل...</p></div>
+      </div>
+    </div>
+
+    <!-- إرسال رسالة للمستخدمين -->
+    <div id="page-broadcast-users" class="page-section">
+      <div class="top-header"><h1>إرسال رسالة للمستخدمين <small>إرسال إشعار جماعي لجميع المستخدمين</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay12">جاري التحميل...</span></div></div>
+      <div class="broadcast-form">
+        <div class="form-group"><label>عنوان الرسالة</label><input type="text" id="userBroadcastTitle" placeholder="أدخل عنوان الرسالة"></div>
+        <div class="form-group"><label>نص الرسالة</label><textarea id="userBroadcastBody" placeholder="أدخل محتوى الرسالة..."></textarea></div>
+        <button class="btn-send" data-admin-action="sendBroadcast" data-admin-arg-count="1" data-admin-arg-1="users"><i class="fas fa-paper-plane"></i> إرسال إلى جميع المستخدمين</button>
+        <div id="userBroadcastResult" class="broadcast-result"></div>
+      </div>
+      <div class="broadcast-archive">
+        <div class="archive-header"><h3><i class="fas fa-box-archive"></i> أرشيف الرسائل المرسلة</h3><span>يُحذف تلقائياً بعد 30 يوماً</span></div>
+        <div id="userBroadcastArchive" class="archive-list"><p>جاري التحميل...</p></div>
+      </div>
+    </div>
+
+    <!-- الإعلانات -->
+    <div id="page-ads" class="page-section">
+      <div class="top-header"><h1>الإعلانات <small>شريط إعلاني أعلى شاشة الزبون والسائق</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay15">جاري التحميل...</span></div></div>
+      <div class="add-driver-form">
+        <form id="adForm">
+          <div class="form-grid">
+            <div class="form-group"><label>عنوان الإعلان (اختياري)</label><input type="text" id="adTitle" maxlength="120" placeholder="مثال: خصم خاص على التوصيل"></div>
+            <div class="form-group"><label>الجهة المستهدفة</label>
+              <select id="adAudience">
+                <option value="all">الزبائن والسائقون</option>
+                <option value="customers">الزبائن فقط</option>
+                <option value="providers">السائقون فقط</option>
+              </select>
+            </div>
+            <div class="form-group full-width"><label>نص الإعلان</label><textarea id="adBody" maxlength="300" placeholder="نص قصير يظهر داخل الشريط الإعلاني"></textarea></div>
+            <div class="form-group full-width"><label>صور الإعلان (حتى 5 صور)</label><input type="file" id="adImages" accept="image/jpeg,image/png,image/webp,image/gif" multiple><small>يمكنك اختيار صورة أو أكثر. عند تعديل الإعلان واختيار صور جديدة سيتم استبدال الصور الحالية. يُسمح بـJPEG أو PNG أو WebP أو GIF بحد أقصى 5 ميجابايت لكل صورة.</small></div>
+            <div class="form-group"><label>يبدأ في</label><input type="datetime-local" id="adStartsAt"></div>
+            <div class="form-group"><label>ينتهي في</label><input type="datetime-local" id="adEndsAt"></div>
+            <div class="form-group"><label>الترتيب</label><input type="number" id="adSortOrder" min="0" max="9999" step="1" value="0"></div>
+            <div class="form-group"><label>الحالة</label>
+              <select id="adIsActive">
+                <option value="true">نشط</option>
+                <option value="false">متوقف</option>
+              </select>
+            </div>
+            <div id="adFormMsg" class="settings-message full-width"></div>
+            <button type="submit" class="btn-submit-driver"><i class="fas fa-save"></i> حفظ الإعلان</button>
+            <button type="button" id="adCancelEdit" class="btn-cancel-ad"><i class="fas fa-times"></i> إلغاء التعديل</button>
+          </div>
+        </form>
+      </div>
+      <div id="adsList" class="commissions-table-container"><p>جاري تحميل الإعلانات...</p></div>
+    </div>
+
+    <!-- المناطق -->
+    <div id="page-areas" class="page-section">
+      <div class="top-header"><h1>المناطق <small>توزيع المستخدمين والسائقين حسب المحافظات والمدن</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay8">جاري التحميل...</span></div></div>
+      <div class="areas-legend"><span class="legend-drivers"><i class="fas fa-car"></i> السائقون</span><span class="legend-users"><i class="fas fa-user"></i> المستخدمون</span><span class="sort-note">اختر محافظة لعرض قرىها وأسماء المسجلين — مرتبة حسب الإجمالي تنازلياً</span></div>
+      <div id="areasContainer" class="areas-container"></div>
+    </div>
+
+    <!-- الإعدادات -->
+    <div id="page-settings" class="page-section">
+      <div class="top-header"><h1>الإعدادات <small>إعدادات النظام العامة</small></h1><div class="live-clock"><i class="fas fa-clock"></i> <span id="clockDisplay9">جاري التحميل...</span></div></div>
+      <div class="settings-grid">
+        <div class="settings-card"><div class="icon"><i class="fas fa-sign-out-alt"></i></div><h3>تسجيل الخروج</h3><p>قم بتسجيل الخروج من لوحة التحكم.</p><form method="POST" action="/admin/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit" class="btn-action logout"><i class="fas fa-door-open"></i> تسجيل الخروج</button></form></div>
+        <div class="settings-card"><div class="icon"><i class="fas fa-key"></i></div><h3>إعادة تعيين كلمة المرور</h3><p>تغيير كلمة المرور الخاصة بحساب المدير.</p><button class="btn-action reset" data-admin-action="openResetPassword" data-admin-arg-count="0"><i class="fas fa-undo-alt"></i> إعادة تعيين كلمة المرور</button></div>
+        <div class="settings-card"><div class="icon"><i class="fas fa-shield-alt"></i></div><h3>المصادقة الثنائية</h3><p>أضف طبقة حماية ثانية بحساب مصادقة (TOTP) ورموز استرداد.</p><button class="btn-action reset" data-admin-action="manageTwoFactor" data-admin-arg-count="0"><i class="fas fa-shield-alt"></i> إدارة المصادقة الثنائية</button></div>
+        <div class="settings-card">
+          <div class="icon"><i class="fas fa-percent"></i></div>
+          <h3>عمولة المنصة</h3>
+          <p>حدد مبلغاً ثابتاً لكل طلب أو نسبة مئوية من سعر الطلب. تُطبق على الطلبات الجديدة فقط.</p>
+          <form id="commissionSettingsForm">
+            <select id="commissionType" aria-label="نوع العمولة">
+              <option value="fixed">مبلغ ثابت (شيكل)</option>
+              <option value="percent">نسبة مئوية (%)</option>
+            </select>
+            <input id="commissionValue" type="number" min="0" step="0.01" required aria-label="قيمة العمولة">
+            <button type="submit" class="btn-action reset"><i class="fas fa-save"></i> حفظ إعدادات العمولة</button>
+          </form>
+          <p id="commissionSettingsMessage" class="settings-message" role="status"></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <%- include('partials/modals') %>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

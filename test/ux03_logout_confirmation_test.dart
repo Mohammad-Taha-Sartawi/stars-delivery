@@ -2,9 +2,9 @@
 // existing logout path exactly once and lands on the login screen.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/screens/home_screen.dart';
-import 'package:stars_delivery/screens/login_screen.dart';
-import 'package:stars_delivery/screens/provider_home_screen.dart';
+import 'package:swifora/screens/home_screen.dart';
+import 'package:swifora/screens/login_screen.dart';
+import 'package:swifora/screens/provider_home_screen.dart';
 
 import 'ux03_screen_harness.dart';
 

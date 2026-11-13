@@ -1,0 +1,51 @@
+"""Act as the test customer against the local server's real mobile API.
+
+usage: python customer.py create "<description>" | offers <orderId> | accept <offerId> | confirm <orderId> | orders
+"""
+import json, os, sys, urllib.request, urllib.error
+
+BASE = 'http://localhost:3999/api'
+HERE = os.path.dirname(os.path.abspath(__file__))
+TOKEN_FILE = os.path.join(HERE, '.customer-token')
+
+
+def call(method, path, body=None, token=None):
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(BASE + path, data=data, method=method,
+                                 headers={'Content-Type': 'application/json', **({'Authorization': 'Bearer ' + token} if token else {})})
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, json.loads(r.read() or b'null')
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b'null')
+
+
+def token():
+    if os.path.exists(TOKEN_FILE):
+        t = open(TOKEN_FILE).read().strip()
+        if call('GET', '/auth/me', token=t)[0] == 200:
+            return t
+    pw = [l for l in open(os.path.join(HERE, 'test-accounts.txt'), encoding='utf-8') if l.startswith('customer')][0].split('password=')[1].strip()
+    st, body = call('POST', '/auth/login', {'email': 'customer@local.test', 'password': pw, 'role': 'customer'})
+    if st != 200:
+        sys.exit(f'login failed {st} {body}')
+    open(TOKEN_FILE, 'w').write(body['token'])
+    return body['token']
+
+
+cmd = sys.argv[1]
+t = token()
+if cmd == 'create':
+    st, b = call('POST', '/orders', {'type': 'product', 'description': sys.argv[2], 'phone': '0590000011',
+                                      'location': 'Al-Bireh, near the municipality', 'area': 'Al-Bireh'}, token=t)
+    print('create', st, b.get('_id') if isinstance(b, dict) else b, b.get('status') if isinstance(b, dict) else '')
+elif cmd == 'offers':
+    st, b = call('GET', f'/offers/order/{sys.argv[2]}', token=t)
+    print(st, [{k: o.get(k) for k in ('_id', 'price', 'estimatedTime', 'status')} for o in b] if isinstance(b, list) else b)
+elif cmd == 'accept':
+    print('accept', *call('POST', f'/offers/{sys.argv[2]}/accept', {}, token=t))
+elif cmd == 'confirm':
+    print('confirm', *call('PUT', f'/orders/{sys.argv[2]}/confirm-delivery', {}, token=t))
+elif cmd == 'orders':
+    st, b = call('GET', '/orders', token=t)
+    print(st, [{k: o.get(k) for k in ('_id', 'status', 'description')} for o in b])

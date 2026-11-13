@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('offers are fetched and shown per order with its own type', () {
     final offersRoute = File(
-      'stars_delivery_backend/src/routes/offers.js',
+      'swifora_backend/src/routes/offers.js',
     ).readAsStringSync();
 
     expect(offersRoute, contains("populate('orderId', 'description area type')"));

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل الدخول - Swifora</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-overlay show" data-presentation="p009">
+    <div class="login-box">
+      <div class="logo-big"><span>🚀</span> Swifora</div>
+      <h3 data-presentation="p010">تسجيل الدخول إلى لوحة التحكم</h3>
+      <form method="POST" action="/admin/login">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="email" name="identifier" placeholder="البريد الإلكتروني" autocomplete="username" required>
+        <input type="password" name="password" placeholder="كلمة المرور" autocomplete="current-password" required>
+        <input type="text" name="twoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="20" placeholder="رمز المصادقة الثنائية (إن كان مفعلاً)">
+        <button type="submit"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</button>
+        <% if (error) { %>
+          <div class="error-msg show" data-presentation="p011">❌ <%= error %></div>
+        <% } else { %>
+          <div class="error-msg">❌ اسم المستخدم أو كلمة المرور غير صحيحة</div>
+        <% } %>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

@@ -16,16 +16,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/bloc/app/app_bloc.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/bloc/auth/auth_state.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/api_config.dart';
-import 'package:stars_delivery/services/mobile_api_client.dart';
-import 'package:stars_delivery/services/session_storage.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/screens/login_screen.dart';
-import 'package:stars_delivery/widgets/ui/app_button_loading_indicator.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:swifora/bloc/app/app_bloc.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/bloc/auth/auth_state.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/api_config.dart';
+import 'package:swifora/services/mobile_api_client.dart';
+import 'package:swifora/services/session_storage.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/screens/login_screen.dart';
+import 'package:swifora/widgets/ui/app_button_loading_indicator.dart';
 
 import 'mock_api_server.dart';
 
@@ -91,6 +92,8 @@ Future<void> main() async {
   setUp(() {
     mockApi.reset();
     mockApi.contactDelay = const Duration(milliseconds: 400);
+    // No saved guest support conversation on this "device".
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
   tearDownAll(() {

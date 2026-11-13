@@ -2,7 +2,7 @@
 // spinner on a light disabled background now render the shared indicator.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/widgets/ui/app_button_loading_indicator.dart';
+import 'package:swifora/widgets/ui/app_button_loading_indicator.dart';
 
 import 'ux03_screen_harness.dart';
 

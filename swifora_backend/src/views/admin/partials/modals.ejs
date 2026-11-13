@@ -1,0 +1,173 @@
+<!-- مودال الوثائق -->
+<div id="documentsModal" class="modal-overlay">
+  <div class="modal-box">
+    <h2><i class="fas fa-file-alt"></i> وثائق السائق</h2>
+    <div class="sub" id="docDriverName">اسم السائق: ---</div>
+    <div id="documentsList"></div>
+    <button class="modal-close-btn" data-admin-action="closeDocuments" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>
+
+<!-- مودال تقرير طلبات السائق -->
+<div id="reportModal" class="modal-overlay">
+  <div class="modal-box">
+    <h2><i class="fas fa-chart-line"></i> تقرير طلبات السائق</h2>
+    <div class="sub" id="reportDriverName">اسم السائق: ---</div>
+    <div id="reportContent"></div>
+    <button class="modal-close-btn" data-admin-action="closeReport" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>
+
+<!-- مودال تقرير طلبات المستخدم -->
+<div id="userOrdersModal" class="modal-overlay">
+  <div class="modal-box">
+    <h2><i class="fas fa-list-ul"></i> تقرير طلبات المستخدم</h2>
+    <div class="sub" id="userOrdersName">اسم المستخدم: ---</div>
+    <div id="userOrdersContent"></div>
+    <button class="modal-close-btn" data-admin-action="closeUserOrders" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>
+
+<!-- مودال تفاصيل الإبلاغ -->
+<div id="reportDetailModal" class="modal-overlay">
+  <div class="modal-box">
+    <h2><i class="fas fa-file-alt"></i> تفاصيل الإبلاغ</h2>
+    <div class="sub" id="reportDetailTitle">عنوان الإبلاغ</div>
+    <div id="reportDetailContent"></div>
+    <div id="replySection" data-presentation="p012">
+      <h4 data-presentation="p013"><i class="fas fa-comments"></i> المحادثة</h4>
+      <div id="chatThread" class="chat-thread"></div>
+      <div class="reply-input-area">
+        <textarea id="replyInput" placeholder="اكتب ردك هنا..."></textarea>
+        <button data-admin-action="sendReply" data-admin-arg-count="0"><i class="fas fa-paper-plane"></i> إرسال</button>
+      </div>
+    </div>
+    <button class="modal-close-btn" data-admin-action="closeReportDetail" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>
+
+
+<!-- مودال تفاصيل الطلب -->
+<div id="orderDetailsModal" class="modal-overlay">
+  <div class="modal-box">
+    <h2><i class="fas fa-shopping-cart"></i> تفاصيل الطلب</h2>
+    <div class="sub" id="orderDetailsSub">---</div>
+    <div id="orderDetailsContent"></div>
+    <button class="modal-close-btn" data-admin-action="closeOrderDetails" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>
+
+<!-- مودال تقرير رفض وتسليم الطلبات للسائق -->
+<div id="driverReportModal" class="modal-overlay">
+  <div class="modal-box">
+    <h2><i class="fas fa-file-alt"></i> تقرير رفض وتسليم الطلبات</h2>
+    <div class="sub" id="driverReportSub">---</div>
+    <div id="driverReportContent"></div>
+    <button class="modal-close-btn" data-admin-action="closeDriverReport" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>
+
+<!-- مودال القائمة -->
+<div id="listModal" class="modal-overlay">
+  <div class="modal-box">
+    <h2><i class="fas fa-list-ul"></i> <span id="listModalTitle">القائمة</span></h2>
+    <div class="sub" id="listModalSub">تفاصيل الأعضاء</div>
+    <div id="listModalContent"></div>
+    <button class="modal-close-btn" data-admin-action="closeListModal" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>
+
+<!-- مودال تعديل بيانات السائق -->
+<div id="driverEditModal" class="modal-overlay">
+  <div class="modal-box driver-edit-modal">
+    <h2><i class="fas fa-user-edit"></i> تعديل بيانات السائق</h2>
+    <div class="sub" id="driverEditSub">---</div>
+    <form id="driverEditForm">
+      <input type="hidden" id="driverEditId">
+      <div class="form-grid">
+        <div class="form-group"><label>الاسم الكامل</label><input id="driverEditName" type="text" maxlength="120" required></div>
+        <div class="form-group"><label>البريد الإلكتروني</label><input id="driverEditEmail" type="email" maxlength="160" required></div>
+        <div class="form-group"><label>رقم الجوال</label><input id="driverEditPhone" type="text" maxlength="30" required></div>
+        <div class="form-group"><label>المعرف العام</label><input id="driverEditPublicId" type="text" maxlength="50"></div>
+        <div class="form-group"><label>عمولة المنصة المستحقة (شيكل)</label><input id="driverEditCommissionDue" type="number" min="0" step="0.01" required><small>تعديل المبلغ يسجّل تسوية على حساب السائق.</small></div>
+        <div class="form-group"><label>المحافظة</label><select id="driverEditGovernorate" required></select></div>
+        <div class="form-group"><label>القرية / المدينة</label><select id="driverEditArea" required></select></div>
+        <div class="form-group"><label>حالة الحساب</label>
+          <select id="driverEditStatus">
+            <option value="active">نشط</option>
+            <option value="inactive">موقوف</option>
+            <option value="blocked">محظور</option>
+          </select>
+        </div>
+        <div class="form-group"><label>نوع الرخصة</label><input id="driverEditLicenseType" type="text" maxlength="120"></div>
+        <div class="form-group full-width">
+          <label>أنواع الخدمات</label>
+          <div class="service-checkboxes">
+            <label class="checkbox-line"><input id="driverEditServiceProduct" type="checkbox"> توصيل منتجات</label>
+            <label class="checkbox-line"><input id="driverEditServicePeople" type="checkbox"> توصيل ركاب</label>
+            <label class="checkbox-line"><input id="driverEditServiceGoods" type="checkbox"> نقل بضائع</label>
+          </div>
+          <small>اترك الجميع فارغاً لاستقبال جميع الخدمات.</small>
+        </div>
+        <div class="form-group full-width">
+          <label class="checkbox-line"><input id="driverEditLicenseNotAvailable" type="checkbox"> لا يملك رخصة قيادة</label>
+          <label class="checkbox-line"><input id="driverEditAvailable" type="checkbox"> متاح لاستقبال الطلبات الآن</label>
+          <label class="checkbox-line"><input id="driverEditGovernorateLevel" type="checkbox"> استقبال طلبات على مستوى المحافظة</label>
+        </div>
+      </div>
+      <div id="driverEditMsg" class="msg"></div>
+      <button type="submit" class="btn-submit-driver"><i class="fas fa-save"></i> حفظ التعديلات</button>
+      <button type="button" class="modal-close-btn" data-admin-action="closeDriverEdit" data-admin-arg-count="0"><i class="fas fa-times"></i> إلغاء</button>
+    </form>
+  </div>
+</div>
+
+<!-- مودال تعديل بيانات المستخدم (الزبون) -->
+<div id="userEditModal" class="modal-overlay">
+  <div class="modal-box driver-edit-modal">
+    <h2><i class="fas fa-user-edit"></i> تعديل بيانات المستخدم</h2>
+    <div class="sub" id="userEditSub">---</div>
+    <form id="userEditForm">
+      <input type="hidden" id="userEditId">
+      <div class="form-grid">
+        <div class="form-group"><label>الاسم الكامل</label><input id="userEditName" type="text" maxlength="120" required></div>
+        <div class="form-group"><label>البريد الإلكتروني</label><input id="userEditEmail" type="email" maxlength="160" required></div>
+        <div class="form-group"><label>رقم الجوال</label><input id="userEditPhone" type="tel" maxlength="30" required></div>
+        <div class="form-group"><label>المعرف العام (ID)</label><input id="userEditPublicId" type="text" inputmode="numeric" maxlength="50" required></div>
+        <div class="form-group"><label>المحافظة</label><select id="userEditGovernorate" required></select></div>
+        <div class="form-group"><label>القرية / المدينة</label><select id="userEditArea" required></select></div>
+      </div>
+      <div id="userEditMsg" class="msg"></div>
+      <button type="submit" class="btn-submit-driver"><i class="fas fa-save"></i> حفظ التعديلات</button>
+      <button type="button" class="modal-close-btn" data-admin-action="closeUserEdit" data-admin-arg-count="0"><i class="fas fa-times"></i> إلغاء</button>
+    </form>
+  </div>
+</div>
+
+<!-- مودال إعادة تعيين كلمة المرور -->
+<div id="resetPasswordModal" class="modal-overlay password-modal">
+  <div class="modal-box">
+    <h2><i class="fas fa-key"></i> إعادة تعيين كلمة المرور</h2>
+    <div class="sub">قم بتغيير كلمة المرور الخاصة بحساب المدير.</div>
+    <input type="password" id="currentPassword" placeholder="كلمة المرور الحالية">
+    <input type="password" id="newPassword" placeholder="كلمة المرور الجديدة">
+    <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور الجديدة">
+    <button class="btn-submit" data-admin-action="handleResetPassword" data-admin-arg-count="0"><i class="fas fa-save"></i> حفظ التغييرات</button>
+    <div id="resetMsg" class="msg"></div>
+    <button class="modal-close-btn" data-admin-action="closeResetPassword" data-admin-arg-count="0" data-presentation="p014"><i class="fas fa-times"></i> إلغاء</button>
+  </div>
+</div>
+
+<!-- مودال الشات -->
+<div id="chatModal" class="modal-overlay chat-modal">
+  <div class="modal-box">
+    <h2><i class="fas fa-comment-dots"></i> <span id="chatTitle">المحادثة</span></h2>
+    <div class="sub" id="chatSub">مراسلة الطرف الآخر</div>
+    <div id="chatMessages" class="chat-messages"></div>
+    <div class="chat-input-area">
+      <input type="text" id="chatInput" placeholder="اكتب رسالتك...">
+      <button data-admin-action="sendChatMessage" data-admin-arg-count="0"><i class="fas fa-paper-plane"></i> إرسال</button>
+    </div>
+    <button class="modal-close-btn" data-admin-action="closeChat" data-admin-arg-count="0"><i class="fas fa-times"></i> إغلاق</button>
+  </div>
+</div>

@@ -1,4 +1,4 @@
-# stars_delivery
+# Swifora
 
 A new Flutter project.
 
@@ -19,11 +19,11 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Production backup and restore
 
-Stars Delivery has three persistent application-data surfaces:
+Swifora has three persistent application-data surfaces:
 
 1. the MongoDB database;
 2. private provider-verification files in `PROVIDER_DOCUMENTS_DIR`;
-3. order-upload files in `stars_delivery_backend/uploads`.
+3. order-upload files in `swifora_backend/uploads`.
 
 A valid application backup must contain all three.
 
@@ -33,11 +33,11 @@ MongoDB Database Tools (`mongodump` and `mongorestore`) must be installed on the
 
 Stop or otherwise quiesce application writes before taking a backup so MongoDB metadata and filesystem files represent the same operational point.
 
-From `stars_delivery_backend`:
+From `swifora_backend`:
 
 ```bash
-export STARS_BACKUP_ROOT="/absolute/protected/backup/root"
-export STARS_BACKUP_QUIESCED="STARS_BACKUP_WRITES_QUIESCED"
+export SWIFORA_BACKUP_ROOT="/absolute/protected/backup/root"
+export SWIFORA_BACKUP_QUIESCED="SWIFORA_BACKUP_WRITES_QUIESCED"
 npm run ops:backup
 ```
 
@@ -54,11 +54,11 @@ The manifest contains SHA-256 integrity information but never stores the MongoDB
 
 Restores are destructive. Stop the application first and verify that the selected backup is the intended recovery point.
 
-Set `STARS_RESTORE_FROM` to the timestamped backup directory:
+Set `SWIFORA_RESTORE_FROM` to the timestamped backup directory:
 
 ```bash
-export STARS_RESTORE_FROM="/absolute/protected/backup/root/stars-backup-YYYYMMDDTHHMMSSZ"
-export STARS_RESTORE_CONFIRM="RESTORE_STARS_DELIVERY_DATA"
+export SWIFORA_RESTORE_FROM="/absolute/protected/backup/root/swifora-backup-YYYYMMDDTHHMMSSZ"
+export SWIFORA_RESTORE_CONFIRM="RESTORE_SWIFORA_DATA"
 npm run ops:restore
 ```
 

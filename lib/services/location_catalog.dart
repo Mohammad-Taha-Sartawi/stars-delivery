@@ -1,14 +1,17 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
-/// One governorate from the bundled Palestine location asset.
+import 'api_config.dart';
+import 'mobile_api_client.dart';
+
+/// One Palestine governorate, served by the backend's location catalog
+/// (`GET /api/locations/governorates`, stored in MongoDB).
 class GovernorateOption {
   const GovernorateOption({
     required this.name,
     required this.nativeName,
     required this.areaValue,
     required this.cities,
+    this.cityNatives = const {},
   });
 
   /// English asset name, used as the stable dropdown value.
@@ -20,16 +23,41 @@ class GovernorateOption {
   /// Value stored in the account `area` for the "governorate itself" option.
   final String areaValue;
 
-  /// Villages/cities listed under this governorate only.
+  /// Villages/cities listed under this governorate only. These English
+  /// names are the values stored on accounts and orders.
   final List<String> cities;
 
+  /// Arabic display name for each city in [cities].
+  final Map<String, String> cityNatives;
+
   String get displayName => name.replaceFirst(' (Quds)', '').trim();
+
+  /// The label to show for [city]: Arabic when [arabic], else the stored
+  /// English name.
+  String cityLabel(String city, {required bool arabic}) {
+    if (!arabic) return city;
+    final native = cityNatives[city];
+    return native == null || native.isEmpty ? city : native;
+  }
+
+  /// [cities] ordered alphabetically by their displayed label.
+  List<String> citiesSortedFor({required bool arabic}) {
+    final sorted = [...cities];
+    sorted.sort(
+      (a, b) =>
+          cityLabel(a, arabic: arabic).compareTo(cityLabel(b, arabic: arabic)),
+    );
+    return sorted;
+  }
 }
 
-/// Loads the Palestine governorate/city asset once and exposes the same
-/// canonical values to registration and profile editing.
+/// Loads the Palestine governorates/cities from the backend once and exposes
+/// the same canonical values to registration and profile editing.
+///
+/// The app used to bundle and decode a 46.5 MB worldwide JSON asset for this
+/// on the UI thread; the backend now serves only Palestine from MongoDB.
 abstract final class LocationCatalog {
-  static const String assetPath = 'assets/countries+states+cities.json';
+  static const String governoratesPath = '/locations/governorates';
 
   static const Map<String, String> legacyAreaValues = {
     'Jerusalem (Quds)': 'القدس',
@@ -55,45 +83,112 @@ abstract final class LocationCatalog {
   };
 
   static List<GovernorateOption>? _cache;
+  static Future<List<GovernorateOption>>? _inFlight;
+
+  /// English city/governorate value -> Arabic display name, built from the
+  /// cached catalog.
+  static Map<String, String> _arabicNames = const {};
 
   @visibleForTesting
   static void clearCache() {
     _cache = null;
+    _inFlight = null;
+    _arabicNames = const {};
   }
 
-  static Future<List<GovernorateOption>> load() async {
+  /// Fetches the catalog in the background so [localize] can show Arabic
+  /// names; failures are ignored (labels then stay as stored).
+  static void warmUp() {
+    load().then((_) {}, onError: (Object _) {});
+  }
+
+  /// Whether [context] is showing Arabic.
+  static bool isArabic(BuildContext context) =>
+      Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
+
+  /// Display form of a stored city/area/governorate value for the current
+  /// locale: Arabic names in Arabic, the stored value otherwise. Unknown
+  /// values (or a catalog that is not loaded yet) are returned unchanged.
+  static String localize(BuildContext context, String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || !isArabic(context)) return trimmed;
+    return _arabicNames[trimmed] ?? trimmed;
+  }
+
+  static void _index(List<GovernorateOption> governorates) {
+    final names = <String, String>{};
+    for (final g in governorates) {
+      names[g.name] = g.nativeName;
+      names[g.displayName] = g.nativeName;
+      for (final city in g.cities) {
+        final native = g.cityNatives[city];
+        if (native != null && native.isNotEmpty) names[city] = native;
+      }
+    }
+    _arabicNames = names;
+  }
+
+  /// Returns the cached catalog, or fetches it. Concurrent callers share one
+  /// request. A failure is not cached, so a later call retries.
+  static Future<List<GovernorateOption>> load() {
     final cached = _cache;
     if (cached != null) {
-      return cached;
+      return Future.value(cached);
     }
+    return _inFlight ??= _fetch().whenComplete(() => _inFlight = null);
+  }
 
-    final json = await rootBundle.loadString(assetPath);
-    final list = jsonDecode(json) as List;
-    final palestine = list.cast<Map<String, dynamic>>().firstWhere(
-      (country) => country['iso2'] == 'PS',
+  static Future<List<GovernorateOption>> _fetch() async {
+    final dio = MobileApiClient.create(
+      baseUrl: ApiConfig.apiUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
     );
-    final states = palestine['states'] as List;
-
-    final governorates = states.cast<Map<String, dynamic>>().map((state) {
-      final name = state['name'].toString().trim();
-      final native = state['native']?.toString().trim() ?? '';
-      final nativeName = native.isEmpty ? name : native;
-      final cities = ((state['cities'] as List?) ?? const [])
-          .cast<Map<String, dynamic>>()
-          .map((city) => city['name'].toString().trim())
-          .where((city) => city.isNotEmpty)
-          .toList();
-
-      return GovernorateOption(
-        name: name,
-        nativeName: nativeName,
-        areaValue: _legacyAreaValuesTrimmed[name] ?? nativeName,
-        cities: cities,
-      );
-    }).toList();
-
+    final response = await dio.get(governoratesPath);
+    final governorates = parse(response.data);
+    if (governorates.isEmpty) {
+      throw StateError('Location catalog is empty');
+    }
     _cache = governorates;
+    _index(governorates);
     return governorates;
+  }
+
+  /// Parses the `GET /api/locations/governorates` payload:
+  /// `[{name, native, cities: [{name, native}]}]`. Plain string cities (the
+  /// version 1 payload) are still accepted.
+  @visibleForTesting
+  static List<GovernorateOption> parse(Object? data) {
+    if (data is! List) return const [];
+    return data
+        .whereType<Map>()
+        .map((raw) {
+          final name = raw['name']?.toString().trim() ?? '';
+          final native = raw['native']?.toString().trim() ?? '';
+          final nativeName = native.isEmpty ? name : native;
+          final cities = <String>[];
+          final cityNatives = <String, String>{};
+          for (final city in (raw['cities'] as List?) ?? const []) {
+            final cityName = (city is Map ? city['name'] : city)
+                ?.toString()
+                .trim();
+            if (cityName == null || cityName.isEmpty) continue;
+            cities.add(cityName);
+            final cityNative = city is Map
+                ? city['native']?.toString().trim() ?? ''
+                : '';
+            if (cityNative.isNotEmpty) cityNatives[cityName] = cityNative;
+          }
+          return GovernorateOption(
+            name: name,
+            nativeName: nativeName,
+            areaValue: _legacyAreaValuesTrimmed[name] ?? nativeName,
+            cities: cities,
+            cityNatives: cityNatives,
+          );
+        })
+        .where((option) => option.name.isNotEmpty)
+        .toList();
   }
 
   /// Finds the governorate/current village for an existing account, including

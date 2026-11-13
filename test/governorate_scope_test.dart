@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/services/user_service.dart';
-import 'package:stars_delivery/services/location_catalog.dart';
-import 'package:stars_delivery/models/user_model.dart';
-import 'package:stars_delivery/models/offer_model.dart';
-import 'package:stars_delivery/screens/create_order_screen.dart';
-import 'package:stars_delivery/widgets/governorate_scope_card.dart';
-import 'package:stars_delivery/widgets/ui/governorate_scope_warning.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/services/user_service.dart';
+import 'package:swifora/services/location_catalog.dart';
+import 'package:swifora/models/user_model.dart';
+import 'package:swifora/models/offer_model.dart';
+import 'package:swifora/screens/create_order_screen.dart';
+import 'package:swifora/widgets/governorate_scope_card.dart';
+import 'package:swifora/widgets/ui/governorate_scope_warning.dart';
 
 class _FakeUserService extends UserService {
   bool? requested;
@@ -197,28 +197,29 @@ void main() {
     expect(find.text('Outside your area'), findsNothing);
   });
 
-  testWidgets('create order shows the active governorate-level banner', (
-    tester,
-  ) async {
-    final user = UserModel(
-      id: 'customer-1',
-      fullName: 'Customer',
-      email: 'customer@example.com',
-      phone: '111',
-      role: 'customer',
-      area: 'Bethlehem',
-      governorate: 'بيت لحم',
-      governorateLevel: true,
-      publicId: 'CUS-1',
-    );
+  testWidgets(
+    'customers have no governorate scope: create order shows no banner',
+    (tester) async {
+      // Even an account that enabled the old customer setting gets no
+      // governorate banner or warning; the scope is the driver's choice.
+      final user = UserModel(
+        id: 'customer-1',
+        fullName: 'Customer',
+        email: 'customer@example.com',
+        phone: '111',
+        role: 'customer',
+        area: 'Bethlehem',
+        governorate: 'بيت لحم',
+        governorateLevel: true,
+        publicId: 'CUS-1',
+      );
 
-    await tester.pumpWidget(
-      _app(
-        CreateOrderScreen(user: user, token: 'token', governorateLevel: true),
-      ),
-    );
+      await tester.pumpWidget(
+        _app(CreateOrderScreen(user: user, token: 'token')),
+      );
 
-    expect(find.byKey(const Key('governorateOrderBanner')), findsOneWidget);
-    expect(find.textContaining('Governorate mode is on'), findsOneWidget);
-  });
+      expect(find.byKey(const Key('governorateOrderBanner')), findsNothing);
+      expect(find.textContaining('Governorate mode is on'), findsNothing);
+    },
+  );
 }

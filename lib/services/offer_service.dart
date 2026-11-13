@@ -19,6 +19,13 @@ class OfferSubmitException implements Exception {
 }
 
 class OfferService {
+  /// Lowest price a driver may offer, in shekels. The server enforces the
+  /// same figure (`swifora_backend/src/services/offerPricing.js`).
+  static const int minOfferPrice = 9;
+
+  /// Quick-pick prices on the offer screen; all at or above [minOfferPrice].
+  static const List<int> quickPrices = [9, 12, 15, 20];
+
   late final Dio _dio;
   OfferService() {
     _dio = MobileApiClient.create(

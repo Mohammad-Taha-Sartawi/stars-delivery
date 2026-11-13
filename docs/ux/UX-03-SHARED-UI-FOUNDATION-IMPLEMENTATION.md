@@ -1,6 +1,6 @@
 # UX-03 — Shared UI Foundation, Cross-Screen Consistency & Accessibility Baseline
 
-**Project:** Stars Delivery (`stars-delivery`)
+**Project:** Swifora (formerly Stars Delivery)
 **Canonical branch:** `ux/01-remediation-20261109`
 **Base commit:** `d2f5ff8fdd3448ece7f68a6abe597ffb7bb73248` (UX-02 audit)
 **Flutter SDK:** 3.47.4 stable
@@ -271,7 +271,7 @@ flutter test
 
 **Reproduce:**
 ```
-STARS_UX03_SCREENSHOTS=1 flutter test test/ux03_screenshots_test.dart
+SWIFORA_UX03_SCREENSHOTS=1 flutter test test/ux03_screenshots_test.dart
 → 00:07 +31: All tests passed!
 ```
 

@@ -3,7 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists the user's theme choice between application launches.
 abstract final class ThemePreferences {
-  static const String storageKey = 'stars_theme_mode';
+  static const String storageKey = 'swifora_theme_mode';
+
+  /// Key used before the Swifora rebrand; moved to [storageKey] on load.
+  static const String legacyStorageKey = 'stars_theme_mode';
 
   static const String lightValue = 'light';
   static const String darkValue = 'dark';
@@ -34,7 +37,14 @@ abstract final class ThemePreferences {
   static Future<ThemeMode> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return decode(prefs.getString(storageKey));
+      final stored = prefs.getString(storageKey);
+      if (stored != null) return decode(stored);
+      final legacy = prefs.getString(legacyStorageKey);
+      if (legacy != null) {
+        await prefs.setString(storageKey, legacy);
+        await prefs.remove(legacyStorageKey);
+      }
+      return decode(legacy);
     } catch (_) {
       return ThemeMode.light;
     }

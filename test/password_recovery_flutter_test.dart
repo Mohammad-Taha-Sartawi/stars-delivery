@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/bloc/password_recovery/password_recovery_bloc.dart';
-import 'package:stars_delivery/bloc/password_recovery/password_recovery_event.dart';
-import 'package:stars_delivery/bloc/password_recovery/password_recovery_state.dart';
-import 'package:stars_delivery/services/password_recovery_service.dart';
+import 'package:swifora/bloc/password_recovery/password_recovery_bloc.dart';
+import 'package:swifora/bloc/password_recovery/password_recovery_event.dart';
+import 'package:swifora/bloc/password_recovery/password_recovery_state.dart';
+import 'package:swifora/services/password_recovery_service.dart';
 
 class _FakeRecoveryGateway implements PasswordRecoveryGateway {
   bool failRequest = false;

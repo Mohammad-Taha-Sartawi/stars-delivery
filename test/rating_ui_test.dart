@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/models/provider_stats.dart';
+import 'package:swifora/models/provider_stats.dart';
 
 void main() {
   test('provider stats parse rating summary fields', () {
@@ -76,10 +76,10 @@ void main() {
 
   test('backend supports rating endpoints and notifications', () {
     final orders = File(
-      'stars_delivery_backend/src/routes/orders.js',
+      'swifora_backend/src/routes/orders.js',
     ).readAsStringSync();
     final model = File(
-      'stars_delivery_backend/src/models/Rating.js',
+      'swifora_backend/src/models/Rating.js',
     ).readAsStringSync();
 
     expect(orders, contains("router.post('/:id/rating'"));

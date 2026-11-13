@@ -36,26 +36,26 @@ jobs:
           npm --version
 
       - name: Install backend dependencies
-        working-directory: stars_delivery_backend
+        working-directory: swifora_backend
         run: npm ci
 
       - name: Verify backend lockfile remains unchanged
-        run: git diff --exit-code -- stars_delivery_backend/package-lock.json
+        run: git diff --exit-code -- swifora_backend/package-lock.json
 
       - name: Check backend entrypoint syntax
-        working-directory: stars_delivery_backend
+        working-directory: swifora_backend
         run: npm run check
 
       - name: Run backend test suite
-        working-directory: stars_delivery_backend
+        working-directory: swifora_backend
         run: npm test
 
       - name: Run backend integration smoke
-        working-directory: stars_delivery_backend
+        working-directory: swifora_backend
         run: npm run test:integration
 
       - name: Audit production backend dependencies
-        working-directory: stars_delivery_backend
+        working-directory: swifora_backend
         run: npm audit --omit=dev --audit-level=high
 
   flutter:

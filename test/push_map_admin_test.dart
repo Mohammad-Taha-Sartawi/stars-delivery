@@ -27,19 +27,19 @@ void main() {
 
   test('backend push tokens, FCM sender, and new-order pushes exist', () {
     final model = File(
-      'stars_delivery_backend/src/models/PushToken.js',
+      'swifora_backend/src/models/PushToken.js',
     ).readAsStringSync();
     final sender = File(
-      'stars_delivery_backend/src/services/pushNotifications.js',
+      'swifora_backend/src/services/pushNotifications.js',
     ).readAsStringSync();
     final notifications = File(
-      'stars_delivery_backend/src/services/mobileNotifications.js',
+      'swifora_backend/src/services/mobileNotifications.js',
     ).readAsStringSync();
     final orders = File(
-      'stars_delivery_backend/src/routes/orders.js',
+      'swifora_backend/src/routes/orders.js',
     ).readAsStringSync();
     final users = File(
-      'stars_delivery_backend/src/routes/users.js',
+      'swifora_backend/src/routes/users.js',
     ).readAsStringSync();
 
     expect(model, contains('token'));
@@ -96,10 +96,10 @@ void main() {
 
   test('commission settings are editable from the admin dashboard', () {
     final view = File(
-      'stars_delivery_backend/src/views/admin/index.ejs',
+      'swifora_backend/src/views/admin/index.ejs',
     ).readAsStringSync();
     final script = File(
-      'stars_delivery_backend/src/public/js/main.js',
+      'swifora_backend/src/public/js/main.js',
     ).readAsStringSync();
 
     expect(view, contains('commissionSettingsForm'));

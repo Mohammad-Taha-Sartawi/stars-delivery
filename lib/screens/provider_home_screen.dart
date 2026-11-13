@@ -17,12 +17,14 @@ import '../services/responsive.dart';
 import '../services/theme_service.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
+import '../services/location_catalog.dart';
 import '../services/location_service.dart';
 import '../services/provider_service.dart';
 import '../services/auth_service.dart';
 import '../services/support_chat_service.dart';
 import '../services/socket_service.dart';
 import '../services/mobile_session_failure.dart';
+import '../services/notification_router.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/ui/app_action_tile.dart';
 import '../widgets/ui/ad_banner_carousel.dart';
@@ -196,6 +198,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       _endSession();
     });
 
+    LocationCatalog.warmUp();
     LocationService.syncToBackend(widget.token);
 
     SocketService.instance.connect(
@@ -203,6 +206,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       area: ApiConfig.detectedArea,
     );
     unawaited(PushNotificationService.instance.start(widget.token));
+    _listenToPushNotifications();
 
     _socketConnectedSub = SocketService.instance.onConnected.listen((_) {
       if (!mounted) return;
@@ -459,9 +463,40 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
     }
   }
 
+  StreamSubscription<Map<String, dynamic>>? _pushOpenedSub;
+  StreamSubscription<ForegroundPush>? _pushForegroundSub;
+
+  /// Push notifications: a tap opens the related screen; a push that arrives
+  /// while the app is open is shown as a short message.
+  void _listenToPushNotifications() {
+    final push = PushNotificationService.instance;
+    _pushOpenedSub = push.onOpened.listen(_openFromPush);
+    _pushForegroundSub = push.onForeground.listen((message) {
+      if (!mounted) return;
+      final text = [
+        message.title,
+        message.body,
+      ].where((part) => part.trim().isNotEmpty).join(' — ');
+      if (text.isNotEmpty) AppFeedback.info(context, text);
+    });
+    final pending = push.takePendingOpen();
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openFromPush(pending);
+      });
+    }
+  }
+
+  void _openFromPush(Map<String, dynamic> data) {
+    if (!mounted) return;
+    NotificationRouter.openFromPush(context, data: data, token: widget.token);
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pushOpenedSub?.cancel();
+    _pushForegroundSub?.cancel();
     _notifTimer?.cancel();
     _dashboardRefreshTimer?.cancel();
     _unblockTimer?.cancel();
@@ -496,69 +531,88 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
               _scheduleUnblockRefresh(state.stats.blockedUntil);
             }
           },
-          child: BlocConsumer<ProviderBloc, ProviderState>(
-            listenWhen: (previous, current) {
-              if (current is ProviderStatsLoaded &&
-                  current.stats.isAvailable &&
-                  current.pendingOrders != null &&
-                  current.pendingOrders!.isNotEmpty) {
-                final prev = previous is ProviderStatsLoaded
-                    ? previous.pendingOrders
-                    : null;
-                return prev == null || prev.isEmpty;
-              }
-              return false;
-            },
+          child: BlocListener<ProviderBloc, ProviderState>(
+            // Tell the driver once per failure streak that the figures on
+            // screen are the last known values, not fresh ones.
+            listenWhen: (previous, current) =>
+                current is ProviderStatsLoaded &&
+                current.refreshError != null &&
+                (previous is! ProviderStatsLoaded ||
+                    previous.refreshError == null),
             listener: (context, state) {
-              if (state is ProviderStatsLoaded &&
-                  state.stats.isAvailable &&
-                  state.pendingOrders != null &&
-                  state.pendingOrders!.isNotEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PendingOrdersScreen(
-                        orders: state.pendingOrders!,
-                        token: widget.token,
-                        user: _user,
-                        onRefresh: () {
-                          context.read<ProviderBloc>().add(
-                            LoadPendingOrders(token: widget.token),
-                          );
-                          context.read<ProviderBloc>().add(
-                            LoadProviderStats(token: widget.token),
-                          );
-                        },
+              AppFeedback.error(
+                context,
+                AppLocalization.get(context, 'dashboard_refresh_failed'),
+              );
+            },
+            child: BlocConsumer<ProviderBloc, ProviderState>(
+              listenWhen: (previous, current) {
+                if (current is ProviderStatsLoaded &&
+                    current.stats.isAvailable &&
+                    current.pendingOrders != null &&
+                    current.pendingOrders!.isNotEmpty) {
+                  final prev = previous is ProviderStatsLoaded
+                      ? previous.pendingOrders
+                      : null;
+                  return prev == null || prev.isEmpty;
+                }
+                return false;
+              },
+              listener: (context, state) {
+                if (state is ProviderStatsLoaded &&
+                    state.stats.isAvailable &&
+                    state.pendingOrders != null &&
+                    state.pendingOrders!.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PendingOrdersScreen(
+                          orders: state.pendingOrders!,
+                          token: widget.token,
+                          user: _user,
+                          onRefresh: () {
+                            context.read<ProviderBloc>().add(
+                              LoadPendingOrders(token: widget.token),
+                            );
+                            context.read<ProviderBloc>().add(
+                              LoadProviderStats(token: widget.token),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ).then((_) {
-                    if (!context.mounted) return;
-                    context.read<ProviderBloc>().add(
-                      LoadProviderStats(token: widget.token),
-                    );
+                    ).then((_) {
+                      if (!context.mounted) return;
+                      context.read<ProviderBloc>().add(
+                        LoadProviderStats(token: widget.token),
+                      );
+                    });
                   });
-                });
-              }
-            },
-            builder: (context, state) {
-              if (state is ProviderLoading) {
-                return const AppLoadingState();
-              }
-              if (state is ProviderError) {
-                return AppErrorState(
-                  message: state.message,
-                  onRetry: () {
-                    _refreshDashboard();
-                  },
-                );
-              }
-              if (state is ProviderStatsLoaded) {
-                return _buildDashboard(context, state.stats);
-              }
-              return const SizedBox.shrink();
-            },
+                }
+              },
+              builder: (context, state) {
+                if (state is ProviderLoading) {
+                  return const AppLoadingState();
+                }
+                if (state is ProviderError) {
+                  return AppErrorState(
+                    message: AppLocalization.get(
+                      context,
+                      'dashboard_load_failed',
+                    ),
+                    retryLabel: AppLocalization.get(context, 'retry'),
+                    onRetry: () {
+                      _refreshDashboard();
+                    },
+                  );
+                }
+                if (state is ProviderStatsLoaded) {
+                  return _buildDashboard(context, state.stats);
+                }
+                return const SizedBox.shrink();
+              },
+            ),
           ),
         ),
       ),
@@ -683,6 +737,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
               return;
             }
 
+            // Remove this device's push token while the session is still
+            // valid; revoking first made the removal fail with 401.
+            await PushNotificationService.instance.stop().timeout(
+              const Duration(seconds: 5),
+              onTimeout: () {},
+            );
+            if (!context.mounted) return;
             unawaited(AuthService().revokeSession(widget.token));
             SocketService.instance.disconnect();
             context.read<AuthBloc>().add(LogoutEvent());

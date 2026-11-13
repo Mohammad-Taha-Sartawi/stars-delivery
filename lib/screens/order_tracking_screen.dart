@@ -137,7 +137,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.starsdelivery.stars_delivery',
+                  userAgentPackageName: 'com.swifora.app',
                 ),
                 if (_driverLocation != null)
                   MarkerLayer(

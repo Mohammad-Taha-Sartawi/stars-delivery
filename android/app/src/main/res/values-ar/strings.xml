@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="order_notifications_channel_name">تحديثات الطلبات</string>
+    <string name="order_notifications_channel_description">الطلبات الجديدة وعروض الأسعار والقبول وتحديثات التوصيل</string>
+</resources>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../models/offer_model.dart';
+import '../services/location_catalog.dart';
 import '../services/localization_service.dart';
 import '../services/offer_service.dart';
 import '../services/order_service.dart';
@@ -294,7 +295,10 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
     final outcome = _outcome(order);
     final outcomeTone = appToneStyle(context, outcome.tone);
     final price = (order['price'] as num?)?.toDouble() ?? 0;
-    final area = order['area']?.toString() ?? '';
+    final area = LocationCatalog.localize(
+      context,
+      order['area']?.toString() ?? '',
+    );
     final orderCompleted = order['status'] == 'completed';
     final suspendedUntil = DateTime.tryParse(
       order['offerSuspendedUntil']?.toString() ?? '',

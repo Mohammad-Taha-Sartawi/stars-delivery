@@ -95,7 +95,7 @@ Steps:
 1. `main()` calls `ApiConfig.init()` ([api_config.dart:294-317](../../lib/services/api_config.dart#L294)).
    - Production requires `STARS_SERVER_URL` (HTTPS).
    - Android debug falls back to a hard-coded LAN IP and probes `GET /api/config` (800 ms) or scans the /24 subnet.
-2. `LocationService.initialize()` ([location_service.dart:9-20](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L9)) requests location permission, gets a GPS fix (10 s limit), and maps it to the nearest Palestinian state from an asset JSON into `ApiConfig.detectedArea`.
+2. `LocationService.initialize()` ([location_service.dart:9-20](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L9)) requests location permission, gets a GPS fix (10 s limit), and maps it to the nearest Palestinian state from an asset JSON into `ApiConfig.detectedArea`.
 3. Theme and locale are loaded. `runApp`, with `home: LoginScreen` ([main.dart:66](../../lib/main.dart#L66)).
 4. `AuthBloc` fires `CheckAuthEvent` ([auth_bloc.dart:34-76](../../lib/bloc/auth/auth_bloc.dart#L34)):
    - it reads the token from secure storage, migrating it from legacy SharedPreferences ([session_storage.dart](../../lib/services/session_storage.dart));
@@ -330,7 +330,7 @@ Inputs:
 Area handling:
 
 - `area` is sent as `ApiConfig.detectedArea` (GPS-derived state) but the **server overrides it** with the registered `user.area` ([orders.js:78](../../swifora_backend/src/routes/orders.js#L78)).
-- If governorate-level mode is on, a warning dialog asks the customer to confirm the scope ([create_order_screen.dart:291-314](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/screens/create_order_screen.dart#L291)).
+- If governorate-level mode is on, a warning dialog asks the customer to confirm the scope ([create_order_screen.dart:291-314](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/screens/create_order_screen.dart#L291)).
 
 Steps:
 
@@ -486,7 +486,7 @@ Steps:
 - **Server:** `createUserNotification` ([mobileNotifications.js:14-49](../../swifora_backend/src/services/mobileNotifications.js#L14)) creates a `Notification` (with `expireAt` TTL, mostly 7 days), emits socket `notification_count`, and sends FCM. Broadcasts and admin status changes insert pinned notifications directly, with a 24 h TTL and **no push**.
 - **Client:** `NotificationBloc` (`GET /notifications` plus `/unread-count`) polls every 15 s on both homes, and reloads on `notification_count` (provider) or `broadcast`. [notifications_screen.dart](../../lib/screens/notifications_screen.dart) handles mark-read (a pinned notification is deleted when read) and mark-all.
 
-Tap routing ([notifications_screen.dart:245-318](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/screens/notifications_screen.dart#L245)):
+Tap routing ([notifications_screen.dart:245-318](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/screens/notifications_screen.dart#L245)):
 
 | Notification type | Opens |
 |---|---|

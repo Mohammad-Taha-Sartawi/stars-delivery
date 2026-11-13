@@ -51,7 +51,7 @@ Secret hygiene at startup (Confirmed): `JWT_SECRET` and `SESSION_SECRET` must ea
 ### 2.2 Caches, offline queues, migrations
 
 - No local database, HTTP cache, or offline write queue exists (Confirmed: no `sqflite`/`hive`/`drift` in [pubspec.yaml](../../pubspec.yaml)). Every mutation needs the network. Failed requests show an error and are not retried.
-- `rootBundle.loadString` caches the **46.5 MB** `assets/countries+states+cities.json` in memory after the first load ([location_service.dart:56-58](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L56-L58)). See RISK-001 and RISK-002.
+- `rootBundle.loadString` caches the **46.5 MB** `assets/countries+states+cities.json` in memory after the first load ([location_service.dart:56-58](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L56-L58)). See RISK-001 and RISK-002.
 - The only client-side "migration" is the token move from SharedPreferences to secure storage described above.
 - Map tiles from `tile.openstreetmap.org` are cached by `flutter_map`'s default image cache only ([order_tracking_screen.dart:139-140](../../lib/screens/order_tracking_screen.dart#L139-L140)).
 
@@ -235,7 +235,7 @@ sequenceDiagram
 ### Client-side trust boundaries
 
 - Price, commission, provider earnings, order status and offer validity are all **computed on the server** ([orderLifecycle.js:305-312](../../swifora_backend/src/services/orderLifecycle.js#L305-L312)). The client sends only `price` (offer) and `rating`. No client-side role or price trust was found.
-- **Mock-location detection is reported by the client** (`isMocked` from Geolocator) ([location_service.dart:144](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L144), [locationValidation.js:62-63](../../swifora_backend/src/security/locationValidation.js#L62-L63)). A modified client can simply send `false`. Server-side range and speed checks only partly compensate (documented residual risk).
+- **Mock-location detection is reported by the client** (`isMocked` from Geolocator) ([location_service.dart:144](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L144), [locationValidation.js:62-63](../../swifora_backend/src/security/locationValidation.js#L62-L63)). A modified client can simply send `false`. Server-side range and speed checks only partly compensate (documented residual risk).
 - Offer expiry countdowns use the **device clock** against the server `expiresAt` ([order_offers_screen.dart:76-106](../../lib/screens/order_offers_screen.dart#L76-L106)). This is display only, since the server enforces expiry.
 
 ---
@@ -274,7 +274,7 @@ Backend:
 |---|---|---|
 | Android | `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `INTERNET`, `POST_NOTIFICATIONS` ([AndroidManifest.xml:2-5](../../android/app/src/main/AndroidManifest.xml#L2-L5)) | No background location. No deep-link intent filters. `exported=true` only on the launcher activity |
 | iOS | `NSLocationWhenInUseUsageDescription`, `NSPhotoLibraryUsageDescription` (**stale**: photo upload was removed), `UIBackgroundModes=remote-notification`. `aps-environment` is development/production per build ([Info.plist:56-63](../../ios/Runner/Info.plist#L56-L63)) | RISK-034 |
-| Runtime | The location permission is requested in `main()` **before the first frame and before login** ([main.dart:18](../../lib/main.dart#L18), [location_service.dart:11-37](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L11-L37)). The notification permission is requested after login ([push_notification_service.dart:38](../../lib/services/push_notification_service.dart#L38)) | RISK-001 |
+| Runtime | The location permission is requested in `main()` **before the first frame and before login** ([main.dart:18](../../lib/main.dart#L18), [location_service.dart:11-37](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L11-L37)). The notification permission is requested after login ([push_notification_service.dart:38](../../lib/services/push_notification_service.dart#L38)) | RISK-001 |
 
 ---
 

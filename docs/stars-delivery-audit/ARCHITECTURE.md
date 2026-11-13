@@ -62,7 +62,7 @@ The desktop/web folders are untouched `flutter create` scaffolding (the analyzer
 
 1. `WidgetsFlutterBinding.ensureInitialized()`.
 2. `await ApiConfig.init()` — resolves the backend origin; on Android debug with no `STARS_SERVER_URL`, probes `/api/config` and may scan the whole /24 LAN ([api_config.dart:294-315](../../lib/services/api_config.dart#L294-L315), [:196-246](../../lib/services/api_config.dart#L196-L246)).
-3. `await LocationService.initialize()` — requests location permission, gets a GPS fix (≤10 s timeout), then decodes the 46.5 MB `assets/countries+states+cities.json` to find the nearest Palestinian governorate ([location_service.dart:11-24](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L11-L24), [:54-59](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L54-L59)).
+3. `await LocationService.initialize()` — requests location permission, gets a GPS fix (≤10 s timeout), then decodes the 46.5 MB `assets/countries+states+cities.json` to find the nearest Palestinian governorate ([location_service.dart:11-24](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L11-L24), [:54-59](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L54-L59)).
 4. `ThemePreferences.load()` / `LocalePreferences.load()` (SharedPreferences).
 5. `runApp(SwiforaApp(...))`.
 
@@ -102,7 +102,7 @@ Entry: `npm start` → `node src/index.js` ([package.json](../../swifora_backend
 |---|---|
 | [lib/](../../lib) | Flutter source (≈19.8k lines across 78 Dart files) |
 | [test/](../../test) | 51 Flutter test files (widget/UI/security tests + a mock API server harness) |
-| [assets/countries+states+cities.json](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/tree/9b50ca3/assets) | **46,525,815-byte** world location dataset; only the Palestine (`iso2 == 'PS'`) entry is used ([location_catalog.dart:70-75](../../lib/services/location_catalog.dart#L70-L75)) |
+| [assets/countries+states+cities.json](https://github.com/Mohammad-Taha-Sartawi/swifora/tree/9b50ca3/assets) | **46,525,815-byte** world location dataset; only the Palestine (`iso2 == 'PS'`) entry is used ([location_catalog.dart:70-75](../../lib/services/location_catalog.dart#L70-L75)) |
 | [android/](../../android), [ios/](../../ios) | Configured native shells |
 | `web/`, `macos/`, `windows/`, `linux/` | Unconfigured Flutter templates |
 | [swifora_backend/](../../swifora_backend) | Node API, realtime, admin dashboard, ops scripts, tests |
@@ -253,7 +253,7 @@ No remote-config or runtime feature-flag system exists.
 | Backup | `allowBackup="false"` ([:7](../../android/app/src/main/AndroidManifest.xml#L7)) | — |
 | Push | FCM default channel id `swifora_default` ([:39-41](../../android/app/src/main/AndroidManifest.xml#L39-L41)); background handler registered in Dart ([push_notification_service.dart:12-15](../../lib/services/push_notification_service.dart#L12-L15)) | `UIBackgroundModes: remote-notification` ([Info.plist:60-63](../../ios/Runner/Info.plist#L60-L63)); `aps-environment` development/production entitlements |
 | Push payload handling | Foreground messages are only `debugPrint`ed ([push_notification_service.dart:53-55](../../lib/services/push_notification_service.dart#L53-L55)); no `flutter_local_notifications`, no notification-tap routing (`onMessageOpenedApp`/`getInitialMessage` not used) | same |
-| Background location / services | None. Location is foreground-only: on screen init + 30 s timer on the provider active-orders screen ([provider_active_orders_screen.dart:38](../../lib/screens/provider_active_orders_screen.dart#L38)) → `PUT /users/location` ([location_service.dart:122-150](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L122-L150)) | same |
+| Background location / services | None. Location is foreground-only: on screen init + 30 s timer on the provider active-orders screen ([provider_active_orders_screen.dart:38](../../lib/screens/provider_active_orders_screen.dart#L38)) → `PUT /users/location` ([location_service.dart:122-150](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L122-L150)) | same |
 | Maps | OpenStreetMap public tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png` with `userAgentPackageName` ([order_tracking_screen.dart:138-140](../../lib/screens/order_tracking_screen.dart#L138-L140)); no API key, no attribution widget confirmed, subject to OSM tile usage policy | same |
 | Secure storage | Keystore via flutter_secure_storage | Keychain (`keychain-access-groups` empty array in entitlements) |
 
@@ -294,7 +294,7 @@ Server emits `rating_received` ([orders.js:419](../../swifora_backend/src/routes
 | Finding | Evidence |
 |---|---|
 | Root `package-lock.json` is an empty stub with no `package.json` | [package-lock.json](../../package-lock.json) |
-| 46.5 MB worldwide dataset bundled to use one country; decoded with `jsonDecode` on the UI isolate; `LocationService._findNearestArea` re-reads and re-decodes it on **every** `syncToBackend` call (no cache), while `LocationCatalog` caches its own separate parse | [location_service.dart:56-59](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L56-L59), [location_catalog.dart:64-97](../../lib/services/location_catalog.dart#L64-L97) |
+| 46.5 MB worldwide dataset bundled to use one country; decoded with `jsonDecode` on the UI isolate; `LocationService._findNearestArea` re-reads and re-decodes it on **every** `syncToBackend` call (no cache), while `LocationCatalog` caches its own separate parse | [location_service.dart:56-59](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L56-L59), [location_catalog.dart:64-97](../../lib/services/location_catalog.dart#L64-L97) |
 | Palestine location data duplicated four ways: app asset, backend `palestineCities.js`, `public/data/areas.json`, and unused `src/data/cities.js` | [palestineCities.js](../../swifora_backend/src/services/palestineCities.js), [areas.json](../../swifora_backend/src/public/data/areas.json), [data/cities.js](../../swifora_backend/src/data/cities.js) |
 | `axios` backend dependency unused | [package.json](../../swifora_backend/package.json) |
 | `IMGBB_API_KEY` in deployment env template, unused by code | [stars-delivery.env.example:29](../../deployment/swifora.env.example#L29) |
@@ -582,7 +582,7 @@ sequenceDiagram
 
 ## 10. Top architecture / maintainability concerns
 
-1. **Blocking, heavyweight startup** — `main()` awaits permission prompt + GPS (≤10 s) + a 46.5 MB JSON decode on the UI isolate before the first frame; the same file is re-decoded on every location sync. [main.dart:17-18](../../lib/main.dart#L17-L18), [location_service.dart:54-59](https://github.com/Mohammad-Taha-Sartawi/stars-delivery/blob/9b50ca3/lib/services/location_service.dart#L54-L59).
+1. **Blocking, heavyweight startup** — `main()` awaits permission prompt + GPS (≤10 s) + a 46.5 MB JSON decode on the UI isolate before the first frame; the same file is re-decoded on every location sync. [main.dart:17-18](../../lib/main.dart#L17-L18), [location_service.dart:54-59](https://github.com/Mohammad-Taha-Sartawi/swifora/blob/9b50ca3/lib/services/location_service.dart#L54-L59).
 2. **Inconsistent state architecture & God widgets** — Bloc for some features, `setState` + direct service calls + inline Dio for others; role shells of 965/1,534 lines duplicate the whole session bootstrap. [provider_home_screen.dart](../../lib/screens/provider_home_screen.dart), [home_screen.dart](../../lib/screens/home_screen.dart).
 3. **No DI, token prop-drilling, per-call auth headers** — services hard-instantiated in blocs/screens; JWT threaded through constructors/events/methods. [order_bloc.dart:8](../../lib/bloc/order/order_bloc.dart#L8), [order_service.dart:34](../../lib/services/order_service.dart#L34).
 4. **Untyped JSON across the UI + duplicated error mapping** — screens consume `Map<String,dynamic>`; per-method copy-pasted `DioException` handling; socket event names duplicated as string literals with an unhandled `rating_received`. [socket_service.dart:123-201](../../lib/services/socket_service.dart#L123-L201), [orders.js:419](../../swifora_backend/src/routes/orders.js#L419).

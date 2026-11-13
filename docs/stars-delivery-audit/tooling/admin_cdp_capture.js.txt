@@ -1,0 +1,104 @@
+// Audit-only CDP capture of the local admin dashboard (synthetic data).
+// usage: node capture.js <outDir> <credFile>   (Edge must listen on :9333)
+const fs = require('fs');
+const path = require('path');
+const [OUT, CRED] = process.argv.slice(2);
+const cred = Object.fromEntries(
+  fs.readFileSync(CRED, 'utf8').trim().split('\n').map((l) => l.split('=')),
+);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const manifest = [];
+
+(async () => {
+  const list = await (await fetch('http://127.0.0.1:9333/json/list')).json();
+  const page = list.find((t) => t.type === 'page');
+  const ws = new WebSocket(page.webSocketDebuggerUrl);
+  await new Promise((r) => ws.addEventListener('open', r));
+  let id = 0;
+  const pending = new Map();
+  ws.addEventListener('message', (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.id && pending.has(msg.id)) {
+      pending.get(msg.id)(msg);
+      pending.delete(msg.id);
+    }
+  });
+  const send = (method, params = {}) =>
+    new Promise((r) => {
+      const i = ++id;
+      pending.set(i, r);
+      ws.send(JSON.stringify({ id: i, method, params }));
+    });
+  const evalJs = async (expression) =>
+    (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })).result?.result?.value;
+  const viewport = (w, h, mobile = false) =>
+    send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile });
+  const shot = async (name, note, full = false) => {
+    const params = { format: 'png' };
+    if (full) params.captureBeyondViewport = true;
+    const res = await send('Page.captureScreenshot', params);
+    fs.writeFileSync(path.join(OUT, `${name}.png`), Buffer.from(res.result.data, 'base64'));
+    const dims = await evalJs('[innerWidth, innerHeight]');
+    manifest.push({ file: `${name}.png`, viewport: dims.join('x'), note });
+    console.log('captured', name);
+  };
+  const go = async (url) => {
+    await send('Page.navigate', { url });
+    await sleep(2500);
+  };
+
+  await send('Page.enable');
+  await viewport(1440, 900);
+  await go('http://localhost:3999/admin/login');
+  await shot('admin-login-desktop-default', 'login page');
+  await viewport(390, 844, true);
+  await shot('admin-login-mobile-default', 'login page at 390px');
+  await viewport(1440, 900);
+
+  await evalJs(`(() => {
+    const e = document.querySelector('input[type=email]');
+    const p = document.querySelector('input[type=password]');
+    e.value = ${JSON.stringify(cred.email)};
+    p.value = ${JSON.stringify(cred.password)};
+    e.form.requestSubmit();
+  })()`);
+  await sleep(3000);
+
+  const pages = [
+    'dashboard', 'orders', 'drivers', 'users', 'commissions', 'add-driver',
+    'pending-providers', 'driver-reports', 'user-reports', 'support-chat',
+    'broadcast-drivers', 'broadcast-users', 'ads', 'areas', 'settings',
+  ];
+  for (const p of pages) {
+    const ok = await evalJs(`(() => { const el = document.querySelector('[data-page="${p}"]'); if (!el) return false; el.click(); return true; })()`);
+    await sleep(1800);
+    if (!ok) { console.log('missing page', p); continue; }
+    await evalJs('window.scrollTo(0,0)');
+    await shot(`admin-${p}-desktop-populated`, `sidebar [data-page=${p}]`);
+  }
+
+  // Responsive check of dashboard + orders at phone width.
+  for (const p of ['dashboard', 'orders']) {
+    await viewport(390, 844, true);
+    await evalJs(`document.querySelector('[data-page="${p}"]')?.click()`);
+    await sleep(1500);
+    await shot(`admin-${p}-mobile-populated`, `[data-page=${p}] at 390px`);
+  }
+  await viewport(1440, 900);
+
+  // Try opening a modal: order details from orders page.
+  await evalJs(`document.querySelector('[data-page="orders"]')?.click()`);
+  await sleep(1500);
+  const opened = await evalJs(`(() => {
+    const btn = [...document.querySelectorAll('#page-orders button, [data-page-section="orders"] button, button')]
+      .find((b) => /تفاصيل|details|عرض/i.test(b.textContent) && b.offsetParent);
+    if (!btn) return false; btn.click(); return btn.textContent.trim();
+  })()`);
+  await sleep(1500);
+  if (opened) await shot('admin-modal-order-details-desktop', `clicked button "${opened}" on orders page`);
+  else console.log('no details button found');
+
+  fs.writeFileSync(path.join(OUT, '_admin_manifest.json'), JSON.stringify(manifest, null, 2));
+  ws.close();
+  process.exit(0);
+})().catch((e) => { console.error('CAPTURE_FAILED', e); process.exit(1); });

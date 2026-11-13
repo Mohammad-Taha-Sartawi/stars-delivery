@@ -1,0 +1,529 @@
+// Stars Delivery audit — gated screen capture harness (TEMPORARY, not part of
+// the project). Renders the real screen widgets from lib/ inside the Flutter
+// widget-test renderer, served by synthetic in-memory fixtures through the
+// project's own MobileApiClient.testAdapter hook, then rasterizes the actual
+// frame with RepaintBoundary.toImage.
+//
+// Run (from the project root, after copying this file into test/):
+//   STARS_AUDIT_CAPTURE=1 STARS_AUDIT_OUT=<dir> flutter test test/zz_audit_capture_test.dart
+//
+// These are widget-test rasterizations, NOT device/emulator screenshots.
+// Map tiles (network) do not load in this environment.
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
+import 'package:stars_delivery/main.dart';
+import 'package:stars_delivery/screens/commission_payment_screen.dart';
+import 'package:stars_delivery/screens/create_order_screen.dart';
+import 'package:stars_delivery/screens/force_change_password_screen.dart';
+import 'package:stars_delivery/screens/forgot_password_screen.dart';
+import 'package:stars_delivery/screens/home_screen.dart';
+import 'package:stars_delivery/screens/my_orders_screen.dart';
+import 'package:stars_delivery/screens/notifications_screen.dart';
+import 'package:stars_delivery/screens/offered_orders_screen.dart';
+import 'package:stars_delivery/screens/order_detail_screen.dart';
+import 'package:stars_delivery/screens/order_offers_screen.dart';
+import 'package:stars_delivery/screens/order_report_screen.dart';
+import 'package:stars_delivery/screens/order_tracking_screen.dart';
+import 'package:stars_delivery/screens/pending_orders_screen.dart';
+import 'package:stars_delivery/screens/profile_screen.dart';
+import 'package:stars_delivery/screens/provider_active_orders_screen.dart';
+import 'package:stars_delivery/screens/provider_home_screen.dart';
+import 'package:stars_delivery/screens/rejected_orders_screen.dart';
+import 'package:stars_delivery/screens/report_screen.dart';
+import 'package:stars_delivery/screens/settings_screen.dart';
+import 'package:stars_delivery/screens/submit_offer_screen.dart';
+import 'package:stars_delivery/screens/support_chat_screen.dart';
+import 'package:stars_delivery/services/auth_service.dart';
+import 'package:stars_delivery/services/mobile_api_client.dart';
+import 'package:stars_delivery/services/session_storage.dart';
+
+import 'ux03_screen_harness.dart';
+
+// ---------------------------------------------------------------- fixtures --
+
+enum Mode { populated, empty, error }
+
+DateTime get _now => DateTime.now().toUtc();
+String _ago(int minutes) =>
+    _now.subtract(Duration(minutes: minutes)).toIso8601String();
+String _in(int minutes) => _now.add(Duration(minutes: minutes)).toIso8601String();
+
+const _customerRef = {
+  '_id': 'c-1',
+  'fullName': 'Test Customer',
+  'publicId': 'CUS-1001',
+};
+
+Map<String, dynamic> _order(
+  String id,
+  String status, {
+  String type = 'product',
+  String description = 'Synthetic order: 2 grocery bags',
+  int createdMinutesAgo = 12,
+  double? price,
+}) => {
+  '_id': id,
+  'publicId': id.toUpperCase(),
+  'type': type,
+  'description': description,
+  'phone': '0590000000',
+  'status': status,
+  'area': 'Ramallah',
+  'governorate': 'Ramallah and Al-Bireh',
+  'createdAt': _ago(createdMinutesAgo),
+  'customerId': _customerRef,
+  'location': {'lat': 31.9038, 'lng': 35.2034},
+  if (price != null) 'price': price,
+  if (status == 'accepted') 'acceptedAt': _ago(8),
+  if (status == 'fulfilling') 'fulfillingAt': _ago(5),
+  'estimatedTime': 20,
+};
+
+final _myOrders = [
+  _order('ord-1001', 'offered', createdMinutesAgo: 3),
+  _order('ord-1002', 'pending', type: 'people', description: 'Ride for 2 people'),
+  _order('ord-1003', 'accepted', type: 'goods', price: 25),
+  _order('ord-1004', 'fulfilling', price: 18),
+  _order('ord-1005', 'completed', price: 15, createdMinutesAgo: 600),
+  _order('ord-1006', 'cancelled', createdMinutesAgo: 1600),
+];
+
+final _offers = [
+  for (final (i, name, price, eta, rating) in [
+    (1, 'Driver Alpha', 15, 20, 4.8),
+    (2, 'Driver Beta', 12, 35, 4.2),
+    (3, 'Driver Gamma', 18, 15, 0.0),
+  ])
+    {
+      '_id': 'off-$i',
+      'orderId': 'ord-1001',
+      'providerId': {
+        '_id': 'p-$i',
+        'fullName': name,
+        'publicId': 'PRV-00$i',
+        'area': 'Ramallah',
+        'governorate': 'Ramallah and Al-Bireh',
+      },
+      'price': price,
+      'estimatedTime': eta,
+      'status': 'pending',
+      'createdAt': _ago(2),
+      'expiresAt': _in(4),
+      'providerRating': {'average': rating, 'count': rating == 0 ? 0 : 9 + i},
+      'providerCategory': i == 1 ? 'car' : 'motorcycle',
+    },
+];
+
+final _pendingForProvider = [
+  _order('ord-2001', 'pending', description: 'Pick up pharmacy order'),
+  _order('ord-2002', 'offered', type: 'people', description: 'Ride to Birzeit'),
+];
+
+final _offeredForProvider = [
+  {
+    ..._order('ord-2003', 'offered', description: 'Bakery items'),
+    'offeredPrice': 14,
+    'offeredTime': 25,
+  },
+];
+
+final _activeForProvider = [
+  _order('ord-2004', 'accepted', price: 20),
+  _order('ord-2005', 'fulfilling', price: 30, type: 'goods'),
+];
+
+final _rejected = [
+  {
+    ..._order('ord-2006', 'cancelled'),
+    'recordType': 'offer_rejected',
+    'reason': 'Customer chose another offer',
+    'offeredPrice': 16,
+    'acceptedPrice': 12,
+  },
+];
+
+final _notifications = [
+  {
+    '_id': 'n-1',
+    'orderId': 'ord-1001',
+    'type': 'new_offer',
+    'title': 'New offer',
+    'body': 'Driver Alpha offered 15 for your order',
+    'read': false,
+    'createdAt': _ago(2),
+  },
+  {
+    '_id': 'n-2',
+    'type': 'broadcast',
+    'title': 'Announcement',
+    'body': 'Service hours extended this weekend (synthetic).',
+    'read': true,
+    'pinned': true,
+    'createdAt': _ago(300),
+  },
+];
+
+final _chat = [
+  {'_id': 'm-1', 'sender': 'user', 'text': 'Hello, I need help with an order', 'createdAt': _ago(30)},
+  {'_id': 'm-2', 'sender': 'admin', 'text': 'Hi! Please share the order number.', 'createdAt': _ago(28)},
+];
+
+final _ads = [
+  {
+    '_id': 'ad-1',
+    'title': 'Synthetic promotion',
+    'body': 'Free delivery on your first order (test ad).',
+    'startsAt': _ago(60),
+    'endsAt': _in(60 * 24),
+  },
+];
+
+const _stats = {
+  'dailyEarnings': 120.0,
+  'monthlyEarnings': 2400.0,
+  'totalSuccessful': 87,
+  'dailyOrderCount': 6,
+  'dailyCommission': 12.0,
+  'monthlyCommission': 240.0,
+  'totalCommissionDue': 35.5,
+  'pendingOrdersCount': 2,
+  'offeredOrdersCount': 1,
+  'ordersReportCount': 3,
+  'activeOrdersCount': 2,
+  'averageRating': 4.6,
+  'ratingCount': 31,
+  'ratingStars': 5,
+  'isAvailable': true,
+};
+
+class AuditAdapter implements HttpClientAdapter {
+  Mode mode = Mode.populated;
+  Duration delay = Duration.zero;
+
+  dynamic _body(String method, String path) {
+    final p = path.replaceFirst(RegExp(r'^/api'), '');
+    final empty = mode == Mode.empty;
+    if (p.endsWith('/unread-count')) return {'count': empty ? 0 : 2};
+    if (p == '/provider/stats') return _stats;
+    if (p == '/ads') return empty ? [] : _ads;
+    if (p == '/users/available-providers') return {'count': empty ? 0 : 7};
+    if (p == '/notifications') return empty ? [] : _notifications;
+    if (p == '/chat/history') return empty ? [] : _chat;
+    if (p == '/reports/my') return [];
+    if (p == '/provider/pending-orders') return empty ? [] : _pendingForProvider;
+    if (p == '/provider/offered-orders') return empty ? [] : _offeredForProvider;
+    if (p == '/provider/orders') return empty ? [] : _activeForProvider;
+    if (p == '/provider/rejected-orders') return empty ? [] : _rejected;
+    if (p.startsWith('/offers/order/')) return empty ? [] : _offers;
+    if (p == '/orders' && method == 'GET') return empty ? [] : _myOrders;
+    if (p.startsWith('/orders/') && method == 'GET') {
+      return {
+        ..._order('ord-1001', 'fulfilling', price: 15),
+        'providerName': 'Driver Alpha',
+        'providerLocation': {'lat': 31.905, 'lng': 35.205},
+        'myOffer': null,
+      };
+    }
+    return {'ok': true};
+  }
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    final failing = mode == Mode.error;
+    final data = failing
+        ? {'error': 'Synthetic server error (audit fixture)'}
+        : _body(options.method, options.uri.path);
+    return ResponseBody.fromString(
+      jsonEncode(data),
+      failing ? 500 : 200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+// ------------------------------------------------------------------ stubs --
+
+class _Vault implements TokenVault {
+  @override
+  Future<String?> read(String key) async => null;
+  @override
+  Future<void> write(String key, String value) async {}
+  @override
+  Future<void> delete(String key) async {}
+}
+
+class _Gateway implements AuthGateway {
+  @override
+  Future<Map<String, dynamic>> login(String e, String p, String r) async =>
+      throw Exception('Synthetic: invalid credentials');
+  @override
+  Future<Map<String, dynamic>> register(
+    String fullName,
+    String email,
+    String phone,
+    String password,
+    String role,
+    String area, {
+    String governorate = '',
+    bool privacyPolicy = true,
+    List<String> serviceTypes = const [],
+  }) async => throw UnimplementedError();
+  @override
+  Future<Map<String, dynamic>> validateSession(String token) async =>
+      throw UnimplementedError();
+}
+
+// ---------------------------------------------------------------- capture --
+
+final _out = Platform.environment['STARS_AUDIT_OUT'] ?? 'audit_out';
+final _manifest = <Map<String, String>>[];
+
+Future<void> _loadFonts() async {
+  Future<ByteData> f(String p) async =>
+      ByteData.view(Uint8List.fromList(await File(p).readAsBytes()).buffer);
+  final roboto = FontLoader('Roboto')
+    ..addFont(f(r'C:\Windows\Fonts\segoeui.ttf'))
+    ..addFont(f(r'C:\Windows\Fonts\segoeuib.ttf'));
+  await roboto.load();
+  final icons = FontLoader('MaterialIcons')
+    ..addFont(
+      f(r'C:\src\flutter\bin\cache\artifacts\material_fonts\materialicons-regular.otf'),
+    );
+  await icons.load();
+}
+
+Future<void> _snap(WidgetTester tester, GlobalKey key, String name, String note) async {
+  final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  final image = await tester.runAsync(() => boundary.toImage(pixelRatio: 2.0));
+  final bytes = await tester.runAsync(
+    () => image!.toByteData(format: ui.ImageByteFormat.png),
+  );
+  final file = File('$_out${Platform.pathSeparator}$name.png');
+  await tester.runAsync(() => file.writeAsBytes(bytes!.buffer.asUint8List()));
+  _manifest.add({
+    'file': '$name.png',
+    'width': '${image!.width}',
+    'height': '${image.height}',
+    'note': note,
+  });
+}
+
+typedef Builder = Widget Function();
+
+class Case {
+  const Case(this.id, this.build, {this.provider = false, this.list = true});
+  final String id;
+  final Builder build;
+  final bool provider;
+  final bool list;
+}
+
+final _cust = Ux03Harness.customer;
+final _prov = Ux03Harness.provider;
+const _t = 'audit-token';
+
+final _cases = <Case>[
+  Case('home-customer', () => HomeScreen(user: _cust, role: 'customer', token: _t)),
+  Case('home-provider', () => ProviderHomeScreen(user: _prov, token: _t), provider: true),
+  Case('create-order', () => CreateOrderScreen(user: _cust, token: _t), list: false),
+  Case('my-orders', () => const MyOrdersScreen(token: _t)),
+  Case('order-offers', () => const OrderOffersScreen(token: _t, orderId: 'ord-1001')),
+  Case('order-detail', () => const OrderDetailScreen(token: _t, orderId: 'ord-2001'), provider: true),
+  Case('order-tracking', () => const OrderTrackingScreen(token: _t, orderId: 'ord-1001')),
+  Case('order-report', () => const OrderReportScreen(token: _t, orderId: 'ord-1005')),
+  Case('notifications', () => const NotificationsScreen(token: _t)),
+  Case('support-chat', () => const SupportChatScreen(token: _t)),
+  Case('profile', () => ProfileScreen(user: _cust, token: _t), list: false),
+  Case('settings', () => const SettingsScreen(), list: false),
+  Case('report', () => const ReportScreen(token: _t, reportType: 'driver', title: 'Report driver'), list: false),
+  Case('pending-orders', () => PendingOrdersScreen(orders: _pendingForProvider, token: _t, user: _prov), provider: true, list: false),
+  Case('offered-orders', () => OfferedOrdersScreen(orders: _offeredForProvider, token: _t), provider: true, list: false),
+  Case('pending-orders-empty', () => PendingOrdersScreen(orders: const [], token: _t, user: _prov), provider: true, list: false),
+  Case('offered-orders-empty', () => const OfferedOrdersScreen(orders: [], token: _t), provider: true, list: false),
+  Case('provider-active', () => const ProviderActiveOrdersScreen(token: _t), provider: true),
+  Case('rejected-orders', () => const RejectedOrdersScreen(token: _t), provider: true),
+  Case('submit-offer', () => const SubmitOfferScreen(token: _t, orderId: 'ord-2001'), provider: true, list: false),
+  Case('commission-payment', () => const CommissionPaymentScreen(dueAmount: 35.5), provider: true, list: false),
+  Case('forgot-password', () => const ForgotPasswordScreen(), list: false),
+  Case('force-change-password', () => ForceChangePasswordScreen(user: _cust, token: _t), list: false),
+];
+
+const _variants = [
+  ('ar-light', Locale('ar'), ThemeMode.light),
+  ('en-light', Locale('en'), ThemeMode.light),
+  ('ar-dark', Locale('ar'), ThemeMode.dark),
+];
+
+void _viewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1170, 2532); // 390x844 logical @3x
+  tester.view.devicePixelRatio = 3.0;
+}
+
+Future<void> main() async {
+  if (Platform.environment['STARS_AUDIT_CAPTURE'] != '1') {
+    test('audit capture disabled', () {});
+    return;
+  }
+  TestWidgetsFlutterBinding.ensureInitialized();
+  await _loadFonts();
+  Directory(_out).createSync(recursive: true);
+  final harness = Ux03Harness();
+  final adapter = AuditAdapter();
+  MobileApiClient.testAdapter = adapter;
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    adapter
+      ..mode = Mode.populated
+      ..delay = Duration.zero;
+    MobileApiClient.testAdapter = adapter;
+  });
+
+  Future<void> pumpCase(
+    WidgetTester tester,
+    Widget home,
+    GlobalKey key, {
+    Locale locale = const Locale('ar'),
+    ThemeMode theme = ThemeMode.light,
+    bool settle = true,
+  }) async {
+    _viewport(tester);
+    await tester.pumpWidget(harness.app(home, themeMode: theme, locale: locale, boundaryKey: key));
+    await tester.pump();
+    if (settle) {
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+    }
+  }
+
+  Future<void> drain(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    tester.takeException();
+  }
+
+  // Login (real app shell with stubbed auth gateway).
+  for (final (vName, locale, theme) in _variants) {
+    testWidgets('login $vName', (tester) async {
+      _viewport(tester);
+      final key = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: key,
+          child: StarsDeliveryApp(
+            initialLocale: locale,
+            initialTheme: theme,
+            authBlocFactory: () => AuthBloc(
+              authService: _Gateway(),
+              sessionStorage: SessionStorage(vault: _Vault()),
+              checkOnStart: false,
+            ),
+          ),
+        ),
+      );
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      await _snap(tester, key, 'login-$vName-default', 'StarsDeliveryApp -> LoginScreen');
+      if (vName == 'ar-light') {
+        // Submit empty form to surface validation errors.
+        final buttons = find.byType(ElevatedButton);
+        if (buttons.evaluate().isNotEmpty) {
+          await tester.ensureVisible(buttons.first);
+          await tester.tap(buttons.first, warnIfMissed: false);
+          await tester.pump(const Duration(milliseconds: 300));
+          await _snap(tester, key, 'login-$vName-validation', 'Tapped first ElevatedButton with empty fields');
+        }
+      }
+      await drain(tester);
+    });
+  }
+
+  for (final c in _cases) {
+    for (final (vName, locale, theme) in _variants) {
+      testWidgets('${c.id} $vName', (tester) async {
+        final key = GlobalKey();
+        await pumpCase(tester, c.build(), key, locale: locale, theme: theme);
+        await _snap(tester, key, '${c.id}-$vName-populated', 'populated fixtures');
+        await drain(tester);
+      });
+    }
+    if (c.list) {
+      testWidgets('${c.id} empty', (tester) async {
+        adapter.mode = Mode.empty;
+        final key = GlobalKey();
+        await pumpCase(tester, c.build(), key);
+        await _snap(tester, key, '${c.id}-ar-light-empty', 'empty fixtures');
+        await drain(tester);
+      });
+      testWidgets('${c.id} error', (tester) async {
+        adapter.mode = Mode.error;
+        final key = GlobalKey();
+        await pumpCase(tester, c.build(), key);
+        await _snap(tester, key, '${c.id}-ar-light-error', 'HTTP 500 for every request');
+        await drain(tester);
+      });
+      testWidgets('${c.id} loading', (tester) async {
+        adapter.delay = const Duration(seconds: 3);
+        final key = GlobalKey();
+        await pumpCase(tester, c.build(), key, settle: false);
+        await tester.pump(const Duration(milliseconds: 300));
+        await _snap(tester, key, '${c.id}-ar-light-loading', 'responses delayed 3s; captured at 300ms');
+        await drain(tester);
+      });
+    }
+  }
+
+  // Dialog: logout confirmation from customer home (en + ar).
+  for (final (vName, locale, theme) in _variants) {
+    testWidgets('logout dialog $vName', (tester) async {
+      final key = GlobalKey();
+      await pumpCase(
+        tester,
+        HomeScreen(user: _cust, role: 'customer', token: _t),
+        key,
+        locale: locale,
+        theme: theme,
+      );
+      final logout = find.byIcon(Icons.logout);
+      if (logout.evaluate().isNotEmpty) {
+        await tester.tap(logout.first, warnIfMissed: false);
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 150));
+        }
+        await _snap(tester, key, 'dialog-logout-$vName', 'tapped Icons.logout on HomeScreen');
+      }
+      await drain(tester);
+    });
+  }
+
+  tearDownAll(() {
+    File('$_out${Platform.pathSeparator}_capture_manifest.json')
+        .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(_manifest));
+    harness.dispose();
+  });
+}

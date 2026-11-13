@@ -15,9 +15,16 @@ const {
   hashRecoveryCode,
 } = require('../security/totp');
 
+const { adminPasswordMatches } = require('../security/adminPassword');
+
 const router = express.Router();
 
 const invalidCredentialsMessage = 'اسم المستخدم أو كلمة المرور غير صحيحة';
+// Shown once sign-in is locked for too many failed attempts, so a correct
+// password typed during the lockout is not mistaken for a wrong one.
+const tooManyAttemptsMessage =
+  'محاولات دخول كثيرة. تم إيقاف الدخول مؤقتاً، انتظر 15 دقيقة ثم حاول مرة أخرى.';
+
 const DUMMY_ADMIN_PASSWORD_HASH =
   '$2a$12$sGnyg4das1q00q6NeIP1SOg243vtjXF8zU8iycDT6Nna.E1CnAr76';
 const adminLoginLimiter = rateLimit({
@@ -26,7 +33,7 @@ const adminLoginLimiter = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   skipSuccessfulRequests: true,
-  handler: (req, res) => res.status(429).render('login', { error: invalidCredentialsMessage }),
+  handler: (req, res) => res.status(429).render('login', { error: tooManyAttemptsMessage }),
 });
 
 function adminLoginAccountKey(req) {
@@ -51,7 +58,7 @@ const adminLoginAccountLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: true,
   keyGenerator: adminLoginAccountKey,
-  handler: (req, res) => res.status(429).render('login', { error: invalidCredentialsMessage }),
+  handler: (req, res) => res.status(429).render('login', { error: tooManyAttemptsMessage }),
 });
 
 async function syncAdminSessionVersion(req, version) {
@@ -86,7 +93,7 @@ router.post('/login', adminCsrfProtection, adminLoginLimiter, adminLoginAccountL
       ? await User.findOne({ email: identifier, role: 'admin', deleted: { $ne: true }, status: 'active' }).select('+password +adminTotpSecret +adminTotpRecoveryCodeHashes')
       : null;
 
-    const passwordMatches = await bcrypt.compare(
+    const passwordMatches = await adminPasswordMatches(
       password,
       admin?.password || DUMMY_ADMIN_PASSWORD_HASH,
     );
@@ -145,14 +152,17 @@ router.post('/login', adminCsrfProtection, adminLoginLimiter, adminLoginAccountL
 
 router.post('/reset-password', requireAdminSession, adminCsrfProtection, async (req, res) => {
   try {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+    // Stored without surrounding spaces, the same as the dashboard form sends.
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword.trim() : '';
+    const confirmPassword = typeof req.body?.confirmPassword === 'string' ? req.body.confirmPassword.trim() : '';
     const admin = await User.findOne({
       _id: req.session.admin.id,
       role: 'admin',
       deleted: { $ne: true },
       status: 'active',
     }).select('+password');
-    if (!admin || !(await bcrypt.compare(currentPassword || '', admin.password))) {
+    if (!admin || !(await adminPasswordMatches(currentPassword, admin.password))) {
       return res.json({ success: false, message: 'كلمة المرور الحالية غير صحيحة' });
     }
     if (!isValidAdminPassword(newPassword)) {
@@ -334,7 +344,7 @@ router.post('/2fa/disable', requireAdminSession, adminCsrfProtection, async (req
 
     if (
       !admin
-      || !(await bcrypt.compare(password, admin.password))
+      || !(await adminPasswordMatches(password, admin.password))
     ) {
       return res.status(400).json({
         success: false,

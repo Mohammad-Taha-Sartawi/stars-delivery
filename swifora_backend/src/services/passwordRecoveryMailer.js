@@ -59,9 +59,9 @@ function createPasswordRecoveryMailer({
       from: smtpFrom,
       to,
       subject:
-        'Stars Delivery password recovery code',
+        'Swifora password recovery code',
       text:
-        `Your Stars Delivery password recovery code is ${code}.\n\n`
+        `Your Swifora password recovery code is ${code}.\n\n`
         + 'This code expires in 10 minutes and can be used only once.\n\n'
         + 'If you did not request a password reset, ignore this email.',
     });
@@ -74,9 +74,9 @@ function createPasswordRecoveryMailer({
       from: smtpFrom,
       to,
       subject:
-        'Stars Delivery password changed',
+        'Swifora password changed',
       text:
-        'Your Stars Delivery password was changed using the password recovery flow.\n\n'
+        'Your Swifora password was changed using the password recovery flow.\n\n'
         + 'If you did not perform this action, contact support immediately.',
     });
   }

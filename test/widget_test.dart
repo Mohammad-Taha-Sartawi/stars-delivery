@@ -64,7 +64,7 @@ void main() {
       ),
     );
 
-    expect(find.text('ستارز دليفري'), findsOneWidget);
+    expect(find.text('سويفورا'), findsOneWidget);
 
     expect(find.text('زبون'), findsOneWidget);
 

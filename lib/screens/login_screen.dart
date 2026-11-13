@@ -166,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(
-          AppLocalization.get(context, 'stars_delivery'),
+          AppLocalization.get(context, 'app_name'),
           style: theme.textTheme.headlineLarge,
           textAlign: TextAlign.center,
         ),

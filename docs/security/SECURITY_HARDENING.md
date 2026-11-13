@@ -1,6 +1,6 @@
 # Security Hardening
 
-This document summarizes the controls added to the Stars Delivery backend and
+This document summarizes the controls added to the Swifora backend and
 mobile app. It is an implementation guide, not a substitute for a periodic
 security review.
 

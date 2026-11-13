@@ -347,9 +347,9 @@ void main() {
         expect(tester.takeException(), isNull);
 
         if (scenario.$2.languageCode == 'ar') {
-          expect(find.text('ستارز دليفري'), findsOneWidget);
+          expect(find.text('سويفورا'), findsOneWidget);
         } else {
-          expect(find.text('Stars Delivery'), findsOneWidget);
+          expect(find.text('Swifora'), findsOneWidget);
         }
 
         if (scenario.$3.width >= 900) {

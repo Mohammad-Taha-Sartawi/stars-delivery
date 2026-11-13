@@ -65,7 +65,7 @@ const ENV_VALUES = {
     '',
 
   SMTP_FROM:
-    'Stars Delivery <no-reply@stars.invalid>',
+    'Swifora <no-reply@swifora.invalid>',
 };
 
 const originalEnvironment = {};

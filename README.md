@@ -1,4 +1,4 @@
-# stars_delivery
+# Swifora
 
 A new Flutter project.
 
@@ -19,7 +19,7 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Production backup and restore
 
-Stars Delivery has three persistent application-data surfaces:
+Swifora has three persistent application-data surfaces:
 
 1. the MongoDB database;
 2. private provider-verification files in `PROVIDER_DOCUMENTS_DIR`;

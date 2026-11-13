@@ -147,7 +147,7 @@ function verifyTotpCode(
 function buildTotpUri({
   secret,
   email,
-  issuer = 'Stars Delivery',
+  issuer = 'Swifora',
 }) {
   const label = `${encodeURIComponent(issuer)}:${encodeURIComponent(String(email || 'admin'))}`;
   const params = new URLSearchParams({

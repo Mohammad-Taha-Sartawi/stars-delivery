@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Core brand and semantic colors.
 ///
-/// The palette keeps the established Stars Delivery indigo/orange identity.
+/// The palette keeps the established Swifora indigo/orange identity.
 /// Components should prefer semantic [ColorScheme] roles or
 /// [AppSemanticColors] instead of referencing these constants directly.
 abstract final class AppColors {

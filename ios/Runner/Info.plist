@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Stars Delivery</string>
+	<string>Swifora</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>stars_delivery</string>
+	<string>Swifora</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -54,9 +54,9 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Stars Delivery uses your photo library to attach identity and driver-license documents during provider registration.</string>
+	<string>Swifora uses your photo library to attach identity and driver-license documents during provider registration.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Stars Delivery uses your location to match orders and show your position to the customer during delivery.</string>
+	<string>Swifora uses your location to match orders and show your position to the customer during delivery.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

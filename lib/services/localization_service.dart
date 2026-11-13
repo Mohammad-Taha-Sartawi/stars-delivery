@@ -21,8 +21,8 @@ class AppLocalization {
 
   static final Map<String, Map<String, String>> _strings = {
     // App
-    'app_title': {'ar': 'تطبيق التوصيل السريع', 'en': 'Stars Delivery'},
-    'stars_delivery': {'ar': 'ستارز دليفري', 'en': 'Stars Delivery'},
+    'app_title': {'ar': 'سويفورا', 'en': 'Swifora'},
+    'app_name': {'ar': 'سويفورا', 'en': 'Swifora'},
     'welcome_back': {'ar': 'مرحباً بعودتك', 'en': 'Welcome back!'},
     'create_account_hint': {
       'ar': 'إنشاء حساب جديد',

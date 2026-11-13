@@ -55,7 +55,7 @@ class SwiforaApp extends StatelessWidget {
       child: BlocBuilder<AppBloc, AppState>(
         builder: (context, appState) {
           return MaterialApp(
-            title: 'Stars Delivery',
+            title: 'Swifora',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,

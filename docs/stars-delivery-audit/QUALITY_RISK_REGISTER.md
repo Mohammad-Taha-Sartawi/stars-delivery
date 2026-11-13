@@ -1,6 +1,6 @@
 # Stars Delivery: Quality and Risk Register
 
-Branch: `docs/stars-delivery-audit`. This register comes from reading the code. RISK-001 to RISK-043 come from reading the code. The only tool behind them was `dart analyze lib`, which found 15 issues: all lints or unused imports, none of them `use_build_context_synchronously`. RISK-044 to RISK-050 were added later. They were confirmed at runtime, either by the project's test runs or by the screenshot capture (see [TEST_AUDIT.md](TEST_AUDIT.md#execution-results) and [SCREENSHOT_MANIFEST.md](SCREENSHOT_MANIFEST.md)). No application code was changed. Security architecture and data handling are covered in [DATA_AND_SECURITY.md](DATA_AND_SECURITY.md).
+Branch: `docs/stars-delivery-audit`. This register comes from reading the code. RISK-001 to RISK-043 come from reading the code. The only tool behind them was `dart analyze lib`, which found 15 issues: all lints or unused imports, none of them `use_build_context_synchronously`. RISK-044 to RISK-051 were added later. They were confirmed at runtime, either by the project's test runs or by the screenshot capture (see [TEST_AUDIT.md](TEST_AUDIT.md#execution-results) and [SCREENSHOT_MANIFEST.md](SCREENSHOT_MANIFEST.md)). No application code was changed. Security architecture and data handling are covered in [DATA_AND_SECURITY.md](DATA_AND_SECURITY.md).
 
 **Evidence classes**
 
@@ -13,13 +13,13 @@ Branch: `docs/stars-delivery-audit`. This register comes from reading the code. 
 
 | Severity | Count | Confirmed defect | Strongly suspected defect | Potential risk | Requires runtime verification |
 |---|---|---|---|---|---|
-| Critical | 0 | 0 | 0 | 0 | 0 |
+| Critical | 1 | 0 | 0 | 1 | 0 |
 | High | 2 | 0 | 2 | 0 | 0 |
 | Medium | 16 | 8 | 0 | 6 | 2 |
 | Low | 32 | 16 | 2 | 12 | 2 |
-| **Total** | **50** | **24** | **4** | **18** | **4** |
+| **Total** | **51** | **24** | **4** | **19** | **4** |
 
-No Critical findings. Object-level authorization, transactional offer acceptance, secret validation and session revocation are well built. The largest risks are client performance and lifecycle problems, plus operational and privacy gaps.
+One Critical finding: a dependency advisory (RISK-051), found by the project's own CI `npm audit` gate on the audit PR. None of the code-level findings is Critical. Object-level authorization, transactional offer acceptance, secret validation and session revocation are well built. The largest risks are client performance and lifecycle problems, plus operational and privacy gaps.
 
 | ID | Sev | Evidence | Title |
 |---|---|---|---|
@@ -73,8 +73,24 @@ No Critical findings. Object-level authorization, transactional offer acceptance
 | RISK-048 | Low | Confirmed | The ad banner overflows at large text scale (1.6×) |
 | RISK-049 | Low | Confirmed | The admin dashboard does not work at phone width: the sidebar does not collapse and the content is clipped |
 | RISK-050 | Low | Confirmed | Cancelled and expired orders show the raw English status in My Orders |
+| RISK-051 | Critical | Potential risk | `mongoose` 8.24.1 is in a range with critical npm advisories (prototype pollution, `sanitizeFilter` bypasses); the CI `npm audit` gate fails |
 
 ---
+
+## Critical
+
+### RISK-051: `mongoose` 8.24.1 has critical npm advisories, and the CI `npm audit` gate fails
+- **Evidence:** Potential risk. The advisory is confirmed by CI, but exploitability for this app has not been verified.
+- **Location:** [package.json](../../stars_delivery_backend/package.json) (`"mongoose": "^8.14.1"`, locked at 8.24.1 in [package-lock.json](../../stars_delivery_backend/package-lock.json)), [ci.yml](../../.github/workflows/ci.yml) step "Audit production backend dependencies"
+- **Description:** The CI step `npm audit --omit=dev --audit-level=high`, run by GitHub Actions on 2026-11-13 (run 43443180717), reports 7 vulnerabilities: 6 moderate and 1 critical. The critical one is `mongoose` 8.0.0–8.24.6, covering these advisories:
+  - GHSA-gg4r-jv3p-qx3c and GHSA-pcrw-h46h-c93h: `sanitizeFilter` is not applied.
+  - GHSA-wr5m-5jph-8m96: discriminator-key cast bypass.
+  - GHSA-8332-j7wj-wjw4: inherited-property walk, which can cause denial of service.
+  - GHSA-6972-9mcm-vhwj: prototype pollution through `Schema.prototype.virtual()`.
+
+  The moderate ones are `glob` and `minimatch`, reached through `firebase-admin` → `google-gax`/`gaxios` → `rimraf`. `src/` never uses `sanitizeFilter`, so the two sanitizeFilter advisories don't apply as written. The project relies on its own input validation instead ([requestInput.js](../../stars_delivery_backend/src/security/requestInput.js)). The prototype-pollution and cast-bypass advisories could still matter wherever request bodies reach Mongoose documents. The audit did not run `npm audit` locally, because it contacts the registry. This finding was added after the PR's CI run.
+- **Impact:** The backend CI job fails on every push, so its other checks pass unnoticed on a red build. The production backend runs a Mongoose version with published critical advisories.
+- **Recommended validation:** Upgrade `mongoose` to ≥ 8.24.7 (or the patched version the advisory names), run `npm audit fix` for the transitive moderates, re-run the backend suite and integration test, and confirm the CI audit step passes.
 
 ## High
 

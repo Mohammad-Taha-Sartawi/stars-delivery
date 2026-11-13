@@ -52,7 +52,7 @@ The system has two parts in one repository:
 - CSRF protection, a strict CSP and optional TOTP 2FA on the admin dashboard;
 - an origin allow-list and secret validation at startup.
 
-There are no Critical findings. The main weaknesses are in the **client**:
+The only Critical finding is a **dependency advisory**: `mongoose` 8.24.1 has critical npm advisories, and the project's own CI `npm audit` gate fails on it (RISK-051). None of the code-level findings is Critical. The main code weaknesses are in the **client**:
 
 - startup blocks on a 46.5 MB JSON decode plus a GPS fix;
 - errors are swallowed and shown as "empty" or "zero" data;
@@ -71,14 +71,15 @@ The **test suite** is large: 613 tests ran and all passed. About 42% of it, thou
 | HTTP endpoints | **122** (57 mobile/public + 65 admin) | [API_INVENTORY.md §2.13](API_INVENTORY.md#213-endpoint-counts) |
 | Socket.IO events / FCM push types | **15 / 11** | [API_INVENTORY.md](API_INVENTORY.md#3-socketio-events) |
 | Tests executed | **613 passed, 0 failed**: Flutter 227, backend unit 382, backend integration 4 | §11 (actually run) |
-| Flutter analyzer | **15 issues against CI baseline 12, so the CI gate fails** | §11 (actually run) |
-| Risk register | **50 findings: 0 Critical, 2 High, 16 Medium, 32 Low** | [QUALITY_RISK_REGISTER.md](QUALITY_RISK_REGISTER.md) |
+| Flutter analyzer | **15 issues against CI baseline 12, so the CI gate fails** (also confirmed in GitHub Actions) | §11 (actually run) |
+| Backend `npm audit` (CI) | **7 vulnerabilities (1 critical: `mongoose`), so the CI gate fails** | GitHub Actions run 43443180717 |
+| Risk register | **51 findings: 1 Critical (dependency), 2 High, 16 Medium, 32 Low** | [QUALITY_RISK_REGISTER.md](QUALITY_RISK_REGISTER.md) |
 
 **The five most important things to act on**
 
 1. **Errors look like real data.** The driver dashboard can never show its error view: `ProviderError` is never emitted, so a failed load shows "ILS 0" earnings and commission. My Orders shows "No orders" on HTTP 500. Both are confirmed in screenshots (RISK-044, RISK-045).
 2. **Startup and location performance.** `main()` waits for a location permission prompt, a GPS fix of up to 10 s and the decode of a **46.5 MB JSON asset** before the first frame. The same file is decoded again on every location sync, which happens every 30 s during a delivery (RISK-001 and RISK-002, both High).
-3. **CI is red.** The Flutter analyzer job requires exactly 12 issues, and HEAD has 15 (RISK-046).
+3. **CI is red on both jobs.** The Flutter analyzer job requires exactly 12 issues, and HEAD has 15 (RISK-046). The backend `npm audit` gate fails on a critical `mongoose` advisory (RISK-051).
 4. **Core journeys lack real tests.** Create order → offer → accept → deliver → rate is never exercised over HTTP or end-to-end. Many `*_ui_test.dart` files only check source text.
 5. **Localization and accessibility gaps.** Profile, Report and Support chat stay Arabic in English mode. Order statuses show raw enums. The ad banner overflows at large text sizes. The admin dashboard is not usable on phones.
 
@@ -354,7 +355,7 @@ Full analysis: [DATA_AND_SECURITY.md](DATA_AND_SECURITY.md).
 | `flutter test` | **227 passed / 0 failed** (51 s) |
 | `flutter analyze` | **15 issues** (3 `unused_import` warnings + 12 infos), exit 1. **CI requires exactly 12, so the gate fails** (RISK-046). |
 | Coverage | **Not measured.** No configuration exists. Line coverage is unknown. |
-| `npm audit` | Not run (it contacts the registry). |
+| `npm audit` | Not run locally (it contacts the registry). **In CI** (GitHub Actions, PR #1): 7 vulnerabilities, 1 critical (`mongoose` 8.24.1), so the job fails (RISK-051). In the same CI run the backend tests passed (382 + 4) and the Flutter analyzer gate failed at 15 issues, matching the local results. |
 
 Details and per-module coverage map: [TEST_AUDIT.md](TEST_AUDIT.md#execution-results). Future plan with 70 prioritized cases: [RECOMMENDED_TEST_PLAN.md](RECOMMENDED_TEST_PLAN.md).
 
@@ -362,10 +363,11 @@ Details and per-module coverage map: [TEST_AUDIT.md](TEST_AUDIT.md#execution-res
 
 ## 12. Reliability findings
 
-Full register: [QUALITY_RISK_REGISTER.md](QUALITY_RISK_REGISTER.md). **50 findings: 0 Critical, 2 High, 16 Medium, 32 Low.** By evidence: 24 confirmed defects, 4 strongly suspected, 18 potential risks, 4 that need runtime verification.
+Full register: [QUALITY_RISK_REGISTER.md](QUALITY_RISK_REGISTER.md). **51 findings: 1 Critical, 2 High, 16 Medium, 32 Low.** By evidence: 24 confirmed defects, 4 strongly suspected, 19 potential risks, 4 that need runtime verification.
 
 | ID | Sev | Evidence | Finding |
 |---|---|---|---|
+| RISK-051 | **Critical** | Potential risk (confirmed by CI) | `mongoose` 8.24.1 has critical npm advisories (prototype pollution, cast bypass); the CI `npm audit` gate fails |
 | RISK-001 | High | Strongly suspected | Startup is blocked on the location prompt, a GPS fix (≤10 s) and a 46.5 MB JSON decode before the first frame |
 | RISK-002 | High | Strongly suspected | The 46.5 MB JSON is decoded again on the UI isolate on every location sync (every 30 s while delivering, from 2 timers) |
 | RISK-044 | Medium | **Confirmed (screenshot)** | The driver dashboard never shows its error state, so failures display zeroed earnings and commission as if real |
@@ -493,7 +495,8 @@ This is a recommendation only. Nothing here has been implemented.
 
 | Priority | Item | Addresses |
 |---|---|---|
-| **P0 (now)** | Make the Flutter CI gate pass, and change it to "0 errors, no new warnings" instead of an exact count | RISK-046 |
+| **P0 (now)** | Upgrade `mongoose` past the advisory range and run `npm audit fix`, then re-run the backend tests | RISK-051 |
+| P0 | Make the Flutter CI gate pass, and change it to "0 errors, no new warnings" instead of an exact count | RISK-046 |
 | P0 | Stop presenting errors as data: emit `ProviderError` and show retry views; add `mounted` guards after awaits | RISK-044, RISK-045, RISK-047 |
 | P0 | Move the location catalog off the startup path: load it lazily in an isolate, shrink the asset (Palestine-only data already exists server-side), and stop blocking on GPS before the first frame | RISK-001, RISK-002 |
 | P1 | Supertest + `MongoMemoryReplSet` suite for orders/offers/provider routes (the full create→offer→accept→deliver→rate path), plus Socket.IO event tests | Test gaps 1–4 |
@@ -515,7 +518,7 @@ This is a recommendation only. Nothing here has been implemented.
 4. **Production MongoDB topology.** Order and offer flows require a replica set (transactions) and have no fallback.
 5. **Is port 3000 exposed** on the production host (RISK-007)?
 6. **Firebase.** Is FCM enabled in production? The config files are not in the repo, as expected.
-7. **CI history.** Is the Flutter job currently red on `main`? GitHub Actions was not queried.
+7. **CI history.** On PR #1 both CI jobs fail: the analyzer count and `npm audit`. Neither is caused by the docs-only change, so `main` is very likely red too. `main`'s own run history was not checked.
 8. **iOS.** Have iOS builds been produced? What are the signing team and provisioning setup?
 9. **Product intent.**
    - Should customers be able to cancel after acceptance?
@@ -538,7 +541,7 @@ Not inspected: values of `.env`, `key.properties`, Firebase configs and any file
 | [API_INVENTORY.md](API_INVENTORY.md) | 122 HTTP endpoints, 15 socket events, 11 push types, resilience and contract analysis |
 | [DATA_AND_SECURITY.md](DATA_AND_SECURITY.md) | Persistence, authentication, authorization, logging, permissions, network security, privacy |
 | [TEST_AUDIT.md](TEST_AUDIT.md) | Test inventory, classification, coverage map, **execution results** |
-| [QUALITY_RISK_REGISTER.md](QUALITY_RISK_REGISTER.md) | 50 findings with severity, evidence class, location, reproduction and validation |
+| [QUALITY_RISK_REGISTER.md](QUALITY_RISK_REGISTER.md) | 51 findings with severity, evidence class, location, reproduction and validation |
 | [UI_UX_AUDIT.md](UI_UX_AUDIT.md) | Design tokens, contrast, accessibility, RTL, findings with visual-confirmation status |
 | [RECOMMENDED_TEST_PLAN.md](RECOMMENDED_TEST_PLAN.md) | Layer-by-layer strategy, tooling, 70 prioritized test cases, CI changes |
 | [SCREENSHOT_MANIFEST.md](SCREENSHOT_MANIFEST.md) | Capture method, coverage, not-captured procedures, file-by-file manifest |

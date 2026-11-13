@@ -348,7 +348,7 @@ All results below come from runs during this audit on 2026-11-13. They were not 
 | Flutter widget/unit | `flutter test --reporter expanded` (repo root) | **227 passed, 0 failed** ("All tests passed!") | ~51 s |
 | Flutter analyzer | `flutter analyze` (repo root) | **15 issues (3 warnings, 12 infos, 0 errors), exit code 1** | ~25 s |
 | Backend syntax check | not run separately (`npm run check` = `node --check src/index.js`) | not executed | — |
-| `npm audit` | **not run.** It contacts the npm registry. | not executed | — |
+| `npm audit` | **Not run locally**, because it contacts the npm registry. **CI result** (GitHub Actions run 43443180717, PR #1): `npm audit --omit=dev --audit-level=high` reports **7 vulnerabilities (6 moderate, 1 critical: `mongoose` 8.24.1)**, so the step fails. See RISK-051. | CI | — |
 
 ### Analyzer baseline drift: CI gate would fail (confirmed)
 
@@ -358,7 +358,7 @@ All results below come from runs during this audit on 2026-11-13. They were not 
 - `lib/screens/offered_orders_screen.dart:12` imports `../services/theme_service.dart` and never uses it
 - `lib/screens/pending_orders_screen.dart:9` imports `../services/theme_service.dart` and never uses it
 
-The other 12 are infos: `curly_braces_in_flow_control_structures` ×8, `use_null_aware_elements` ×2 (`order_service.dart:31-32`), and `avoid_print` ×2 (`socket_service.dart:102,107`). Unless CI runs a different commit, the Flutter job on `main` at `9b50ca3` should fail its analyzer step. GitHub Actions history was not checked.
+The other 12 are infos: `curly_braces_in_flow_control_structures` ×8, `use_null_aware_elements` ×2 (`order_service.dart:31-32`), and `avoid_print` ×2 (`socket_service.dart:102,107`). **Confirmed in CI:** the GitHub Actions run on PR #1 printed `Analyzer issues: 15`, `Analyzer errors: 0`, then failed the step. The same run passed the backend suite (382/382) and the integration test (4/4).
 
 ### Coverage
 

@@ -17,9 +17,9 @@ Roles:
 
 ### 0.1 Order status
 
-`Order.status` enum: `pending, offered, accepted, fulfilling, completed, cancelled, expired` ([Order.js:15](../../stars_delivery_backend/src/models/Order.js#L15)).
+`Order.status` enum: `pending, offered, accepted, fulfilling, completed, cancelled, expired` ([Order.js:15](../../swifora_backend/src/models/Order.js#L15)).
 
-Transitions live in [orderState.js](../../stars_delivery_backend/src/services/orderState.js) and [orderLifecycle.js](../../stars_delivery_backend/src/services/orderLifecycle.js). "Suspended" is not a status. It is `status='pending'` with `offerWindowExpiredAt` and `offerSuspendedUntil` set (5 min, [orderLifecycle.js:19](../../stars_delivery_backend/src/services/orderLifecycle.js#L19)). Delivery confirmation is a sub-state of `fulfilling`, marked by `completionRequestedAt`.
+Transitions live in [orderState.js](../../swifora_backend/src/services/orderState.js) and [orderLifecycle.js](../../swifora_backend/src/services/orderLifecycle.js). "Suspended" is not a status. It is `status='pending'` with `offerWindowExpiredAt` and `offerSuspendedUntil` set (5 min, [orderLifecycle.js:19](../../swifora_backend/src/services/orderLifecycle.js#L19)). Delivery confirmation is a sub-state of `fulfilling`, marked by `completionRequestedAt`.
 
 ```mermaid
 stateDiagram-v2
@@ -61,12 +61,12 @@ stateDiagram-v2
 
 Notes:
 
-- `transitionOrder(fulfilling→completed)` exists ([orderLifecycle.js:631-647](../../stars_delivery_backend/src/services/orderLifecycle.js#L631)) but **no route calls it with that pair**. Completion always goes through customer confirmation.
-- There is no customer-side cancel after `accepted` (`canCancelOrResend` only allows `pending` and `offered`, [orderState.js:11-13](../../stars_delivery_backend/src/services/orderState.js#L11)).
+- `transitionOrder(fulfilling→completed)` exists ([orderLifecycle.js:631-647](../../swifora_backend/src/services/orderLifecycle.js#L631)) but **no route calls it with that pair**. Completion always goes through customer confirmation.
+- There is no customer-side cancel after `accepted` (`canCancelOrResend` only allows `pending` and `offered`, [orderState.js:11-13](../../swifora_backend/src/services/orderState.js#L11)).
 
 ### 0.2 Offer status
 
-`Offer.status` enum: `pending, accepted, rejected` ([Offer.js:8](../../stars_delivery_backend/src/models/Offer.js#L8)), with `rejectionReason` free text. `RejectedOrder.reason` is `driver_rejected` or `offer_expired` ([RejectedOrder.js:8](../../stars_delivery_backend/src/models/RejectedOrder.js#L8)).
+`Offer.status` enum: `pending, accepted, rejected` ([Offer.js:8](../../swifora_backend/src/models/Offer.js#L8)), with `rejectionReason` free text. `RejectedOrder.reason` is `driver_rejected` or `offer_expired` ([RejectedOrder.js:8](../../swifora_backend/src/models/RejectedOrder.js#L8)).
 
 ```mermaid
 stateDiagram-v2
@@ -168,7 +168,7 @@ Steps:
 
 1. The form collects name, email, phone, password and confirmation, plus governorate and village/city from `LocationCatalog`.
 2. The Terms dialog is shown ([login_screen.dart:756-860](../../lib/screens/login_screen.dart#L756)).
-3. `_doRegister` sends `RegisterEvent` and `POST /api/auth/register` ([auth.js:52-166](../../stars_delivery_backend/src/routes/auth.js#L52)). The server creates the `User` (with `publicId` and `phoneNumbers[0]` primary) and signs a 7-day JWT.
+3. `_doRegister` sends `RegisterEvent` and `POST /api/auth/register` ([auth.js:52-166](../../swifora_backend/src/routes/auth.js#L52)). The server creates the `User` (with `publicId` and `phoneNumbers[0]` primary) and signs a 7-day JWT.
 
 **Success:** `AuthSuccess`, then `HomeScreen`.
 
@@ -185,9 +185,9 @@ Steps:
 
 Steps:
 
-1. `POST /api/auth/register` creates a **`PendingProvider`** (hashed password, area, governorate, serviceTypes) and returns `201 {pending:true, message}` ([auth.js:105-121](../../stars_delivery_backend/src/routes/auth.js#L105)).
+1. `POST /api/auth/register` creates a **`PendingProvider`** (hashed password, area, governorate, serviceTypes) and returns `201 {pending:true, message}` ([auth.js:105-121](../../swifora_backend/src/routes/auth.js#L105)).
 2. The client emits `AuthInitial` then `AuthError(message)` ([auth_bloc.dart:120-129](../../lib/bloc/auth/auth_bloc.dart#L120)). The success message is shown **as an error toast**. This is a **Confirmed** UX defect.
-3. An admin approves the application (`POST /admin/drivers/pending/:id/approve`), which creates `User(role:provider, status:active)` in a transaction ([adminDrivers.js:1239-1364](../../stars_delivery_backend/src/routes/adminDrivers.js#L1239)). The applicant can log in from then on. **No notification or email is sent on approval or rejection.**
+3. An admin approves the application (`POST /admin/drivers/pending/:id/approve`), which creates `User(role:provider, status:active)` in a transaction ([adminDrivers.js:1239-1364](../../swifora_backend/src/routes/adminDrivers.js#L1239)). The applicant can log in from then on. **No notification or email is sent on approval or rejection.**
 
 Documents and location:
 
@@ -198,13 +198,13 @@ Documents and location:
 
 ### 2.3 Admin-created driver
 
-`POST /admin/drivers` ([adminDrivers.js:331](../../stars_delivery_backend/src/routes/adminDrivers.js#L331)) creates an active provider with `mustChangePassword:true`, which leads to the forced password change flow (§4).
+`POST /admin/drivers` ([adminDrivers.js:331](../../swifora_backend/src/routes/adminDrivers.js#L331)) creates an active provider with `mustChangePassword:true`, which leads to the forced password change flow (§4).
 
 ---
 
 ## 3. Login and logout
 
-- **Login:** see the §1 diagram. Role must match: `POST /api/auth/login` with `role` and a wrong role returns "Invalid credentials" ([auth.js:199](../../stars_delivery_backend/src/routes/auth.js#L199)). Rate limit is 10 per 15 min per IP and per account.
+- **Login:** see the §1 diagram. Role must match: `POST /api/auth/login` with `role` and a wrong role returns "Invalid credentials" ([auth.js:199](../../swifora_backend/src/routes/auth.js#L199)). Rate limit is 10 per 15 min per IP and per account.
 - **Logout (manual):** the home app-bar button confirms, then:
   1. `AuthService().revokeSession` (unawaited, which sends `POST /api/auth/logout` to bump `sessionVersion` and disconnect sockets);
   2. `SocketService.disconnect()`;
@@ -227,8 +227,8 @@ Defects:
 
 ## 4. Forced password change
 
-- **Trigger:** `user.mustChangePassword == true`. This is set by an admin creating a driver or resetting a driver's or user's password ([adminDrivers.js:906](../../stars_delivery_backend/src/routes/adminDrivers.js#L906), [adminUsers.js:285](../../stars_delivery_backend/src/routes/adminUsers.js#L285)).
-- **Server enforcement:** every mobile route except `PUT /users/password` and `GET /auth/me` returns `403 PASSWORD_CHANGE_REQUIRED` ([auth.js:115-132](../../stars_delivery_backend/src/middleware/auth.js#L115)). Socket connection is refused ([index.js:368-377](../../stars_delivery_backend/src/index.js#L368)).
+- **Trigger:** `user.mustChangePassword == true`. This is set by an admin creating a driver or resetting a driver's or user's password ([adminDrivers.js:906](../../swifora_backend/src/routes/adminDrivers.js#L906), [adminUsers.js:285](../../swifora_backend/src/routes/adminUsers.js#L285)).
+- **Server enforcement:** every mobile route except `PUT /users/password` and `GET /auth/me` returns `403 PASSWORD_CHANGE_REQUIRED` ([auth.js:115-132](../../swifora_backend/src/middleware/auth.js#L115)). Socket connection is refused ([index.js:368-377](../../swifora_backend/src/index.js#L368)).
 
 Steps ([force_change_password_screen.dart:51-130](../../lib/screens/force_change_password_screen.dart#L51)):
 
@@ -249,11 +249,11 @@ The `_submitting` flag guards against double submits.
 ## 5. Password recovery
 
 - **Trigger:** "Forgot password" on `LoginScreen`, which opens [forgot_password_screen.dart](../../lib/screens/forgot_password_screen.dart) with `PasswordRecoveryBloc` ([password_recovery_bloc.dart](../../lib/bloc/password_recovery/password_recovery_bloc.dart)). Stages are `requestEmail`, then `enterCode`, then `completed`. An `isLoading` guard prevents double submits.
-- **Server:** [passwordRecovery.js](../../stars_delivery_backend/src/routes/passwordRecovery.js).
+- **Server:** [passwordRecovery.js](../../swifora_backend/src/routes/passwordRecovery.js).
   - 8-digit code, 10-minute TTL, 5 attempts consumed atomically before comparison.
   - The code is HMAC-bound to `userId`, `email`, `sessionVersion` and `nonce`.
   - Responses take at least 300 ms. The request endpoint always returns 202.
-  - Mail is sent through [passwordRecoveryMailer.js](../../stars_delivery_backend/src/services/passwordRecoveryMailer.js) after the response. On delivery failure, the challenge is deleted silently.
+  - Mail is sent through [passwordRecoveryMailer.js](../../swifora_backend/src/services/passwordRecoveryMailer.js) after the response. On delivery failure, the challenge is deleted silently.
 
 ```mermaid
 sequenceDiagram
@@ -293,7 +293,7 @@ sequenceDiagram
 
 Edge cases:
 
-- The reset **does not clear `mustChangePassword`** ([passwordRecovery.js:610-625](../../stars_delivery_backend/src/routes/passwordRecovery.js#L610)). An admin-reset account that recovers by email will still be forced to change its password after login. **Confirmed.**
+- The reset **does not clear `mustChangePassword`** ([passwordRecovery.js:610-625](../../swifora_backend/src/routes/passwordRecovery.js#L610)). An admin-reset account that recovers by email will still be forced to change its password after login. **Confirmed.**
 - If mail config is missing, both endpoints return `503 PASSWORD_RECOVERY_UNAVAILABLE`.
 
 ---
@@ -309,7 +309,7 @@ Edge cases:
 | Change password | `PUT /users/password` | Server revokes the session. The client relies on the socket `io server disconnect` or the next 401 to log out. It does not log out itself ([profile_screen.dart:322-372](../../lib/screens/profile_screen.dart#L322)). |
 | Governorate and village | `PUT /users/area` | Returns the updated user via `onUserUpdated`. **Socket rooms are not updated until reconnect**, so a provider keeps receiving `new_order` for the old area. Polling (30 s) partially compensates. **Confirmed.** |
 | Phone numbers | `GET/POST/DELETE /users/phones`, `PUT /users/phones/primary` | Errors are swallowed silently. No format validation on either side. |
-| Governorate-level scope | `PUT /users/governorate-level` via [governorate_scope_card.dart:54](../../lib/widgets/governorate_scope_card.dart#L54) | Changes order visibility and responder matching ([orderVisibility.js](../../stars_delivery_backend/src/services/orderVisibility.js)). Provider socket rooms are again not refreshed. |
+| Governorate-level scope | `PUT /users/governorate-level` via [governorate_scope_card.dart:54](../../lib/widgets/governorate_scope_card.dart#L54) | Changes order visibility and responder matching ([orderVisibility.js](../../swifora_backend/src/services/orderVisibility.js)). Provider socket rooms are again not refreshed. |
 | Theme / language | local only ([settings_screen.dart](../../lib/screens/settings_screen.dart)) | - |
 
 ---
@@ -329,14 +329,14 @@ Inputs:
 
 Area handling:
 
-- `area` is sent as `ApiConfig.detectedArea` (GPS-derived state) but the **server overrides it** with the registered `user.area` ([orders.js:78](../../stars_delivery_backend/src/routes/orders.js#L78)).
+- `area` is sent as `ApiConfig.detectedArea` (GPS-derived state) but the **server overrides it** with the registered `user.area` ([orders.js:78](../../swifora_backend/src/routes/orders.js#L78)).
 - If governorate-level mode is on, a warning dialog asks the customer to confirm the scope ([create_order_screen.dart:291-314](../../lib/screens/create_order_screen.dart#L291)).
 
 Steps:
 
 1. `POST /api/orders` creates the order with `status='pending'`.
 2. The server emits `new_order` to `area:<area>` (and to `governorate:<g>` when governorate-level).
-3. The server sends an FCM `new_order` to eligible drivers ([orders.js:133-173](../../stars_delivery_backend/src/routes/orders.js#L133)).
+3. The server sends an FCM `new_order` to eligible drivers ([orders.js:133-173](../../swifora_backend/src/routes/orders.js#L133)).
 
 **Success:** `OrderSuccess`, a toast, then the screen pops.
 
@@ -351,7 +351,7 @@ Steps:
 
 There is no delivery fee, distance or zone pricing. The price is set entirely by driver offers (`Offer.price`, 0.01-100000).
 
-The only computed money is the **platform commission at acceptance**: `calculateCommission(offer.price, config)`. It is either fixed (default 1, in shekels per the UI) or a percent from the `CommissionSetting` document, bounded to the offer price ([commissionSettings.js](../../stars_delivery_backend/src/services/commissionSettings.js), [orderLifecycle.js:305-312](../../stars_delivery_backend/src/services/orderLifecycle.js#L305)). The customer is never shown a fee.
+The only computed money is the **platform commission at acceptance**: `calculateCommission(offer.price, config)`. It is either fixed (default 1, in shekels per the UI) or a percent from the `CommissionSetting` document, bounded to the offer price ([commissionSettings.js](../../swifora_backend/src/services/commissionSettings.js), [orderLifecycle.js:305-312](../../swifora_backend/src/services/orderLifecycle.js#L305)). The customer is never shown a fee.
 
 ---
 
@@ -366,7 +366,7 @@ The only computed money is the **platform commission at acceptance**: `calculate
 Steps:
 
 1. The provider enters price and ETA (quick chips). `SubmitOfferEvent` sends `POST /api/offers`.
-2. `submitOffer` runs as a transaction ([orderLifecycle.js:449-573](../../stars_delivery_backend/src/services/orderLifecycle.js#L449)):
+2. `submitOffer` runs as a transaction ([orderLifecycle.js:449-573](../../swifora_backend/src/services/orderLifecycle.js#L449)):
    1. atomically claims the provider document (`offerSequence++`, `offerCooldownUntil=now+60s`);
    2. rejects the request if the provider has a `RejectedOrder` or an existing offer;
    3. sets the order to `offered` (only if `pending`/`offered`, not suspended, and visible);
@@ -387,7 +387,7 @@ Steps:
 
 **Offer window / timer:**
 
-- Each offer lives 60 s. The 30 s background job and every customer read call `expireStaleOffers`, which writes `RejectedOrder(offer_expired)` for the driver and **deletes** the offer ([orderLifecycle.js:146-222](../../stars_delivery_backend/src/services/orderLifecycle.js#L146)).
+- Each offer lives 60 s. The 30 s background job and every customer read call `expireStaleOffers`, which writes `RejectedOrder(offer_expired)` for the driver and **deletes** the offer ([orderLifecycle.js:146-222](../../swifora_backend/src/services/orderLifecycle.js#L146)).
 - If no live offers remain:
   - with no eligible responders, the order is suspended;
   - otherwise an `offered` order reverts to `pending`.
@@ -396,7 +396,7 @@ Steps:
 **Edge case (Confirmed by code):**
 
 - A driver whose offer expired gets a permanent `RejectedOrder` row for that order.
-- `resetOrder` (resend) never removes those rows ([orderLifecycle.js:575-610](../../stars_delivery_backend/src/services/orderLifecycle.js#L575)).
+- `resetOrder` (resend) never removes those rows ([orderLifecycle.js:575-610](../../swifora_backend/src/services/orderLifecycle.js#L575)).
 - That driver therefore **can never offer again on that order**, even after the customer resends it. They are also excluded from responder counts, which accelerates suspension.
 
 ---
@@ -409,7 +409,7 @@ Steps:
 
 1. `GET /api/offers/order/:orderId` returns the offers with provider name, category, rating, area, and whether they are outside the area.
 2. A 1-second timer shows the countdown and reloads when an offer expires. A socket `new_offer` also triggers a reload.
-3. **Accept:** if the provider is outside the area, a confirmation dialog appears first ([order_offers_screen.dart:1022-1052](../../lib/screens/order_offers_screen.dart#L1022)). Then `AcceptOfferEvent` sends `POST /api/offers/:id/accept`. `acceptOffer` runs as a transaction ([orderLifecycle.js:243-447](../../stars_delivery_backend/src/services/orderLifecycle.js#L243)) and:
+3. **Accept:** if the provider is outside the area, a confirmation dialog appears first ([order_offers_screen.dart:1022-1052](../../lib/screens/order_offers_screen.dart#L1022)). Then `AcceptOfferEvent` sends `POST /api/offers/:id/accept`. `acceptOffer` runs as a transaction ([orderLifecycle.js:243-447](../../swifora_backend/src/services/orderLifecycle.js#L243)) and:
    - blocks the provider for 15 minutes;
    - sets the order to `accepted`, with `price`, `platformCommission`, `providerEarning`, `estimatedTime` and `acceptedAt`;
    - marks the chosen offer `accepted`;
@@ -437,7 +437,7 @@ Steps:
 
 ## 10. Driver assignment, order status transitions and delivery completion
 
-**Assignment** happens through acceptance (§9). There is **no automatic dispatch**. The provider's `blockedUntil` is set to now plus 15 minutes ([orderLifecycle.js:16](../../stars_delivery_backend/src/services/orderLifecycle.js#L16), [276-284](../../stars_delivery_backend/src/services/orderLifecycle.js#L276)). It is cleared only on customer confirmation or admin cancel.
+**Assignment** happens through acceptance (§9). There is **no automatic dispatch**. The provider's `blockedUntil` is set to now plus 15 minutes ([orderLifecycle.js:16](../../swifora_backend/src/services/orderLifecycle.js#L16), [276-284](../../swifora_backend/src/services/orderLifecycle.js#L276)). It is cleared only on customer confirmation or admin cancel.
 
 **Strongly suspected defect:** the block is not tied to the active order's lifetime. Fifteen minutes after acceptance, a provider with an `accepted` or `fulfilling` order passes `submitOffer` and `acceptOffer` checks again, and can win concurrent orders.
 
@@ -469,11 +469,11 @@ Steps:
 
 - `LocationService.syncToBackend` sends `PUT /users/location` with lat, lng, accuracy and isMocked.
 - It runs at provider home start and resume, every 30 s while `activeOrdersCount > 0` ([provider_home_screen.dart:240-250](../../lib/screens/provider_home_screen.dart#L240)), and every 30 s on the active orders screen ([provider_active_orders_screen.dart:38-41](../../lib/screens/provider_active_orders_screen.dart#L38)).
-- The server validates jumps and mock locations ([locationValidation.js](../../stars_delivery_backend/src/security/locationValidation.js)).
+- The server validates jumps and mock locations ([locationValidation.js](../../swifora_backend/src/security/locationValidation.js)).
 
 **Customer view:**
 
-- [order_tracking_screen.dart](../../lib/screens/order_tracking_screen.dart) uses `flutter_map`. It polls `GET /orders/:id` every 15 s and reads `providerLocation` and `providerName`. These are present only while the order is `accepted` or `fulfilling` ([orders.js:326-348](../../stars_delivery_backend/src/routes/orders.js#L326)).
+- [order_tracking_screen.dart](../../lib/screens/order_tracking_screen.dart) uses `flutter_map`. It polls `GET /orders/:id` every 15 s and reads `providerLocation` and `providerName`. These are present only while the order is `accepted` or `fulfilling` ([orders.js:326-348](../../swifora_backend/src/routes/orders.js#L326)).
 - There is **no socket location streaming**, so updates are at most every 30 s plus the 15 s poll.
 - There is no customer or destination coordinate; the destination is free text.
 
@@ -483,7 +483,7 @@ Steps:
 
 ## 12. Notifications (in-app, socket, push)
 
-- **Server:** `createUserNotification` ([mobileNotifications.js:14-49](../../stars_delivery_backend/src/services/mobileNotifications.js#L14)) creates a `Notification` (with `expireAt` TTL, mostly 7 days), emits socket `notification_count`, and sends FCM. Broadcasts and admin status changes insert pinned notifications directly, with a 24 h TTL and **no push**.
+- **Server:** `createUserNotification` ([mobileNotifications.js:14-49](../../swifora_backend/src/services/mobileNotifications.js#L14)) creates a `Notification` (with `expireAt` TTL, mostly 7 days), emits socket `notification_count`, and sends FCM. Broadcasts and admin status changes insert pinned notifications directly, with a 24 h TTL and **no push**.
 - **Client:** `NotificationBloc` (`GET /notifications` plus `/unread-count`) polls every 15 s on both homes, and reloads on `notification_count` (provider) or `broadcast`. [notifications_screen.dart](../../lib/screens/notifications_screen.dart) handles mark-read (a pinned notification is deleted when read) and mark-all.
 
 Tap routing ([notifications_screen.dart:245-318](../../lib/screens/notifications_screen.dart#L245)):
@@ -505,9 +505,9 @@ Tap routing ([notifications_screen.dart:245-318](../../lib/screens/notifications
 
 | Who | When | API | Effects |
 |---|---|---|---|
-| Customer | `pending` or `offered` only | `POST /api/offers/:orderId/cancel` ([offers.js:178](../../stars_delivery_backend/src/routes/offers.js#L178)) | Order becomes `cancelled`. Pending offers become `rejected/order_cancelled`. **No socket or notification to drivers.** Their offered list drops it on the next poll. Hidden from the customer's `GET /orders`. |
+| Customer | `pending` or `offered` only | `POST /api/offers/:orderId/cancel` ([offers.js:178](../../swifora_backend/src/routes/offers.js#L178)) | Order becomes `cancelled`. Pending offers become `rejected/order_cancelled`. **No socket or notification to drivers.** Their offered list drops it on the next poll. Hidden from the customer's `GET /orders`. |
 | Customer | `accepted` or later | **NOT FOUND** | The UI exposes no cancel. The server refuses with 409. |
-| Admin | any except `completed` or `cancelled` | `POST /admin/orders/:id/cancel` ([adminOrders.js:99](../../stars_delivery_backend/src/routes/adminOrders.js#L99)) | Pending offers are rejected (no reason) and the provider block is cleared. **No socket, notification or push to the customer or provider. Not transactional.** |
+| Admin | any except `completed` or `cancelled` | `POST /admin/orders/:id/cancel` ([adminOrders.js:99](../../swifora_backend/src/routes/adminOrders.js#L99)) | Pending offers are rejected (no reason) and the provider block is cleared. **No socket, notification or push to the customer or provider. Not transactional.** |
 | Provider | - | **NOT FOUND** (a provider can only "reject" an unoffered order, §17) | - |
 
 Client entry points: [my_orders_screen.dart:230-266](../../lib/screens/my_orders_screen.dart#L230) and [order_offers_screen.dart:879](../../lib/screens/order_offers_screen.dart#L879). Both show a destructive confirm dialog first.
@@ -519,7 +519,7 @@ Client entry points: [my_orders_screen.dart:230-266](../../lib/screens/my_orders
 - **Online payment (customer to driver or platform): NOT FOUND.** There is no payment SDK, payment route or payment model for customers. The driver is paid in cash or arranged offline, which is implied by the absence of any payment flow. `Order.price` is informational.
 - **Commission ledger:**
   - The commission is fixed at acceptance (`platformCommission`, `providerEarning`).
-  - The amount due is computed by [commissionLedger.js](../../stars_delivery_backend/src/services/commissionLedger.js). Orders with `acceptedAt` after `commissionPaidAt`, plus `commissionAdjustment`, count as unpaid.
+  - The amount due is computed by [commissionLedger.js](../../swifora_backend/src/services/commissionLedger.js). Orders with `acceptedAt` after `commissionPaidAt`, plus `commissionAdjustment`, count as unpaid.
   - Drivers see `totalCommissionDue` in `GET /provider/stats`.
 - **Driver commission payment:** [commission_payment_screen.dart](../../lib/screens/commission_payment_screen.dart) shows the amount due and a hard-coded sales WhatsApp number with a copy button ([commission_payment_screen.dart:10](../../lib/screens/commission_payment_screen.dart#L10)). There is no API call.
 - **Admin settlement:**
@@ -558,7 +558,7 @@ Client entry points: [my_orders_screen.dart:230-266](../../lib/screens/my_orders
   - Rate limit is 5 per hour.
   - Errors show raw `DioException` text (no mapping).
 - **Order report (history/detail view):** [order_report_screen.dart](../../lib/screens/order_report_screen.dart) reads `GET /orders/:id` and `GET /offers/order/:id`. It shows the status narrative (cancelled, expired, suspended, offers list, masked phones).
-- **Provider "orders report":** `GET /provider/rejected-orders` merges three kinds of record: rejected, delivered and not-selected ([provider.js:368-446](../../stars_delivery_backend/src/routes/provider.js#L368)). It is shown in [rejected_orders_screen.dart](../../lib/screens/rejected_orders_screen.dart) and refreshed every 30 s.
+- **Provider "orders report":** `GET /provider/rejected-orders` merges three kinds of record: rejected, delivered and not-selected ([provider.js:368-446](../../swifora_backend/src/routes/provider.js#L368)). It is shown in [rejected_orders_screen.dart](../../lib/screens/rejected_orders_screen.dart) and refreshed every 30 s.
 
 ---
 
@@ -631,7 +631,7 @@ Client entry points: [my_orders_screen.dart:230-266](../../lib/screens/my_orders
 | Ads | CRUD and status. |
 | Dashboard | `/admin/api/stats`, `top-driver`, `/admin/areas` statistics. |
 
-All mutating admin requests pass CSRF and audit logging ([adminAuditLog.js](../../stars_delivery_backend/src/middleware/adminAuditLog.js)).
+All mutating admin requests pass CSRF and audit logging ([adminAuditLog.js](../../swifora_backend/src/middleware/adminAuditLog.js)).
 
 ---
 
@@ -644,7 +644,7 @@ All mutating admin requests pass CSRF and audit logging ([adminAuditLog.js](../.
   - `onConnected` reloads state;
   - periodic polling everywhere (see [API_INVENTORY.md §5.3](API_INVENTORY.md#53-connectivity-loss-and-reconnection)).
 - After a server-initiated disconnect (`io server disconnect`) the client deliberately does not reconnect and logs out instead.
-- **Server-side DB reconnection:** exponential retry (5/10/20/30 s) with a 503 `DATABASE_UNAVAILABLE` guard ([index.js:248-296](../../stars_delivery_backend/src/index.js#L248)).
+- **Server-side DB reconnection:** exponential retry (5/10/20/30 s) with a 503 `DATABASE_UNAVAILABLE` guard ([index.js:248-296](../../swifora_backend/src/index.js#L248)).
 
 ---
 

@@ -68,7 +68,7 @@ The application currently writes order upload files to the relative backend `upl
 
 For persistent deployments, make:
 
-`stars_delivery_backend/uploads`
+`swifora_backend/uploads`
 
 point to:
 

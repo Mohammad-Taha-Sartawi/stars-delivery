@@ -11,14 +11,14 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/bloc/provider/provider_bloc.dart';
-import 'package:stars_delivery/bloc/provider/provider_event.dart';
-import 'package:stars_delivery/bloc/provider/provider_state.dart';
-import 'package:stars_delivery/models/provider_stats.dart';
-import 'package:stars_delivery/screens/my_orders_screen.dart';
-import 'package:stars_delivery/services/api_config.dart';
-import 'package:stars_delivery/services/mobile_api_client.dart';
-import 'package:stars_delivery/services/provider_service.dart';
+import 'package:swifora/bloc/provider/provider_bloc.dart';
+import 'package:swifora/bloc/provider/provider_event.dart';
+import 'package:swifora/bloc/provider/provider_state.dart';
+import 'package:swifora/models/provider_stats.dart';
+import 'package:swifora/screens/my_orders_screen.dart';
+import 'package:swifora/services/api_config.dart';
+import 'package:swifora/services/mobile_api_client.dart';
+import 'package:swifora/services/provider_service.dart';
 
 import 'ux03_screen_harness.dart';
 

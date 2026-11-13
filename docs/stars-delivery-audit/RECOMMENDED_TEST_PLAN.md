@@ -19,7 +19,7 @@ Companion to [TEST_AUDIT.md](TEST_AUDIT.md). Targets the actual stack: Flutter 3
 | Flutter visual regression | **`alchemist`** (preferred; CI-stable "CI goldens" + platform goldens) or `golden_toolkit` | Bundle Arabic-capable font (e.g. Noto Naskh/Cairo) in test assets so Arabic glyphs render (current screenshot suite notes this limitation). |
 | Flutter on-device e2e | **`integration_test`** + **`patrol`** | Patrol for native dialogs (location permission, notification permission), backgrounding, and push notification tapping. |
 | Backend unit | `node:test`, `node:assert/strict`, `t.mock` (built-in) | Prefer `t.mock.method` over manual reassignment + `finally`. |
-| Backend API / integration | **`supertest`**, **`mongodb-memory-server-core`** (replica set mode for transactions) | Extract an `createApp()` factory from [index.js](../../stars_delivery_backend/src/index.js) so all routers can be mounted without starting the process. Use `MongoMemoryReplSet` because [orderLifecycle.js](../../stars_delivery_backend/src/services/orderLifecycle.js) uses transactions. |
+| Backend API / integration | **`supertest`**, **`mongodb-memory-server-core`** (replica set mode for transactions) | Extract an `createApp()` factory from [index.js](../../swifora_backend/src/index.js) so all routers can be mounted without starting the process. Use `MongoMemoryReplSet` because [orderLifecycle.js](../../swifora_backend/src/services/orderLifecycle.js) uses transactions. |
 | Socket.IO | `socket.io-client` in node tests against an ephemeral server | Two clients (customer, provider) per test. |
 | Contract | **OpenAPI 3.1** spec + `express-openapi-validator` (response validation in test mode) **or** JSON-Schema snapshots of responses; optional **Pact** (Dart consumer via `pact_dart`/HTTP-level, Node provider verification) | Start with schema snapshots — cheaper; move to Pact if a second client appears. |
 | Admin web UI | **Playwright** + **@axe-core/playwright** | Covers CSRF, CSP (no inline violations reported in console), XSS escaping, login + TOTP. |
@@ -41,8 +41,8 @@ Companion to [TEST_AUDIT.md](TEST_AUDIT.md). Targets the actual stack: Flutter 3
 
 ### 3.2 Unit (backend)
 
-- Keep [order-lifecycle.test.js](../../stars_delivery_backend/test/order-lifecycle.test.js) / [offer-window.test.js](../../stars_delivery_backend/test/offer-window.test.js); migrate monkey-patching to `t.mock`.
-- Add unit tests for [adminAccounts.js](../../stars_delivery_backend/src/services/adminAccounts.js), [requestInput.js](../../stars_delivery_backend/src/security/requestInput.js), [pushNotifications.js](../../stars_delivery_backend/src/services/pushNotifications.js) (mock `firebase-admin` messaging; token pruning on `registration-token-not-registered`), [mobileNotifications.js](../../stars_delivery_backend/src/services/mobileNotifications.js), commission computation edge cases (rounding, percentage vs fixed, zero/negative adjustments).
+- Keep [order-lifecycle.test.js](../../swifora_backend/test/order-lifecycle.test.js) / [offer-window.test.js](../../swifora_backend/test/offer-window.test.js); migrate monkey-patching to `t.mock`.
+- Add unit tests for [adminAccounts.js](../../swifora_backend/src/services/adminAccounts.js), [requestInput.js](../../swifora_backend/src/security/requestInput.js), [pushNotifications.js](../../swifora_backend/src/services/pushNotifications.js) (mock `firebase-admin` messaging; token pruning on `registration-token-not-registered`), [mobileNotifications.js](../../swifora_backend/src/services/mobileNotifications.js), commission computation edge cases (rounding, percentage vs fixed, zero/negative adjustments).
 
 ### 3.3 API integration (backend, supertest + MongoMemoryReplSet)
 
@@ -91,7 +91,7 @@ Alchemist goldens for: the 14 harness screens + login + provider/customer home, 
 
 ### 3.12 Offline / poor network
 
-Dio adapter fault injection (timeout, connection refused, 503 from [database-resilience](../../stars_delivery_backend/test/database-resilience.test.js) path, slow 5 s responses) on: login (session preserved on transient failure — exists), submit offer (no double submit on retry), accept offer (idempotent), create order (no duplicate on retry), socket reconnect re-syncs pending lists. On-device: Patrol with airplane mode toggled mid-flow.
+Dio adapter fault injection (timeout, connection refused, 503 from [database-resilience](../../swifora_backend/test/database-resilience.test.js) path, slow 5 s responses) on: login (session preserved on transient failure — exists), submit offer (no double submit on retry), accept offer (idempotent), create order (no duplicate on retry), socket reconnect re-syncs pending lists. On-device: Patrol with airplane mode toggled mid-flow.
 
 ### 3.13 Lifecycle (background / foreground)
 
@@ -115,7 +115,7 @@ Goldens cover size/text/locale/theme in CI; Test Lab covers OS/device nightly.
 
 - Unit: every key in [localization_service.dart](../../lib/services/localization_service.dart) has non-empty `ar` and `en`; no placeholder mismatch (`%d`, `%s`) between languages; no hardcoded user-facing strings in `lib/screens` (lint or test).
 - Widget: all screens pumped with `Locale('ar')` assert `Directionality == rtl`, directional icons mirrored, numbers/currency (₪) formatting, mixed Arabic/Latin names, long Arabic village names don't overflow.
-- Backend: Arabic search/normalisation of city names ([palestineCities.js](../../stars_delivery_backend/src/services/palestineCities.js)); notifications text in user locale.
+- Backend: Arabic search/normalisation of city names ([palestineCities.js](../../swifora_backend/src/services/palestineCities.js)); notifications text in user locale.
 
 ### 3.16 Regression after redesign
 

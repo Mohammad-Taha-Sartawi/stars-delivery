@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/bloc/app/app_bloc.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/screens/login_screen.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/responsive.dart';
-import 'package:stars_delivery/services/session_storage.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/widgets/ui/app_action_tile.dart';
-import 'package:stars_delivery/widgets/ui/app_status_badge.dart';
-import 'package:stars_delivery/widgets/ui/app_tone.dart';
+import 'package:swifora/bloc/app/app_bloc.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/screens/login_screen.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/responsive.dart';
+import 'package:swifora/services/session_storage.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/widgets/ui/app_action_tile.dart';
+import 'package:swifora/widgets/ui/app_status_badge.dart';
+import 'package:swifora/widgets/ui/app_tone.dart';
 
 class _TestVault implements TokenVault {
   @override

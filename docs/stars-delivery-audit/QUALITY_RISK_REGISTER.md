@@ -81,14 +81,14 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 
 ### RISK-051: `mongoose` 8.24.1 has critical npm advisories, and the CI `npm audit` gate fails
 - **Evidence:** Potential risk. The advisory is confirmed by CI, but exploitability for this app has not been verified.
-- **Location:** [package.json](../../stars_delivery_backend/package.json) (`"mongoose": "^8.14.1"`, locked at 8.24.1 in [package-lock.json](../../stars_delivery_backend/package-lock.json)), [ci.yml](../../.github/workflows/ci.yml) step "Audit production backend dependencies"
+- **Location:** [package.json](../../swifora_backend/package.json) (`"mongoose": "^8.14.1"`, locked at 8.24.1 in [package-lock.json](../../swifora_backend/package-lock.json)), [ci.yml](../../.github/workflows/ci.yml) step "Audit production backend dependencies"
 - **Description:** The CI step `npm audit --omit=dev --audit-level=high`, run by GitHub Actions on 2026-11-13 (run 43443180717), reports 7 vulnerabilities: 6 moderate and 1 critical. The critical one is `mongoose` 8.0.0–8.24.6, covering these advisories:
   - GHSA-gg4r-jv3p-qx3c and GHSA-pcrw-h46h-c93h: `sanitizeFilter` is not applied.
   - GHSA-wr5m-5jph-8m96: discriminator-key cast bypass.
   - GHSA-8332-j7wj-wjw4: inherited-property walk, which can cause denial of service.
   - GHSA-6972-9mcm-vhwj: prototype pollution through `Schema.prototype.virtual()`.
 
-  The moderate ones are `glob` and `minimatch`, reached through `firebase-admin` → `google-gax`/`gaxios` → `rimraf`. `src/` never uses `sanitizeFilter`, so the two sanitizeFilter advisories don't apply as written. The project relies on its own input validation instead ([requestInput.js](../../stars_delivery_backend/src/security/requestInput.js)). The prototype-pollution and cast-bypass advisories could still matter wherever request bodies reach Mongoose documents. The audit did not run `npm audit` locally, because it contacts the registry. This finding was added after the PR's CI run.
+  The moderate ones are `glob` and `minimatch`, reached through `firebase-admin` → `google-gax`/`gaxios` → `rimraf`. `src/` never uses `sanitizeFilter`, so the two sanitizeFilter advisories don't apply as written. The project relies on its own input validation instead ([requestInput.js](../../swifora_backend/src/security/requestInput.js)). The prototype-pollution and cast-bypass advisories could still matter wherever request bodies reach Mongoose documents. The audit did not run `npm audit` locally, because it contacts the registry. This finding was added after the PR's CI run.
 - **Impact:** The backend CI job fails on every push, so its other checks pass unnoticed on a red build. The production backend runs a Mongoose version with published critical advisories.
 - **Recommended validation:** Upgrade `mongoose` to ≥ 8.24.7 (or the patched version the advisory names), run `npm audit fix` for the transitive moderates, re-run the backend suite and integration test, and confirm the CI audit step passes.
 
@@ -107,7 +107,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 - **Severity:** High
 - **Evidence:** Strongly suspected defect
 - **Location:** [location_service.dart:122-129](../../lib/services/location_service.dart#L122-L129), [location_service.dart:54-60](../../lib/services/location_service.dart#L54-L60), [provider_home_screen.dart:240-246](../../lib/screens/provider_home_screen.dart#L240-L246), [provider_active_orders_screen.dart:38-42](../../lib/screens/provider_active_orders_screen.dart#L38-L42), [provider_home_screen.dart:199](../../lib/screens/provider_home_screen.dart#L199), [provider_home_screen.dart:442](../../lib/screens/provider_home_screen.dart#L442), [home_screen.dart:97](../../lib/screens/home_screen.dart#L97), [home_screen.dart:361](../../lib/screens/home_screen.dart#L361)
-- **Description:** `syncToBackend` calls `_findNearestArea`. `rootBundle.loadString` caches the string, but `jsonDecode` of 46 MB and the walk over every city run again on the UI isolate each time. A provider with an active order triggers this every 30 s from **both** the home dashboard timer and the active-orders screen timer, which run together when the latter is pushed. It also runs on every app resume and on customer home init and resume. The detected `area` is then ignored by the server for any user who already has a registered area ([users.js:176-184](../../stars_delivery_backend/src/routes/users.js#L176-L184)).
+- **Description:** `syncToBackend` calls `_findNearestArea`. `rootBundle.loadString` caches the string, but `jsonDecode` of 46 MB and the walk over every city run again on the UI isolate each time. A provider with an active order triggers this every 30 s from **both** the home dashboard timer and the active-orders screen timer, which run together when the latter is pushed. It also runs on every app resume and on customer home init and resume. The detected `area` is then ignored by the server for any user who already has a registered area ([users.js:176-184](../../swifora_backend/src/routes/users.js#L176-L184)).
 - **Reproduction:** As a provider, accept an order and keep the active-orders screen open. Watch the DevTools performance overlay and memory for a few minutes and look for jank spikes every 30 s.
 - **Impact:** Dropped frames and GC pressure throughout the driver's delivery session, more battery use, and two location PUTs per 30 s.
 - **Recommended validation:** DevTools CPU profiler (look for `jsonDecode` on the UI thread). Check the location-update rate limit headroom (120/min per user). Fix: compute the nearest area once, in an isolate, from a small asset, and de-duplicate the two timers.
@@ -137,7 +137,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-005: Push tokens survive logout and session revocation, and the push service keeps a stale auth token
 - **Severity:** Medium (applies once FCM is configured; it is disabled by default)
 - **Evidence:** Confirmed defect
-- **Location:** [routes/auth.js:252-305](../../stars_delivery_backend/src/routes/auth.js#L252-L305), [users.js:83-101](../../stars_delivery_backend/src/routes/users.js#L83-L101), [push_notification_service.dart:27-30](../../lib/services/push_notification_service.dart#L27-L30), [push_notification_service.dart:76-96](../../lib/services/push_notification_service.dart#L76-L96), [home_screen.dart:833-835](../../lib/screens/home_screen.dart#L833-L835), [provider_home_screen.dart:686-688](../../lib/screens/provider_home_screen.dart#L686-L688), [profile_screen.dart:303-314](../../lib/screens/profile_screen.dart#L303-L314), [auth_bloc.dart:151-156](../../lib/bloc/auth/auth_bloc.dart#L151-L156)
+- **Location:** [routes/auth.js:252-305](../../swifora_backend/src/routes/auth.js#L252-L305), [users.js:83-101](../../swifora_backend/src/routes/users.js#L83-L101), [push_notification_service.dart:27-30](../../lib/services/push_notification_service.dart#L27-L30), [push_notification_service.dart:76-96](../../lib/services/push_notification_service.dart#L76-L96), [home_screen.dart:833-835](../../lib/screens/home_screen.dart#L833-L835), [provider_home_screen.dart:686-688](../../lib/screens/provider_home_screen.dart#L686-L688), [profile_screen.dart:303-314](../../lib/screens/profile_screen.dart#L303-L314), [auth_bloc.dart:151-156](../../lib/bloc/auth/auth_bloc.dart#L151-L156)
 - **Description:** The server never deletes `PushToken` rows when `sessionVersion` changes (logout, password or email change, recovery, admin block). Cleanup depends on the client sending `DELETE /users/push-token` from `PushNotificationService.stop()` **with the old JWT**. That request is rejected with 401 when:
   - (a) the logout button fires `revokeSession` unawaited, and it can finish before the DELETE;
   - (b) after an email change, where the server has already rotated the session ([profile_screen.dart:303-314](../../lib/screens/profile_screen.dart#L303-L314));
@@ -166,7 +166,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-007: Server binds `0.0.0.0:3000` with `trust proxy 1`, so the IP rate limit and TLS can be bypassed if the port is reachable
 - **Severity:** Medium
 - **Evidence:** Requires runtime verification
-- **Location:** [index.js:553](../../stars_delivery_backend/src/index.js#L553), [index.js:61](../../stars_delivery_backend/src/index.js#L61), [deployment/README.md:30](../../deployment/README.md#L30), [stars-delivery.conf:14-16](../../deployment/nginx/stars-delivery.conf#L14-L16)
+- **Location:** [index.js:553](../../swifora_backend/src/index.js#L553), [index.js:61](../../swifora_backend/src/index.js#L61), [deployment/README.md:30](../../deployment/README.md#L30), [stars-delivery.conf:14-16](../../deployment/nginx/stars-delivery.conf#L14-L16)
 - **Description:** The docs say port 3000 must not be public and that nginx proxies to `127.0.0.1`. The code still listens on all interfaces. With `trust proxy 1`, a request sent straight to `:3000` with a forged `X-Forwarded-For` gets a forged `req.ip`. That defeats every per-IP limiter (login, register, recovery, orders) and skips TLS entirely.
 - **Reproduction:** On the production host, run `ss -ltnp | grep 3000` and an external `nmap -p3000 <host>`. If it is open, send `curl -H 'X-Forwarded-For: 1.2.3.<n>' http://host:3000/api/auth/login ...` while rotating `n`, and confirm 429 is never returned.
 - **Impact:** Credential stuffing across many accounts (per-account limits still cap a single account at 10 per 15 min), and cleartext traffic if anything is ever pointed at `:3000`.
@@ -175,7 +175,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-008: Unpaginated list endpoints, and `GET /orders` runs a global expiry sweep on every call
 - **Severity:** Medium
 - **Evidence:** Potential risk
-- **Location:** [orders.js:182-186](../../stars_delivery_backend/src/routes/orders.js#L182-L186), [orders.js:239-240](../../stars_delivery_backend/src/routes/orders.js#L239-L240), [offers.js:198-199](../../stars_delivery_backend/src/routes/offers.js#L198-L199), [provider.js:272](../../stars_delivery_backend/src/routes/provider.js#L272), [provider.js:293](../../stars_delivery_backend/src/routes/provider.js#L293), [provider.js:368-396](../../stars_delivery_backend/src/routes/provider.js#L368-L396), [provider.js:450](../../stars_delivery_backend/src/routes/provider.js#L450), [orderLifecycle.js:146-222](../../stars_delivery_backend/src/services/orderLifecycle.js#L146-L222)
+- **Location:** [orders.js:182-186](../../swifora_backend/src/routes/orders.js#L182-L186), [orders.js:239-240](../../swifora_backend/src/routes/orders.js#L239-L240), [offers.js:198-199](../../swifora_backend/src/routes/offers.js#L198-L199), [provider.js:272](../../swifora_backend/src/routes/provider.js#L272), [provider.js:293](../../swifora_backend/src/routes/provider.js#L293), [provider.js:368-396](../../swifora_backend/src/routes/provider.js#L368-L396), [provider.js:450](../../swifora_backend/src/routes/provider.js#L450), [orderLifecycle.js:146-222](../../swifora_backend/src/services/orderLifecycle.js#L146-L222)
 - **Description:** `GET /api/orders` (the customer's full history, no limit) calls `expireStaleOffers()` and `finalizeExpiredOrders()` with **no order filter**. That is a database-wide scan and write on every customer list fetch, and the customer home polls it every 15 s (RISK-006). Order detail and offer list GETs also write. Provider pending, offered, rejected and all-orders lists have no `limit`. Legacy providers with no area get the whole pending table (RISK-014).
 - **Reproduction:** Seed 10k orders and 1k expired offers. Run 50 simulated customers polling `/api/orders` and watch Mongo ops/s and p95 latency.
 - **Impact:** Write amplification and response size grow with data, which affects p95 latency and Atlas cost.
@@ -184,7 +184,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-009: Legacy order images are still served from `/uploads/*` without authentication
 - **Severity:** Medium
 - **Evidence:** Potential risk
-- **Location:** [index.js:107-127](../../stars_delivery_backend/src/index.js#L107-L127), [SECURITY_HARDENING.md](../security/SECURITY_HARDENING.md) ("Existing order images … remain on disk")
+- **Location:** [index.js:107-127](../../swifora_backend/src/index.js#L107-L127), [SECURITY_HARDENING.md](../security/SECURITY_HARDENING.md) ("Existing order images … remain on disk")
 - **Description:** Commit `9b50ca3` removed order-image upload and the `images` field. Old customer-uploaded JPGs in `uploads/` (3 locally, unknown in production) are still served to anyone with the filename, with no ownership check. Filenames are `timestamp-random` (about 30 bits of randomness). They are now orphaned: no record points to them, so there is no product reason to keep them public.
 - **Reproduction:** List `uploads/*.jpg` in production and `curl -I https://host/uploads/<name>.jpg` without auth.
 - **Impact:** Customer photos (possibly showing addresses or IDs) can be exposed if the URLs leak (logs, screenshots, old client caches).
@@ -193,7 +193,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-010: Admin TOTP is optional
 - **Severity:** Medium
 - **Evidence:** Potential risk
-- **Location:** [adminAuth.js:98-125](../../stars_delivery_backend/src/routes/adminAuth.js#L98-L125), [adminAuth.js:320-388](../../stars_delivery_backend/src/routes/adminAuth.js#L320-L388)
+- **Location:** [adminAuth.js:98-125](../../swifora_backend/src/routes/adminAuth.js#L98-L125), [adminAuth.js:320-388](../../swifora_backend/src/routes/adminAuth.js#L320-L388)
 - **Description:** 2FA is checked only when `adminTotpEnabled === true`. Nothing forces enrolment, and an admin can turn it off (password plus code). The hardening checklist asks for it but the code does not enforce it.
 - **Reproduction:** Bootstrap an admin and log in with only a password.
 - **Impact:** A phished or reused admin password gives full control: driver approval, ID documents, commissions, broadcast.
@@ -202,7 +202,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-011: `phones`, `frequentItems` and `fullName` have no type, length or count limits and no rate limit
 - **Severity:** Medium
 - **Evidence:** Confirmed defect
-- **Location:** [users.js:574-640](../../stars_delivery_backend/src/routes/users.js#L574-L640), [users.js:651-731](../../stars_delivery_backend/src/routes/users.js#L651-L731)
+- **Location:** [users.js:574-640](../../swifora_backend/src/routes/users.js#L574-L640), [users.js:651-731](../../swifora_backend/src/routes/users.js#L651-L731)
 - **Description:** `POST /users/phones` and `POST /users/frequent-items` push any truthy `number` or `item` (any length, any JSON type) into arrays on the `User` document, with no maximum count. `PUT /users/profile` stores `fullName` unchecked. None of these routes has a limiter. Each request can be up to about 100 kB, so a scripted client can push its own User document toward Mongo's 16 MB limit. Every authenticated request loads that document, which slows it down.
 - **Reproduction:** Loop `POST /api/users/frequent-items {"item":"<90kB string + i>"}` about 200 times, then time `GET /api/auth/me`.
 - **Impact:** Self-inflicted account breakage, extra DB and network load, and odd data showing up in admin views (escaped).
@@ -211,8 +211,8 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-012: The whole order lifecycle depends on Mongo transactions (replica set)
 - **Severity:** Medium
 - **Evidence:** Requires runtime verification
-- **Location:** [transaction.js:1-13](../../stars_delivery_backend/src/services/transaction.js#L1-L13), [orderLifecycle.js:57-59](../../stars_delivery_backend/src/services/orderLifecycle.js#L57-L59), [offers.js:133](../../stars_delivery_backend/src/routes/offers.js#L133)
-- **Description:** Submit, accept, reset, cancel, every status transition and delivery confirmation all run in `withTransaction`. On a standalone `mongod` (common in self-hosting and local dev) each one returns 503. Duplicate-offer prevention also relies on transaction write conflicts, because the `{providerId, orderId}` index is non-unique ([Offer.js:18-21](../../stars_delivery_backend/src/models/Offer.js#L18-L21)).
+- **Location:** [transaction.js:1-13](../../swifora_backend/src/services/transaction.js#L1-L13), [orderLifecycle.js:57-59](../../swifora_backend/src/services/orderLifecycle.js#L57-L59), [offers.js:133](../../swifora_backend/src/routes/offers.js#L133)
+- **Description:** Submit, accept, reset, cancel, every status transition and delivery confirmation all run in `withTransaction`. On a standalone `mongod` (common in self-hosting and local dev) each one returns 503. Duplicate-offer prevention also relies on transaction write conflicts, because the `{providerId, orderId}` index is non-unique ([Offer.js:18-21](../../swifora_backend/src/models/Offer.js#L18-L21)).
 - **Reproduction:** Point `MONGODB_URI` at a standalone instance and submit an offer: 503 "Order service is temporarily unavailable".
 - **Impact:** A total outage of the delivery workflow if the deployment target ever changes, and duplicate offers if transactions are bypassed.
 - **Recommended validation:** Add a startup check (`hello.setName`) that fails fast. Run `npm run offers:audit-duplicates`, then make the index unique.
@@ -220,7 +220,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-013: Customer GPS is collected and kept indefinitely, and there is no retention policy for PII
 - **Severity:** Medium
 - **Evidence:** Potential risk
-- **Location:** [home_screen.dart:97](../../lib/screens/home_screen.dart#L97), [users.js:147-196](../../stars_delivery_backend/src/routes/users.js#L147-L196), [User.js:94-97](../../stars_delivery_backend/src/models/User.js#L94-L97)
+- **Location:** [home_screen.dart:97](../../lib/screens/home_screen.dart#L97), [users.js:147-196](../../swifora_backend/src/routes/users.js#L147-L196), [User.js:94-97](../../swifora_backend/src/models/User.js#L94-L97)
 - **Description:** Customer devices upload high-accuracy coordinates on every home open and resume. They are stored in `User.lastLatitude/Longitude`, and this review found no customer-side consumer (only provider coordinates are shown to customers). `orders`, `chatmessages`, `contactrequests`, `ratings` and the last GPS fix have no TTL or purge job.
 - **Reproduction:** Log in as a customer and inspect the user document: `lastLatitude` is populated.
 - **Impact:** Unneeded precise location history (one point per user) and privacy and regulatory exposure, with no documented retention.
@@ -229,7 +229,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-014: Providers with no registered area see every order and join a socket room the client chooses
 - **Severity:** Medium
 - **Evidence:** Potential risk
-- **Location:** [orderVisibility.js:16-21](../../stars_delivery_backend/src/services/orderVisibility.js#L16-L21), [orderVisibility.js:45](../../stars_delivery_backend/src/services/orderVisibility.js#L45), [index.js:437](../../stars_delivery_backend/src/index.js#L437), [users.js:177-184](../../stars_delivery_backend/src/routes/users.js#L177-L184)
+- **Location:** [orderVisibility.js:16-21](../../swifora_backend/src/services/orderVisibility.js#L16-L21), [orderVisibility.js:45](../../swifora_backend/src/services/orderVisibility.js#L45), [index.js:437](../../swifora_backend/src/index.js#L437), [users.js:177-184](../../swifora_backend/src/routes/users.js#L177-L184)
 - **Description:** "Legacy" providers with an empty `area` get an unrestricted feed and can submit offers on any order. Their socket joins `area:<handshake.query.area>`, which the client controls. Their first location sync sets `area` to a governorate name derived from GPS, not a validated village.
 - **Reproduction:** `db.users.countDocuments({role:'provider', $or:[{area:''},{area:{$exists:false}}]})`.
 - **Impact:** Order details (description, location, masked phone) reach drivers outside the area, and area-based fairness breaks.
@@ -238,7 +238,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-015: Backups are unencrypted and contain plaintext TOTP secrets and ID documents
 - **Severity:** Medium
 - **Evidence:** Potential risk
-- **Location:** [backupRestore.js:299-440](../../stars_delivery_backend/src/scripts/backupRestore.js#L299-L440), [User.js:59](../../stars_delivery_backend/src/models/User.js#L59)
+- **Location:** [backupRestore.js:299-440](../../swifora_backend/src/scripts/backupRestore.js#L299-L440), [User.js:59](../../swifora_backend/src/models/User.js#L59)
 - **Description:** `mongodump` output and copies of the provider documents are written with `0600` permissions but not encrypted. `adminTotpSecret` is stored in plain text, so a leaked backup lets someone generate admin 2FA codes.
 - **Reproduction:** Run `npm run ops:backup` and inspect the output.
 - **Impact:** If backup media is compromised, everything is exposed, 2FA included.
@@ -281,7 +281,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 
 ### RISK-017: The expired-offer sweeper runs outside a transaction
 - **Evidence:** Potential risk
-- **Location:** [orderLifecycle.js:146-222](../../stars_delivery_backend/src/services/orderLifecycle.js#L146-L222), [index.js:231-246](../../stars_delivery_backend/src/index.js#L231-L246)
+- **Location:** [orderLifecycle.js:146-222](../../swifora_backend/src/services/orderLifecycle.js#L146-L222), [index.js:231-246](../../swifora_backend/src/index.js#L231-L246)
 - **Description:** It runs `find` for expired offers, then upserts `RejectedOrder` rows, then `deleteMany(filter)` with the same time-based filter. Offers that expire between the `find` and the `deleteMany` are deleted without a `RejectedOrder` row, so the provider can resubmit. It runs every 30 s on every instance and also on many GETs (RISK-008), so the runs overlap. Errors are swallowed (`catch (_) {}`).
 - **Reproduction:** Use a load test with many offers expiring together and compare `RejectedOrder` counts with deleted offers.
 - **Impact:** Small inconsistencies in the re-offer rules.
@@ -289,70 +289,70 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 
 ### RISK-018: A single `sessionVersion` means any logout logs out every device, tokens last 7 days with no refresh, and the docs disagree
 - **Evidence:** Confirmed defect (design and doc mismatch)
-- **Location:** [routes/auth.js:224-234](../../stars_delivery_backend/src/routes/auth.js#L224-L234), [routes/auth.js:269-295](../../stars_delivery_backend/src/routes/auth.js#L269-L295), [SECURITY_HARDENING.md:67-73](../security/SECURITY_HARDENING.md#L67-L73)
+- **Location:** [routes/auth.js:224-234](../../swifora_backend/src/routes/auth.js#L224-L234), [routes/auth.js:269-295](../../swifora_backend/src/routes/auth.js#L269-L295), [SECURITY_HARDENING.md:67-73](../security/SECURITY_HARDENING.md#L67-L73)
 - **Description:** Logout increments the account-wide version, which kills every device. The JWT lasts 7 days and there is no refresh flow, while the hardening doc calls tokens "short-lived". A stolen token stays valid for up to 7 days unless the user logs out or changes their password.
 - **Impact:** UX friction for multi-device users, and a long exposure window for stolen tokens.
 - **Recommended validation:** Make a product decision. Consider per-device session records and a shorter access token with a refresh token.
 
 ### RISK-019: Phone masking shows 7 of 10 digits, and the address is broadcast before an offer is accepted
 - **Evidence:** Potential risk
-- **Location:** [orders.js:37-43](../../stars_delivery_backend/src/routes/orders.js#L37-L43), [orders.js:290](../../stars_delivery_backend/src/routes/orders.js#L290), [provider.js:73](../../stars_delivery_backend/src/routes/provider.js#L73), [orders.js:96-126](../../stars_delivery_backend/src/routes/orders.js#L96-L126)
+- **Location:** [orders.js:37-43](../../swifora_backend/src/routes/orders.js#L37-L43), [orders.js:290](../../swifora_backend/src/routes/orders.js#L290), [provider.js:73](../../swifora_backend/src/routes/provider.js#L73), [orders.js:96-126](../../swifora_backend/src/routes/orders.js#L96-L126)
 - **Description:** `slice(0,-3)+'***'` hides only the last 3 digits (1,000 candidates). The free-text `location` and the customer `fullName` go to every eligible provider in the area as soon as the order is created.
 - **Impact:** Customer can be re-identified by nearby drivers who never get the job.
 - **Recommended validation:** Privacy review. Show only coarse location before acceptance.
 
 ### RISK-020: The provider phone is never filled in for offers
 - **Evidence:** Confirmed defect
-- **Location:** [offers.js:202](../../stars_delivery_backend/src/routes/offers.js#L202), [orderLifecycle.js:571](../../stars_delivery_backend/src/services/orderLifecycle.js#L571), [offers.js:115-116](../../stars_delivery_backend/src/routes/offers.js#L115-L116), [offer_model.dart:63](../../lib/models/offer_model.dart#L63), [order_offers_screen.dart:571-586](../../lib/screens/order_offers_screen.dart#L571-L586)
+- **Location:** [offers.js:202](../../swifora_backend/src/routes/offers.js#L202), [orderLifecycle.js:571](../../swifora_backend/src/services/orderLifecycle.js#L571), [offers.js:115-116](../../swifora_backend/src/routes/offers.js#L115-L116), [offer_model.dart:63](../../lib/models/offer_model.dart#L63), [order_offers_screen.dart:571-586](../../lib/screens/order_offers_screen.dart#L571-L586)
 - **Description:** `User` has `phoneNumbers[]` and no `phone` field. `populate('providerId','… phone …')` and `provider.phone` therefore always come back undefined, so the customer's phone UI branch never renders. This may be the intended privacy outcome, but it is accidental and the code contradicts itself.
 - **Resolution:** The owner decided on 2026-11-13 that customers should **not** see the driver phone. The behaviour stays. The only cleanup worth doing is to drop the dead `phone` populate and the client branch that never renders, so the intent is explicit in the code.
 
 ### RISK-021: `OfferModel.orderId` becomes the `toString()` of a Map
 - **Evidence:** Confirmed defect (latent: the field is currently unused)
-- **Location:** [offer_model.dart:60](../../lib/models/offer_model.dart#L60), [offers.js:203](../../stars_delivery_backend/src/routes/offers.js#L203)
+- **Location:** [offer_model.dart:60](../../lib/models/offer_model.dart#L60), [offers.js:203](../../swifora_backend/src/routes/offers.js#L203)
 - **Description:** `orderId` is populated as an object, so `json['orderId']?.toString()` yields `{_id: …, description: …}`. Any future use (navigation, comparison) will silently fail.
 - **Recommended validation:** Unit test `OfferModel.fromJson` with the populated shape.
 
 ### RISK-022: The `User` schema declares `governorate` twice
 - **Evidence:** Confirmed defect
-- **Location:** [User.js:74](../../stars_delivery_backend/src/models/User.js#L74), [User.js:101](../../stars_delivery_backend/src/models/User.js#L101)
+- **Location:** [User.js:74](../../swifora_backend/src/models/User.js#L74), [User.js:101](../../swifora_backend/src/models/User.js#L101)
 - **Description:** In a JS object literal the second key wins, so `governorate` loses its `default: ''`. Documents are created without the field, and code relies on `governorateKey()` fallbacks.
 - **Recommended validation:** Remove the duplicate and check the admin filters on `governorate`.
 
 ### RISK-023: Body-less PUTs return 500 under Express 5
 - **Evidence:** Strongly suspected defect
-- **Location:** [users.js:208-213](../../stars_delivery_backend/src/routes/users.js#L208-L213), [users.js:230-238](../../stars_delivery_backend/src/routes/users.js#L230-L238), [users.js:574-597](../../stars_delivery_backend/src/routes/users.js#L574-L597)
+- **Location:** [users.js:208-213](../../swifora_backend/src/routes/users.js#L208-L213), [users.js:230-238](../../swifora_backend/src/routes/users.js#L230-L238), [users.js:574-597](../../swifora_backend/src/routes/users.js#L574-L597)
 - **Description:** Express 5 leaves `req.body` `undefined` when no body is parsed. `req.body.enabled`, `req.body.governorate` and `hasOwnProperty.call(req.body, …)` then throw, and the request returns 500 instead of 400.
 - **Reproduction:** `curl -X PUT -H 'Authorization: Bearer …' https://host/api/users/governorate-level` with no body.
 - **Recommended validation:** Supertest case for each route.
 
 ### RISK-024: An invalid ObjectId returns 500 instead of 400/404
 - **Evidence:** Confirmed defect
-- **Location:** [offers.js:192](../../stars_delivery_backend/src/routes/offers.js#L192), [orderLifecycle.js:246](../../stars_delivery_backend/src/services/orderLifecycle.js#L246), [notifications.js:26](../../stars_delivery_backend/src/routes/notifications.js#L26), [orderLifecycle.js:575-614](../../stars_delivery_backend/src/services/orderLifecycle.js#L575-L614)
+- **Location:** [offers.js:192](../../swifora_backend/src/routes/offers.js#L192), [orderLifecycle.js:246](../../swifora_backend/src/services/orderLifecycle.js#L246), [notifications.js:26](../../swifora_backend/src/routes/notifications.js#L26), [orderLifecycle.js:575-614](../../swifora_backend/src/services/orderLifecycle.js#L575-L614)
 - **Description:** The raw `req.params` value reaches Mongoose without `isValidObjectId`, so a `CastError` produces a 500 and pollutes the error logs.
 - **Recommended validation:** Supertest with `/api/offers/abc/accept`.
 
 ### RISK-025: Login timing reveals whether an account exists
 - **Evidence:** Strongly suspected defect
-- **Location:** [routes/auth.js:40-41](../../stars_delivery_backend/src/routes/auth.js#L40-L41), [routes/auth.js:102](../../stars_delivery_backend/src/routes/auth.js#L102), [routes/auth.js:193-197](../../stars_delivery_backend/src/routes/auth.js#L193-L197)
+- **Location:** [routes/auth.js:40-41](../../swifora_backend/src/routes/auth.js#L40-L41), [routes/auth.js:102](../../swifora_backend/src/routes/auth.js#L102), [routes/auth.js:193-197](../../swifora_backend/src/routes/auth.js#L193-L197)
 - **Description:** Real hashes use cost 10, while the dummy hash for unknown emails uses cost 12 (about 4× slower). Registration already reveals "Email already registered", so the extra exposure is small.
 - **Recommended validation:** Time 50 logins each for existing and missing emails. Align the cost factors.
 
 ### RISK-026: TOTP codes can be replayed within the window, and a recovery code can be used twice in a race
 - **Evidence:** Potential risk
-- **Location:** [totp.js:101-145](../../stars_delivery_backend/src/security/totp.js#L101-L145), [adminAuth.js:109-124](../../stars_delivery_backend/src/routes/adminAuth.js#L109-L124)
+- **Location:** [totp.js:101-145](../../swifora_backend/src/security/totp.js#L101-L145), [adminAuth.js:109-124](../../swifora_backend/src/routes/adminAuth.js#L109-L124)
 - **Description:** The last accepted time step is not stored, so a captured code works again within ±30 s. Recovery-code consumption is `indexOf` + `splice` + `save()` with no atomic `$pull` condition, so two concurrent logins can both use the same code.
 - **Recommended validation:** Store `lastTotpStep` and use `updateOne({_id, adminTotpRecoveryCodeHashes: digest}, {$pull: …})`.
 
 ### RISK-027: Recovery-code HMAC is keyed with `JWT_SECRET` and has a hard-coded fallback
 - **Evidence:** Confirmed defect
-- **Location:** [totp.js:175-187](../../stars_delivery_backend/src/security/totp.js#L175-L187)
+- **Location:** [totp.js:175-187](../../swifora_backend/src/security/totp.js#L175-L187)
 - **Description:** Rotating `JWT_SECRET` silently invalidates every admin recovery code. If the variable is ever missing in a script context, the key falls back to a constant committed in the source.
 - **Recommended validation:** Use a dedicated secret validated in `config.js`.
 
 ### RISK-028: Rate limiters use the in-memory store
 - **Evidence:** Potential risk
-- **Location:** [mobileAuthRateLimit.js](../../stars_delivery_backend/src/security/mobileAuthRateLimit.js), [actionRateLimit.js](../../stars_delivery_backend/src/security/actionRateLimit.js), [adminAuth.js:23-55](../../stars_delivery_backend/src/routes/adminAuth.js#L23-L55)
+- **Location:** [mobileAuthRateLimit.js](../../swifora_backend/src/security/mobileAuthRateLimit.js), [actionRateLimit.js](../../swifora_backend/src/security/actionRateLimit.js), [adminAuth.js:23-55](../../swifora_backend/src/routes/adminAuth.js#L23-L55)
 - **Description:** Counters reset on every restart (systemd `Restart=on-failure`) and are not shared if more than one instance runs.
 - **Recommended validation:** If you scale out, use a Mongo or Redis store.
 
@@ -383,13 +383,13 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 ### RISK-033: Tapping a push notification is not handled
 - **Evidence:** Confirmed defect
 - **Location:** [push_notification_service.dart:27-59](../../lib/services/push_notification_service.dart#L27-L59)
-- **Description:** `onMessageOpenedApp` and `getInitialMessage` are never used. The `data.orderId` the server sends ([orders.js:166-170](../../stars_delivery_backend/src/routes/orders.js#L166-L170)) is ignored, so a tap only opens the app.
+- **Description:** `onMessageOpenedApp` and `getInitialMessage` are never used. The `data.orderId` the server sends ([orders.js:166-170](../../swifora_backend/src/routes/orders.js#L166-L170)) is ignored, so a tap only opens the app.
 - **Recommended validation:** Product decision. If implemented, open the order through the authorised `GET /orders/:id`.
 
 ### RISK-034: Stale iOS photo-library permission string, and the FCM default channel is never created
 - **Evidence:** Requires runtime verification
 - **Location:** [Info.plist:56-57](../../ios/Runner/Info.plist#L56-L57), [AndroidManifest.xml:39-41](../../android/app/src/main/AndroidManifest.xml#L39-L41)
-- **Description:** `NSPhotoLibraryUsageDescription` still describes document upload, which was removed, and App Review may flag it as unused. The manifest names the channel `stars_delivery_default`, but no Kotlin or Dart code creates it, so Android 8+ falls back to the "Miscellaneous" channel.
+- **Description:** `NSPhotoLibraryUsageDescription` still describes document upload, which was removed, and App Review may flag it as unused. The manifest names the channel `swifora_default`, but no Kotlin or Dart code creates it, so Android 8+ falls back to the "Miscellaneous" channel.
 - **Recommended validation:** Check the notification channel settings on a device after the first push.
 
 ### RISK-035: Uses the public OSM tile server in production
@@ -400,7 +400,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 
 ### RISK-036: Localization shows raw server messages, and the client compares against Arabic display strings
 - **Evidence:** Confirmed defect
-- **Location:** [auth_service.dart:158-169](../../lib/services/auth_service.dart#L158-L169), [routes/auth.js:43](../../stars_delivery_backend/src/routes/auth.js#L43), [routes/auth.js:207-211](../../stars_delivery_backend/src/routes/auth.js#L207-L211), [order_offers_screen.dart:973-986](../../lib/screens/order_offers_screen.dart#L973-L986), [order_detail_screen.dart:229](../../lib/screens/order_detail_screen.dart#L229), [order_offers_screen.dart:933-962](../../lib/screens/order_offers_screen.dart#L933-L962)
+- **Location:** [auth_service.dart:158-169](../../lib/services/auth_service.dart#L158-L169), [routes/auth.js:43](../../swifora_backend/src/routes/auth.js#L43), [routes/auth.js:207-211](../../swifora_backend/src/routes/auth.js#L207-L211), [order_offers_screen.dart:973-986](../../lib/screens/order_offers_screen.dart#L973-L986), [order_detail_screen.dart:229](../../lib/screens/order_detail_screen.dart#L229), [order_offers_screen.dart:933-962](../../lib/screens/order_offers_screen.dart#L933-L962)
 - **Description:** Server error text, a mix of English ("Invalid credentials") and Arabic, is shown as-is in both locales. UI logic depends on server-generated Arabic labels (`'غير محدد'`, `'من المحافظة نفسها'`). Some dialog strings are hard-coded in Arabic. Each screen also wraps itself in a manual `Directionality`, which duplicates what `MaterialApp` already does from `locale`. RTL and accessibility tests exist (`test/ux0*`), but a screen-reader pass has not been run.
 - **Recommended validation:** Switch to English and trigger login, offer and conflict errors. Use stable `code` values from the server to look up localized strings. Do a manual TalkBack/VoiceOver pass.
 
@@ -412,19 +412,19 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 
 ### RISK-038: Registration does not validate `fullName`, `phone` or `privacyPolicy` on the server
 - **Evidence:** Confirmed defect
-- **Location:** [routes/auth.js:54-63](../../stars_delivery_backend/src/routes/auth.js#L54-L63), [routes/auth.js:106-136](../../stars_delivery_backend/src/routes/auth.js#L106-L136)
+- **Location:** [routes/auth.js:54-63](../../swifora_backend/src/routes/auth.js#L54-L63), [routes/auth.js:106-136](../../swifora_backend/src/routes/auth.js#L106-L136)
 - **Description:** These fields are stored unchecked (any type or length), and an account can be created without accepting the privacy policy. Only the Flutter validators enforce the phone format.
 - **Recommended validation:** Supertest with a non-string or very large `fullName` and `privacyPolicy:false`.
 
 ### RISK-039: `PUT /users/password` has no rate limit
 - **Evidence:** Potential risk
-- **Location:** [users.js:270-399](../../stars_delivery_backend/src/routes/users.js#L270-L399)
+- **Location:** [users.js:270-399](../../swifora_backend/src/routes/users.js#L270-L399)
 - **Description:** Anyone holding a stolen JWT can brute-force the current password without limit, then take over the account by changing it.
 - **Recommended validation:** Add a per-user limiter consistent with login.
 
 ### RISK-040: Test coverage gaps
 - **Evidence:** Confirmed defect (missing coverage)
-- **Location:** [test/](../../test), [stars_delivery_backend/test/](../../stars_delivery_backend/test), [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
+- **Location:** [test/](../../test), [swifora_backend/test/](../../swifora_backend/test), [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
 - **Description:** Coverage is broad: 43 backend `node:test` suites (about 387 cases) and about 47 Flutter widget/unit test files. None of them covers the defects in RISK-001, 002, 004, 005, 008 or 011. There are no `integration_test`/e2e flows on a device. CI never checks startup time, APK size or performance.
 - **Recommended validation:** Add a `ProviderBloc` merge test, a push-token revocation test, an APK size budget, and a startup timeline check.
 
@@ -442,7 +442,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 
 ### RISK-043: Global Helmet CSP is disabled for non-admin static files, and HSTS lacks `includeSubDomains`
 - **Evidence:** Potential risk
-- **Location:** [index.js:65-71](../../stars_delivery_backend/src/index.js#L65-L71), [index.js:129-130](../../stars_delivery_backend/src/index.js#L129-L130), [stars-delivery.conf:42-44](../../deployment/nginx/stars-delivery.conf#L42-L44)
+- **Location:** [index.js:65-71](../../swifora_backend/src/index.js#L65-L71), [index.js:129-130](../../swifora_backend/src/index.js#L129-L130), [stars-delivery.conf:42-44](../../deployment/nginx/stars-delivery.conf#L42-L44)
 - **Description:** `src/public` (css/js/data) is served at the root with no CSP. Only `/admin` gets the strict policy. The impact is limited because there are no user-generated HTML pages, but defence in depth is missing.
 - **Recommended validation:** Apply a restrictive default CSP globally, and review the HSTS preload intent.
 
@@ -460,7 +460,7 @@ One Critical finding: a dependency advisory (RISK-051), found by the project's o
 
 ### RISK-049: The admin dashboard does not work at phone width
 - **Evidence:** Confirmed (visual: real browser screenshot at 390x844)
-- **Location:** [style.css](../../stars_delivery_backend/src/public/css/style.css), [sidebar.ejs](../../stars_delivery_backend/src/views/admin/partials/sidebar.ejs)
+- **Location:** [style.css](../../swifora_backend/src/public/css/style.css), [sidebar.ejs](../../swifora_backend/src/views/admin/partials/sidebar.ejs)
 - **Description:** At 390 px the sidebar stays expanded and takes most of the viewport. The main content (KPI cards, order table) is pushed off-screen and clipped. Screenshots: `screenshots/ADMIN-002-populated-mobile.png` and `screenshots/ADMIN-003-populated-mobile.png`.
 - **Recommended validation:** Responsive breakpoints for the sidebar, plus Playwright viewport tests.
 

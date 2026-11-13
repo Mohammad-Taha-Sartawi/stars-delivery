@@ -9,7 +9,7 @@ import 'bloc/notification/notification_bloc.dart';
 import 'services/theme_service.dart';
 import 'services/theme_preferences.dart';
 import 'services/locale_preferences.dart';
-import 'package:stars_delivery/services/api_config.dart';
+import 'package:swifora/services/api_config.dart';
 import 'services/location_service.dart';
 import 'screens/login_screen.dart';
 
@@ -23,16 +23,16 @@ void main() async {
   final initialTheme = await ThemePreferences.load();
   final initialLocale = await LocalePreferences.load();
   runApp(
-    StarsDeliveryApp(initialTheme: initialTheme, initialLocale: initialLocale),
+    SwiforaApp(initialTheme: initialTheme, initialLocale: initialLocale),
   );
 }
 
-class StarsDeliveryApp extends StatelessWidget {
+class SwiforaApp extends StatelessWidget {
   final AuthBloc Function()? authBlocFactory;
   final ThemeMode initialTheme;
   final Locale initialLocale;
 
-  const StarsDeliveryApp({
+  const SwiforaApp({
     super.key,
     this.authBlocFactory,
     this.initialTheme = ThemeMode.light,

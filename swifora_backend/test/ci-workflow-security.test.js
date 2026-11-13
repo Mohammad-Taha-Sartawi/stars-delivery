@@ -156,7 +156,7 @@ test(
 
     assert.match(
       workflow,
-      /working-directory: stars_delivery_backend\n\s+run: npm ci/,
+      /working-directory: swifora_backend\n\s+run: npm ci/,
     );
   },
 );
@@ -166,7 +166,7 @@ test(
   () => {
     assert.match(
       workflow,
-      /git diff --exit-code -- stars_delivery_backend\/package-lock\.json/,
+      /git diff --exit-code -- swifora_backend\/package-lock\.json/,
     );
 
     assert.match(

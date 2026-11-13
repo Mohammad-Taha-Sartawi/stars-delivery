@@ -7,8 +7,8 @@ Branch audited: `docs/stars-delivery-audit` (read-only static review). No tests 
 | Area | Test files | Static test cases | Behavioural | Source-text assertion | Mixed | Env-gated (skipped by default) |
 |---|---:|---:|---:|---:|---:|---:|
 | Flutter (`test/*_test.dart`) | 49 (+2 support files) | 209 | 99 | 97 | — | 13 |
-| Backend unit (`stars_delivery_backend/test/*.test.js`) | 56 | 382 | ~163 | ~153 | ~66 | 0 |
-| Backend integration (`stars_delivery_backend/integration/`) | 1 | 4 | 4 | 0 | 0 | 0 |
+| Backend unit (`swifora_backend/test/*.test.js`) | 56 | 382 | ~163 | ~153 | ~66 | 0 |
+| Backend integration (`swifora_backend/integration/`) | 1 | 4 | 4 | 0 | 0 | 0 |
 | Native (`ios/RunnerTests`, `macos/RunnerTests`) | 2 | 2 (empty placeholders) | 0 | 0 | 0 | 0 |
 | **Total** | **108** | **597** | **~266** | **~250** | **~66** | **13** |
 
@@ -23,11 +23,11 @@ Classification method:
 Key observations:
 
 1. **~42% of all test cases are source-text assertions.** For the order/offer/rating/cancellation business flows, the Flutter side is tested *almost exclusively* by source-text tests (e.g. [offer_flow_ui_test.dart](../../test/offer_flow_ui_test.dart), [offer_timer_ui_test.dart](../../test/offer_timer_ui_test.dart), [customer_cancel_order_ui_test.dart](../../test/customer_cancel_order_ui_test.dart), [rating_ui_test.dart](../../test/rating_ui_test.dart)) despite the `_ui_test` suffix.
-2. **Only one backend route file is exercised over HTTP**: [routes/auth.js](../../stars_delivery_backend/src/routes/auth.js) via [mobile-auth.integration.js](../../stars_delivery_backend/integration/mobile-auth.integration.js) (4 tests, supertest + `mongodb-memory-server-core`). The 56 unit test files do not use supertest at all. The other 20 route files are covered only by regex over source plus (for some) unit tests of the service layer.
-3. **Business logic that *is* behaviourally tested on the backend** lives in services: [orderLifecycle.js](../../stars_delivery_backend/src/services/orderLifecycle.js) / [orderState.js](../../stars_delivery_backend/src/services/orderState.js) ([order-lifecycle.test.js](../../stars_delivery_backend/test/order-lifecycle.test.js), 25 tests; [offer-window.test.js](../../stars_delivery_backend/test/offer-window.test.js)), commission ledger/settings, password recovery, session/JWT generation, origin policy, rate limiters, upload storage. Mongoose models are monkey-patched by hand (no real DB) in these tests.
+2. **Only one backend route file is exercised over HTTP**: [routes/auth.js](../../swifora_backend/src/routes/auth.js) via [mobile-auth.integration.js](../../swifora_backend/integration/mobile-auth.integration.js) (4 tests, supertest + `mongodb-memory-server-core`). The 56 unit test files do not use supertest at all. The other 20 route files are covered only by regex over source plus (for some) unit tests of the service layer.
+3. **Business logic that *is* behaviourally tested on the backend** lives in services: [orderLifecycle.js](../../swifora_backend/src/services/orderLifecycle.js) / [orderState.js](../../swifora_backend/src/services/orderState.js) ([order-lifecycle.test.js](../../swifora_backend/test/order-lifecycle.test.js), 25 tests; [offer-window.test.js](../../swifora_backend/test/offer-window.test.js)), commission ledger/settings, password recovery, session/JWT generation, origin policy, rate limiters, upload storage. Mongoose models are monkey-patched by hand (no real DB) in these tests.
 4. **No golden tests** (`matchesGoldenFile` appears nowhere), **no `integration_test/` directory**, **no e2e/device tests**, **no coverage configuration** (no `--coverage`, lcov, c8, nyc in CI or package.json), no `bloc_test` / `mocktail` / `mockito` dependency ([pubspec.yaml](../../pubspec.yaml) dev deps are only `flutter_test` and `flutter_lints`).
 5. Two "screenshot" suites ([ux01_screenshots_test.dart](../../test/ux01_screenshots_test.dart), [ux03_screenshots_test.dart](../../test/ux03_screenshots_test.dart)) write PNGs to the developer's Desktop only when `STARS_UX01_SCREENSHOTS=1` / `STARS_UX03_SCREENSHOTS=1`; by default each registers a single guard test. They are manual review aids, not visual regression tests (no baseline comparison).
-6. Cross-stack coupling: several Flutter tests read backend sources (e.g. [push_map_admin_test.dart](../../test/push_map_admin_test.dart), [forced_password_change_test.dart](../../test/forced_password_change_test.dart), [offer_concurrency_ui_test.dart](../../test/offer_concurrency_ui_test.dart)) and several backend tests read Flutter sources (e.g. [delivery-confirmation-flow.test.js](../../stars_delivery_backend/test/delivery-confirmation-flow.test.js), [governorate-level-visibility.test.js](../../stars_delivery_backend/test/governorate-level-visibility.test.js), [transport-security.test.js](../../stars_delivery_backend/test/transport-security.test.js)). Either suite therefore depends on the monorepo layout and on the working directory being the repo / backend root.
+6. Cross-stack coupling: several Flutter tests read backend sources (e.g. [push_map_admin_test.dart](../../test/push_map_admin_test.dart), [forced_password_change_test.dart](../../test/forced_password_change_test.dart), [offer_concurrency_ui_test.dart](../../test/offer_concurrency_ui_test.dart)) and several backend tests read Flutter sources (e.g. [delivery-confirmation-flow.test.js](../../swifora_backend/test/delivery-confirmation-flow.test.js), [governorate-level-visibility.test.js](../../swifora_backend/test/governorate-level-visibility.test.js), [transport-security.test.js](../../swifora_backend/test/transport-security.test.js)). Either suite therefore depends on the monorepo layout and on the working directory being the repo / backend root.
 
 ## 2. Test infrastructure
 
@@ -43,8 +43,8 @@ Key observations:
 ### 2.2 Backend
 
 - Runner: `node --test` (Node 24.13.1 in CI) with default file discovery → picks up `test/*.test.js`. `node:assert/strict` throughout. No `describe`/`it` usage; all flat `test()`.
-- Dev deps: `supertest@7.2.2`, `mongodb-memory-server-core@11.2.0` ([package.json](../../stars_delivery_backend/package.json)) — both used **only** by [mobile-auth.integration.js](../../stars_delivery_backend/integration/mobile-auth.integration.js), which mounts the real `routes/auth` router on a bare Express app (deliberately not `src/index.js`, which owns process startup, Mongo connect and Socket.IO) against an in-memory MongoDB, with synthetic secrets set in `process.env`. Run with `npm run test:integration`.
-- Mocking: manual monkey-patching of Mongoose statics (`User.findOneAndUpdate = …`, `mongoose.startSession = async () => fakeSession`) restored in `finally` ([order-lifecycle.test.js](../../stars_delivery_backend/test/order-lifecycle.test.js), [offer-window.test.js](../../stars_delivery_backend/test/offer-window.test.js), password-recovery runtime tests). `node:vm` is used once to evaluate browser code ([credential-bootstrap-security.test.js](../../stars_delivery_backend/test/credential-bootstrap-security.test.js)).
+- Dev deps: `supertest@7.2.2`, `mongodb-memory-server-core@11.2.0` ([package.json](../../swifora_backend/package.json)) — both used **only** by [mobile-auth.integration.js](../../swifora_backend/integration/mobile-auth.integration.js), which mounts the real `routes/auth` router on a bare Express app (deliberately not `src/index.js`, which owns process startup, Mongo connect and Socket.IO) against an in-memory MongoDB, with synthetic secrets set in `process.env`. Run with `npm run test:integration`.
+- Mocking: manual monkey-patching of Mongoose statics (`User.findOneAndUpdate = …`, `mongoose.startSession = async () => fakeSession`) restored in `finally` ([order-lifecycle.test.js](../../swifora_backend/test/order-lifecycle.test.js), [offer-window.test.js](../../swifora_backend/test/offer-window.test.js), password-recovery runtime tests). `node:vm` is used once to evaluate browser code ([credential-bootstrap-security.test.js](../../swifora_backend/test/credential-bootstrap-security.test.js)).
 - Source-reading helpers (`source(file)`, `read(file)`) are defined in most files; they read `src/**`, `src/public/js/main.js`, `src/views/**/*.ejs`, `../lib/**/*.dart`, `.github/workflows/ci.yml`, `deployment/**`, `.env.example`, `.gitignore`.
 - No shared fixtures directory, no factories, no test DB seeding, no `test/helpers`.
 
@@ -61,7 +61,7 @@ Triggers: push, pull_request, workflow_dispatch; `contents: read`; concurrency c
 | `backend` (ubuntu-24.04, 15 min) | `npm ci` → lockfile unchanged check → `npm run check` (`node --check src/index.js`) → `npm test` → `npm run test:integration` → `npm audit --omit=dev --audit-level=high` |
 | `flutter` (ubuntu-24.04, 20 min) | `flutter pub get` → `pubspec.lock` unchanged → `flutter test` → `flutter analyze` with **approved baseline of exactly 12 non-error issues** (job fails if RC≠1, count≠12, or any `error -` line) |
 
-Gaps: no coverage collection/upload, no test result artifacts (JUnit), no Android/iOS build, no web/admin browser tests, no Flutter golden/visual step, no security scanning beyond `npm audit` (no `dart pub outdated`/OSV, no SAST/DAST). The analyzer gate is an *exact* match, so fixing a lint (12 → 11) also fails CI until the baseline number is edited — it is a freeze, not a ratchet. CI configuration itself is asserted by [ci-workflow-security.test.js](../../stars_delivery_backend/test/ci-workflow-security.test.js) (source-text).
+Gaps: no coverage collection/upload, no test result artifacts (JUnit), no Android/iOS build, no web/admin browser tests, no Flutter golden/visual step, no security scanning beyond `npm audit` (no `dart pub outdated`/OSV, no SAST/DAST). The analyzer gate is an *exact* match, so fixing a lint (12 → 11) also fails CI until the baseline number is edited — it is a freeze, not a ratchet. CI configuration itself is asserted by [ci-workflow-security.test.js](../../swifora_backend/test/ci-workflow-security.test.js) (source-text).
 
 ### 2.5 Explicitly absent
 
@@ -148,63 +148,63 @@ Legend as above; additional types **API** (HTTP via supertest), **INT** (real DB
 
 | File | Type | Count | Split S/B/M | What it tests | Covers |
 |---|---|---:|---|---|---|
-| [account-state-session-security.test.js](../../stars_delivery_backend/test/account-state-session-security.test.js) | SEC, S | 6 | 1/0/5 | Block/reactivate/soft-delete rotate session generation and disconnect sockets | adminUsers.js, adminDrivers.js, auth.js |
-| [admin-broadcast-archive.test.js](../../stars_delivery_backend/test/admin-broadcast-archive.test.js) | S | 2 | 2/0/0 | Broadcast 1-month archive, dashboard display | adminBroadcast.js, BroadcastMessage, admin main.js/EJS |
-| [admin-broadcast-support-chat.test.js](../../stars_delivery_backend/test/admin-broadcast-support-chat.test.js) | S | 4 | 4/0/0 | Broadcasts notification-only; chat unread/read endpoints; dashboard socket | adminBroadcast.js, adminChat.js, chat.js, main.js |
-| [admin-browser-security.test.js](../../stars_delivery_backend/test/admin-browser-security.test.js) | SEC, U | 13 | 2/5/6 | Admin CSRF token lifecycle, security headers | security/adminCsrf, adminBrowserHeaders, adminAuth.js |
-| [admin-commission-card.test.js](../../stars_delivery_backend/test/admin-commission-card.test.js) | S | 9 | 9/0/0 | Admin commission cards, payouts wording, pay dues | adminApi.js, adminCommissions.js, adminDrivers.js, CommissionPayment, CSS/EJS |
-| [admin-csp-compatibility.test.js](../../stars_delivery_backend/test/admin-csp-compatibility.test.js) | SEC, S | 7 | 2/0/5 | No inline handlers/styles in admin views (CSP) | views/admin/**, public/js |
-| [admin-dashboard-inactive-drivers.test.js](../../stars_delivery_backend/test/admin-dashboard-inactive-drivers.test.js) | S | 2 | 2/0/0 | Inactive driver card | adminApi.js, adminDrivers.js |
-| [admin-dom-injection-safety.test.js](../../stars_delivery_backend/test/admin-dom-injection-safety.test.js) | SEC, U | 8 | 2/5/1 | `escapeHtml` executed; result cards encode fields | public/js/main.js |
-| [admin-driver-location-docs.test.js](../../stars_delivery_backend/test/admin-driver-location-docs.test.js) | S | 2 | 1/0/1 | Driver creation without images; orphan cleanup script | adminDrivers.js, scripts/cleanupOrphanRecords.js |
-| [admin-driver-profile-edit.test.js](../../stars_delivery_backend/test/admin-driver-profile-edit.test.js) | S | 3 | 3/0/0 | Admin edits driver, socket sync, modal | adminDrivers.js, modals.ejs |
-| [admin-order-type-stats.test.js](../../stars_delivery_backend/test/admin-order-type-stats.test.js) | U+S | 4 | 2/2/0 | Order counters per type/period | services/orderStats, adminApi.js |
-| [admin-security.test.js](../../stars_delivery_backend/test/admin-security.test.js) | SEC, U | 21 | 0/20/1 | Secret validation, admin session middleware (DB revalidation), Mongo store, socket auth, admin password policy | config, middleware/adminSession, requireAdminSession, socket/authenticateSocket, security/passwordPolicy |
-| [admin-target-password-security.test.js](../../stars_delivery_backend/test/admin-target-password-security.test.js) | SEC | 5 | 3/1/1 | Admin reset of user/driver passwords | passwordPolicy, adminUsers.js, adminDrivers.js |
-| [ads.test.js](../../stars_delivery_backend/test/ads.test.js) | U+S | 4 | 1/2/1 | Ad payload validation, public payload, active-only | services/adPayload, models/Ad, ads.js, adminAds.js |
-| [authorization.test.js](../../stars_delivery_backend/test/authorization.test.js) | SEC, U | 6 | 0/6/0 | Role middleware customer/provider | middleware/requireRole, mobileRole |
-| [available-providers.test.js](../../stars_delivery_backend/test/available-providers.test.js) | S | 1 | 1/0/0 | Available provider count by area | users.js |
-| [backup-restore-operations.test.js](../../stars_delivery_backend/test/backup-restore-operations.test.js) | OPS, U | 8 | 0/4/4 | Backup/restore script guards, manifest, cleanup | scripts/backupRestore.js |
-| [ci-workflow-security.test.js](../../stars_delivery_backend/test/ci-workflow-security.test.js) | OPS, C | 12 | 9/1/2 | CI triggers, permissions, pinning, timeouts | .github/workflows/ci.yml |
-| [city-level-area-matching.test.js](../../stars_delivery_backend/test/city-level-area-matching.test.js) | S | 2 | 1/0/1 | Village/city-level area matching | auth.js, orders.js, provider.js, users.js |
-| [commission-ledger.test.js](../../stars_delivery_backend/test/commission-ledger.test.js) | U | 4 | 0/4/0 | Due commission after payment cutoff | services/commissionLedger |
-| [commission-settings.test.js](../../stars_delivery_backend/test/commission-settings.test.js) | U+S | 4 | 1/3/0 | Fixed/percentage commission, adjustments, snapshot on accept | services/commissionSettings, commissionLedger, offers.js, adminApi.js |
-| [contact-security.test.js](../../stars_delivery_backend/test/contact-security.test.js) | SEC | 19 | 7/9/3 | Public contact normalisation and validation | services/contactRequest, models/ContactRequest |
-| [credential-bootstrap-security.test.js](../../stars_delivery_backend/test/credential-bootstrap-security.test.js) | SEC | 6 | 2/2/2 | Provider bootstrap password, admin direct-add credential (vm) | passwordPolicy, adminDrivers.js, main.js |
-| [credential-nondisclosure.test.js](../../stars_delivery_backend/test/credential-nondisclosure.test.js) | SEC | 4 | 1/1/2 | Password hash excluded from schemas/responses | models/User, PendingProvider, admin routes |
-| [database-resilience.test.js](../../stars_delivery_backend/test/database-resilience.test.js) | U+S | 5 | 3/2/0 | DB-unavailable 503 classification, connect retry | security/errorResponse, index.js |
-| [delivery-confirmation-flow.test.js](../../stars_delivery_backend/test/delivery-confirmation-flow.test.js) | S | 2 | 2/0/0 | Delivery confirmation (backend + Flutter sources) | Order.js, Flutter order screens |
-| [deployment-readiness.test.js](../../stars_delivery_backend/test/deployment-readiness.test.js) | OPS, C | 10 | 8/1/1 | Nginx TLS/proxy/WebSocket config, operator artifacts | deployment/** |
-| [driver-order-stats.test.js](../../stars_delivery_backend/test/driver-order-stats.test.js) | U+S | 2 | 1/1/0 | Not-accepted order totals | services/driverOrderStats, adminDrivers.js |
-| [email-identity-security.test.js](../../stars_delivery_backend/test/email-identity-security.test.js) | SEC | 8 | 7/1/0 | Email normalisation; schema/route usage (pre-read sources) | security/mobileEmail, User, PendingProvider, auth.js, users.js |
-| [error-disclosure-security.test.js](../../stars_delivery_backend/test/error-disclosure-security.test.js) | SEC | 8 | 3/2/3 | Safe 500 payload; all 500 sites use helper | security/errorResponse, all route files |
-| [forced-password-change.test.js](../../stars_delivery_backend/test/forced-password-change.test.js) | SEC | 5 | 3/2/0 | Forced-change gating in auth middleware | middleware/auth, auth.js, adminUsers.js, adminDrivers.js |
-| [governorate-level-visibility.test.js](../../stars_delivery_backend/test/governorate-level-visibility.test.js) | U+S | 6 | 1/2/3 | Governorate-level order visibility consent | services/orderVisibility, orders.js, Flutter screens |
-| [mobile-auth-abuse-security.test.js](../../stars_delivery_backend/test/mobile-auth-abuse-security.test.js) | SEC | 4 | 0/3/1 | Login/registration rate-limit budgets | security/mobileAuthRateLimit, auth.js |
-| [mobile-password-security.test.js](../../stars_delivery_backend/test/mobile-password-security.test.js) | SEC | 5 | 1/1/3 | Mobile password policy, change reauth | passwordPolicy, auth.js, users.js |
-| [network-boundary.test.js](../../stars_delivery_backend/test/network-boundary.test.js) | SEC, U | 16 | 2/13/1 | CORS origin canonicalisation/allow-list | security/originPolicy, config |
-| [notification-broadcast-only.test.js](../../stars_delivery_backend/test/notification-broadcast-only.test.js) | S | 4 | 4/0/0 | Notification feeds, resend broadcast, persisted notifications | notifications.js, orders.js, offers.js, adminBroadcast.js, adminReports.js |
-| [offer-location-notice.test.js](../../stars_delivery_backend/test/offer-location-notice.test.js) | S | 2 | 2/0/0 | Outside-area offer flag (backend + Flutter) | offers.js, order_offers_screen |
-| [offer-window.test.js](../../stars_delivery_backend/test/offer-window.test.js) | U+S | 11 | 5/6/0 | 60 s offer validity, provider cooldown, expiry before accept, order suspension | services/orderLifecycle (stubbed models), offers.js, orders.js |
-| [order-detail-access.test.js](../../stars_delivery_backend/test/order-detail-access.test.js) | SEC, S | 1 | 1/0/0 | Single-order lookup scoped to owner/matching provider (regex only) | orders.js |
-| [order-lifecycle.test.js](../../stars_delivery_backend/test/order-lifecycle.test.js) | U | 25 | 0/24/1 | State machine, submit/accept/cancel/reset/transition with transactions, ownership, stale offers, busy release | services/orderLifecycle, orderState, transaction (stubbed Mongoose) |
-| [password-recovery-runtime-security.test.js](../../stars_delivery_backend/test/password-recovery-runtime-security.test.js) | SEC, U | 6 | 0/4/2 | Generic 202, digest storage, 5-attempt atomic claim, session disconnect | security/passwordRecovery, mailer, models |
-| [password-recovery-security.test.js](../../stars_delivery_backend/test/password-recovery-security.test.js) | SEC | 15 | 6/6/3 | OTP format, HMAC digest, policy, secret validation | security/passwordRecovery, config |
-| [profile-location-update.test.js](../../stars_delivery_backend/test/profile-location-update.test.js) | U+S | 3 | 2/1/0 | Profile area validation vs city catalog | services/registrationLocation, palestineCities, users.js |
-| [provider-availability-window.test.js](../../stars_delivery_backend/test/provider-availability-window.test.js) | U | 2 | 0/1/1 | 15-min provider reservation | services/orderLifecycle |
-| [provider-document-security.test.js](../../stars_delivery_backend/test/provider-document-security.test.js) | SEC | 17 | 7/7/3 | Private upload storage, magic-byte checks | services/providerDocumentStorage, auth.js |
-| [provider-license-waiver.test.js](../../stars_delivery_backend/test/provider-license-waiver.test.js) | S | 3 | 2/0/1 | Registration without license image | auth.js, adminDrivers.js, Flutter login |
-| [provider-rejected-orders.test.js](../../stars_delivery_backend/test/provider-rejected-orders.test.js) | S | 4 | 4/0/0 | Per-provider rejection, report contact masking, indexes | provider.js, RejectedOrder |
-| [provider-service-types-and-admin-links.test.js](../../stars_delivery_backend/test/provider-service-types-and-admin-links.test.js) | U+S | 6 | 4/1/1 | Service type normalisation, driver category | services/providerServiceTypes, admin routes |
-| [provider-stats-consistency.test.js](../../stars_delivery_backend/test/provider-stats-consistency.test.js) | S | 2 | 2/0/0 | Due commission after payment; report counter | provider.js, provider_home_screen |
-| [public-id-generation.test.js](../../stars_delivery_backend/test/public-id-generation.test.js) | U+S | 4 | 2/2/0 | Public numeric IDs | utils/publicId, Flutter screens |
-| [rating-flow.test.js](../../stars_delivery_backend/test/rating-flow.test.js) | S | 5 | 5/0/0 | Rating uniqueness, only completed orders, provider average | Rating.js, orders.js, provider.js, offers.js |
-| [registration-location-dashboard.test.js](../../stars_delivery_backend/test/registration-location-dashboard.test.js) | U+S | 6 | 3/2/1 | Governorate/city storage, area stats | services/registrationLocation, adminAreas.js |
-| [security-hardening.test.js](../../stars_delivery_backend/test/security-hardening.test.js) | SEC | 10 | 6/1/3 | Ad upload magic bytes, phone not broadcast, TOTP, action rate limit, location validation | security/totp, actionRateLimit, locationValidation, services/adImageStorage |
-| [session-revocation-security.test.js](../../stars_delivery_backend/test/session-revocation-security.test.js) | SEC, U | 9 | 2/5/2 | Generation rotation, stale JWT rejection REST + socket | middleware/auth, services/mobileSession, socket/authenticateSocket |
-| [session-security.test.js](../../stars_delivery_backend/test/session-security.test.js) | SEC, U | 14 | 3/10/1 | Session eligibility, blocked/deleted accounts, public user shape | middleware/auth, mobileSession, authenticateSocket |
-| [transport-security.test.js](../../stars_delivery_backend/test/transport-security.test.js) | SEC, C | 6 | 6/0/0 | Flutter API origin policy, Android cleartext, iOS ATS | lib/services/api_config.dart, socket_service.dart, Info.plist, manifests |
-| [integration/mobile-auth.integration.js](../../stars_delivery_backend/integration/mobile-auth.integration.js) | **API + INT** | 4 | 0/4/0 | Register → login → `/me` over HTTP with real Mongo (memory); duplicate normalised email; short password rejected; legacy short password login | routes/auth.js, User, PendingProvider |
+| [account-state-session-security.test.js](../../swifora_backend/test/account-state-session-security.test.js) | SEC, S | 6 | 1/0/5 | Block/reactivate/soft-delete rotate session generation and disconnect sockets | adminUsers.js, adminDrivers.js, auth.js |
+| [admin-broadcast-archive.test.js](../../swifora_backend/test/admin-broadcast-archive.test.js) | S | 2 | 2/0/0 | Broadcast 1-month archive, dashboard display | adminBroadcast.js, BroadcastMessage, admin main.js/EJS |
+| [admin-broadcast-support-chat.test.js](../../swifora_backend/test/admin-broadcast-support-chat.test.js) | S | 4 | 4/0/0 | Broadcasts notification-only; chat unread/read endpoints; dashboard socket | adminBroadcast.js, adminChat.js, chat.js, main.js |
+| [admin-browser-security.test.js](../../swifora_backend/test/admin-browser-security.test.js) | SEC, U | 13 | 2/5/6 | Admin CSRF token lifecycle, security headers | security/adminCsrf, adminBrowserHeaders, adminAuth.js |
+| [admin-commission-card.test.js](../../swifora_backend/test/admin-commission-card.test.js) | S | 9 | 9/0/0 | Admin commission cards, payouts wording, pay dues | adminApi.js, adminCommissions.js, adminDrivers.js, CommissionPayment, CSS/EJS |
+| [admin-csp-compatibility.test.js](../../swifora_backend/test/admin-csp-compatibility.test.js) | SEC, S | 7 | 2/0/5 | No inline handlers/styles in admin views (CSP) | views/admin/**, public/js |
+| [admin-dashboard-inactive-drivers.test.js](../../swifora_backend/test/admin-dashboard-inactive-drivers.test.js) | S | 2 | 2/0/0 | Inactive driver card | adminApi.js, adminDrivers.js |
+| [admin-dom-injection-safety.test.js](../../swifora_backend/test/admin-dom-injection-safety.test.js) | SEC, U | 8 | 2/5/1 | `escapeHtml` executed; result cards encode fields | public/js/main.js |
+| [admin-driver-location-docs.test.js](../../swifora_backend/test/admin-driver-location-docs.test.js) | S | 2 | 1/0/1 | Driver creation without images; orphan cleanup script | adminDrivers.js, scripts/cleanupOrphanRecords.js |
+| [admin-driver-profile-edit.test.js](../../swifora_backend/test/admin-driver-profile-edit.test.js) | S | 3 | 3/0/0 | Admin edits driver, socket sync, modal | adminDrivers.js, modals.ejs |
+| [admin-order-type-stats.test.js](../../swifora_backend/test/admin-order-type-stats.test.js) | U+S | 4 | 2/2/0 | Order counters per type/period | services/orderStats, adminApi.js |
+| [admin-security.test.js](../../swifora_backend/test/admin-security.test.js) | SEC, U | 21 | 0/20/1 | Secret validation, admin session middleware (DB revalidation), Mongo store, socket auth, admin password policy | config, middleware/adminSession, requireAdminSession, socket/authenticateSocket, security/passwordPolicy |
+| [admin-target-password-security.test.js](../../swifora_backend/test/admin-target-password-security.test.js) | SEC | 5 | 3/1/1 | Admin reset of user/driver passwords | passwordPolicy, adminUsers.js, adminDrivers.js |
+| [ads.test.js](../../swifora_backend/test/ads.test.js) | U+S | 4 | 1/2/1 | Ad payload validation, public payload, active-only | services/adPayload, models/Ad, ads.js, adminAds.js |
+| [authorization.test.js](../../swifora_backend/test/authorization.test.js) | SEC, U | 6 | 0/6/0 | Role middleware customer/provider | middleware/requireRole, mobileRole |
+| [available-providers.test.js](../../swifora_backend/test/available-providers.test.js) | S | 1 | 1/0/0 | Available provider count by area | users.js |
+| [backup-restore-operations.test.js](../../swifora_backend/test/backup-restore-operations.test.js) | OPS, U | 8 | 0/4/4 | Backup/restore script guards, manifest, cleanup | scripts/backupRestore.js |
+| [ci-workflow-security.test.js](../../swifora_backend/test/ci-workflow-security.test.js) | OPS, C | 12 | 9/1/2 | CI triggers, permissions, pinning, timeouts | .github/workflows/ci.yml |
+| [city-level-area-matching.test.js](../../swifora_backend/test/city-level-area-matching.test.js) | S | 2 | 1/0/1 | Village/city-level area matching | auth.js, orders.js, provider.js, users.js |
+| [commission-ledger.test.js](../../swifora_backend/test/commission-ledger.test.js) | U | 4 | 0/4/0 | Due commission after payment cutoff | services/commissionLedger |
+| [commission-settings.test.js](../../swifora_backend/test/commission-settings.test.js) | U+S | 4 | 1/3/0 | Fixed/percentage commission, adjustments, snapshot on accept | services/commissionSettings, commissionLedger, offers.js, adminApi.js |
+| [contact-security.test.js](../../swifora_backend/test/contact-security.test.js) | SEC | 19 | 7/9/3 | Public contact normalisation and validation | services/contactRequest, models/ContactRequest |
+| [credential-bootstrap-security.test.js](../../swifora_backend/test/credential-bootstrap-security.test.js) | SEC | 6 | 2/2/2 | Provider bootstrap password, admin direct-add credential (vm) | passwordPolicy, adminDrivers.js, main.js |
+| [credential-nondisclosure.test.js](../../swifora_backend/test/credential-nondisclosure.test.js) | SEC | 4 | 1/1/2 | Password hash excluded from schemas/responses | models/User, PendingProvider, admin routes |
+| [database-resilience.test.js](../../swifora_backend/test/database-resilience.test.js) | U+S | 5 | 3/2/0 | DB-unavailable 503 classification, connect retry | security/errorResponse, index.js |
+| [delivery-confirmation-flow.test.js](../../swifora_backend/test/delivery-confirmation-flow.test.js) | S | 2 | 2/0/0 | Delivery confirmation (backend + Flutter sources) | Order.js, Flutter order screens |
+| [deployment-readiness.test.js](../../swifora_backend/test/deployment-readiness.test.js) | OPS, C | 10 | 8/1/1 | Nginx TLS/proxy/WebSocket config, operator artifacts | deployment/** |
+| [driver-order-stats.test.js](../../swifora_backend/test/driver-order-stats.test.js) | U+S | 2 | 1/1/0 | Not-accepted order totals | services/driverOrderStats, adminDrivers.js |
+| [email-identity-security.test.js](../../swifora_backend/test/email-identity-security.test.js) | SEC | 8 | 7/1/0 | Email normalisation; schema/route usage (pre-read sources) | security/mobileEmail, User, PendingProvider, auth.js, users.js |
+| [error-disclosure-security.test.js](../../swifora_backend/test/error-disclosure-security.test.js) | SEC | 8 | 3/2/3 | Safe 500 payload; all 500 sites use helper | security/errorResponse, all route files |
+| [forced-password-change.test.js](../../swifora_backend/test/forced-password-change.test.js) | SEC | 5 | 3/2/0 | Forced-change gating in auth middleware | middleware/auth, auth.js, adminUsers.js, adminDrivers.js |
+| [governorate-level-visibility.test.js](../../swifora_backend/test/governorate-level-visibility.test.js) | U+S | 6 | 1/2/3 | Governorate-level order visibility consent | services/orderVisibility, orders.js, Flutter screens |
+| [mobile-auth-abuse-security.test.js](../../swifora_backend/test/mobile-auth-abuse-security.test.js) | SEC | 4 | 0/3/1 | Login/registration rate-limit budgets | security/mobileAuthRateLimit, auth.js |
+| [mobile-password-security.test.js](../../swifora_backend/test/mobile-password-security.test.js) | SEC | 5 | 1/1/3 | Mobile password policy, change reauth | passwordPolicy, auth.js, users.js |
+| [network-boundary.test.js](../../swifora_backend/test/network-boundary.test.js) | SEC, U | 16 | 2/13/1 | CORS origin canonicalisation/allow-list | security/originPolicy, config |
+| [notification-broadcast-only.test.js](../../swifora_backend/test/notification-broadcast-only.test.js) | S | 4 | 4/0/0 | Notification feeds, resend broadcast, persisted notifications | notifications.js, orders.js, offers.js, adminBroadcast.js, adminReports.js |
+| [offer-location-notice.test.js](../../swifora_backend/test/offer-location-notice.test.js) | S | 2 | 2/0/0 | Outside-area offer flag (backend + Flutter) | offers.js, order_offers_screen |
+| [offer-window.test.js](../../swifora_backend/test/offer-window.test.js) | U+S | 11 | 5/6/0 | 60 s offer validity, provider cooldown, expiry before accept, order suspension | services/orderLifecycle (stubbed models), offers.js, orders.js |
+| [order-detail-access.test.js](../../swifora_backend/test/order-detail-access.test.js) | SEC, S | 1 | 1/0/0 | Single-order lookup scoped to owner/matching provider (regex only) | orders.js |
+| [order-lifecycle.test.js](../../swifora_backend/test/order-lifecycle.test.js) | U | 25 | 0/24/1 | State machine, submit/accept/cancel/reset/transition with transactions, ownership, stale offers, busy release | services/orderLifecycle, orderState, transaction (stubbed Mongoose) |
+| [password-recovery-runtime-security.test.js](../../swifora_backend/test/password-recovery-runtime-security.test.js) | SEC, U | 6 | 0/4/2 | Generic 202, digest storage, 5-attempt atomic claim, session disconnect | security/passwordRecovery, mailer, models |
+| [password-recovery-security.test.js](../../swifora_backend/test/password-recovery-security.test.js) | SEC | 15 | 6/6/3 | OTP format, HMAC digest, policy, secret validation | security/passwordRecovery, config |
+| [profile-location-update.test.js](../../swifora_backend/test/profile-location-update.test.js) | U+S | 3 | 2/1/0 | Profile area validation vs city catalog | services/registrationLocation, palestineCities, users.js |
+| [provider-availability-window.test.js](../../swifora_backend/test/provider-availability-window.test.js) | U | 2 | 0/1/1 | 15-min provider reservation | services/orderLifecycle |
+| [provider-document-security.test.js](../../swifora_backend/test/provider-document-security.test.js) | SEC | 17 | 7/7/3 | Private upload storage, magic-byte checks | services/providerDocumentStorage, auth.js |
+| [provider-license-waiver.test.js](../../swifora_backend/test/provider-license-waiver.test.js) | S | 3 | 2/0/1 | Registration without license image | auth.js, adminDrivers.js, Flutter login |
+| [provider-rejected-orders.test.js](../../swifora_backend/test/provider-rejected-orders.test.js) | S | 4 | 4/0/0 | Per-provider rejection, report contact masking, indexes | provider.js, RejectedOrder |
+| [provider-service-types-and-admin-links.test.js](../../swifora_backend/test/provider-service-types-and-admin-links.test.js) | U+S | 6 | 4/1/1 | Service type normalisation, driver category | services/providerServiceTypes, admin routes |
+| [provider-stats-consistency.test.js](../../swifora_backend/test/provider-stats-consistency.test.js) | S | 2 | 2/0/0 | Due commission after payment; report counter | provider.js, provider_home_screen |
+| [public-id-generation.test.js](../../swifora_backend/test/public-id-generation.test.js) | U+S | 4 | 2/2/0 | Public numeric IDs | utils/publicId, Flutter screens |
+| [rating-flow.test.js](../../swifora_backend/test/rating-flow.test.js) | S | 5 | 5/0/0 | Rating uniqueness, only completed orders, provider average | Rating.js, orders.js, provider.js, offers.js |
+| [registration-location-dashboard.test.js](../../swifora_backend/test/registration-location-dashboard.test.js) | U+S | 6 | 3/2/1 | Governorate/city storage, area stats | services/registrationLocation, adminAreas.js |
+| [security-hardening.test.js](../../swifora_backend/test/security-hardening.test.js) | SEC | 10 | 6/1/3 | Ad upload magic bytes, phone not broadcast, TOTP, action rate limit, location validation | security/totp, actionRateLimit, locationValidation, services/adImageStorage |
+| [session-revocation-security.test.js](../../swifora_backend/test/session-revocation-security.test.js) | SEC, U | 9 | 2/5/2 | Generation rotation, stale JWT rejection REST + socket | middleware/auth, services/mobileSession, socket/authenticateSocket |
+| [session-security.test.js](../../swifora_backend/test/session-security.test.js) | SEC, U | 14 | 3/10/1 | Session eligibility, blocked/deleted accounts, public user shape | middleware/auth, mobileSession, authenticateSocket |
+| [transport-security.test.js](../../swifora_backend/test/transport-security.test.js) | SEC, C | 6 | 6/0/0 | Flutter API origin policy, Android cleartext, iOS ATS | lib/services/api_config.dart, socket_service.dart, Info.plist, manifests |
+| [integration/mobile-auth.integration.js](../../swifora_backend/integration/mobile-auth.integration.js) | **API + INT** | 4 | 0/4/0 | Register → login → `/me` over HTTP with real Mongo (memory); duplicate normalised email; short password rejected; legacy short password login | routes/auth.js, User, PendingProvider |
 
 ## 5. Coverage map
 
@@ -280,57 +280,57 @@ Legend: **B** behavioural test executes this code; **H** rendered only via UX-03
 | user_service | B (subclassed fake) | governorate_scope_test |
 | validators | B | password_policy_test |
 
-### 5.4 Backend routes (`stars_delivery_backend/src/routes/`)
+### 5.4 Backend routes (`swifora_backend/src/routes/`)
 
 Endpoint counts are static counts of `router.get|post|put|patch|delete(` per file (~118 in total).
 
 | Route file | Endpoints | HTTP-level test | Other coverage |
 |---|---:|---|---|
-| [auth.js](../../stars_delivery_backend/src/routes/auth.js) | 4 | **Yes** — mobile-auth.integration.js (register, duplicate, short password, legacy login, `/me`) | S in ~17 files; B: mobileAuthRateLimit, mobileEmail, passwordPolicy |
-| [orders.js](../../stars_delivery_backend/src/routes/orders.js) | 8 | **NONE** | S: rating-flow, order-detail-access, offer-window, governorate-level-visibility, notification-broadcast-only, error-disclosure, security-hardening; B (service): orderLifecycle cancel/reset, orderVisibility |
-| [offers.js](../../stars_delivery_backend/src/routes/offers.js) | 5 | **NONE** | S: offer-window, rating-flow, commission-settings, offer-location-notice; B (service): orderLifecycle submit/accept |
-| [provider.js](../../stars_delivery_backend/src/routes/provider.js) | 7 | **NONE** | S: provider-rejected-orders, provider-stats-consistency, provider-availability-window, city-level-area-matching; B (service): orderLifecycle transitions |
-| [users.js](../../stars_delivery_backend/src/routes/users.js) | 17 | **NONE** | S: available-providers, profile-location-update, email-identity-security, mobile-password-security; B (service): registrationLocation |
-| [notifications.js](../../stars_delivery_backend/src/routes/notifications.js) | 4 | **NONE** | S only (notification-broadcast-only, error-disclosure) |
-| [chat.js](../../stars_delivery_backend/src/routes/chat.js) | 10 | **NONE** | S only (admin-broadcast-support-chat, error-disclosure, security-hardening) |
-| [reports.js](../../stars_delivery_backend/src/routes/reports.js) | 2 | **NONE** | S only |
-| [passwordRecovery.js](../../stars_delivery_backend/src/routes/passwordRecovery.js) | 2 | **NONE** | B: security/passwordRecovery runtime (stubbed models); S |
-| [ads.js](../../stars_delivery_backend/src/routes/ads.js) | 1 | **NONE** | B: adPayload; S |
-| [adminAuth.js](../../stars_delivery_backend/src/routes/adminAuth.js) | 8 | **NONE** | B: adminCsrf, adminSession, passwordPolicy, totp; S |
-| [adminApi.js](../../stars_delivery_backend/src/routes/adminApi.js) | 4 | **NONE** | B: orderStats, commissionSettings; S |
-| [adminDrivers.js](../../stars_delivery_backend/src/routes/adminDrivers.js) | 17 | **NONE** | B: driverOrderStats; S in ~18 files |
-| [adminUsers.js](../../stars_delivery_backend/src/routes/adminUsers.js) | 5 | **NONE** | B: mobileSession generation; S |
-| [adminOrders.js](../../stars_delivery_backend/src/routes/adminOrders.js) | 6 | **NONE** | S only (error-disclosure, provider-service-types) |
-| [adminReports.js](../../stars_delivery_backend/src/routes/adminReports.js) | 5 | **NONE** | S only |
-| [adminCommissions.js](../../stars_delivery_backend/src/routes/adminCommissions.js) | 4 | **NONE** | B: commissionLedger; S |
-| [adminBroadcast.js](../../stars_delivery_backend/src/routes/adminBroadcast.js) | 2 | **NONE** | S only |
-| [adminChat.js](../../stars_delivery_backend/src/routes/adminChat.js) | 2 | **NONE** | S only |
-| [adminAds.js](../../stars_delivery_backend/src/routes/adminAds.js) | 5 | **NONE** | B: adImageStorage, adPayload; S |
-| [adminAreas.js](../../stars_delivery_backend/src/routes/adminAreas.js) | 1 | **NONE** | B: registrationLocation; S |
+| [auth.js](../../swifora_backend/src/routes/auth.js) | 4 | **Yes** — mobile-auth.integration.js (register, duplicate, short password, legacy login, `/me`) | S in ~17 files; B: mobileAuthRateLimit, mobileEmail, passwordPolicy |
+| [orders.js](../../swifora_backend/src/routes/orders.js) | 8 | **NONE** | S: rating-flow, order-detail-access, offer-window, governorate-level-visibility, notification-broadcast-only, error-disclosure, security-hardening; B (service): orderLifecycle cancel/reset, orderVisibility |
+| [offers.js](../../swifora_backend/src/routes/offers.js) | 5 | **NONE** | S: offer-window, rating-flow, commission-settings, offer-location-notice; B (service): orderLifecycle submit/accept |
+| [provider.js](../../swifora_backend/src/routes/provider.js) | 7 | **NONE** | S: provider-rejected-orders, provider-stats-consistency, provider-availability-window, city-level-area-matching; B (service): orderLifecycle transitions |
+| [users.js](../../swifora_backend/src/routes/users.js) | 17 | **NONE** | S: available-providers, profile-location-update, email-identity-security, mobile-password-security; B (service): registrationLocation |
+| [notifications.js](../../swifora_backend/src/routes/notifications.js) | 4 | **NONE** | S only (notification-broadcast-only, error-disclosure) |
+| [chat.js](../../swifora_backend/src/routes/chat.js) | 10 | **NONE** | S only (admin-broadcast-support-chat, error-disclosure, security-hardening) |
+| [reports.js](../../swifora_backend/src/routes/reports.js) | 2 | **NONE** | S only |
+| [passwordRecovery.js](../../swifora_backend/src/routes/passwordRecovery.js) | 2 | **NONE** | B: security/passwordRecovery runtime (stubbed models); S |
+| [ads.js](../../swifora_backend/src/routes/ads.js) | 1 | **NONE** | B: adPayload; S |
+| [adminAuth.js](../../swifora_backend/src/routes/adminAuth.js) | 8 | **NONE** | B: adminCsrf, adminSession, passwordPolicy, totp; S |
+| [adminApi.js](../../swifora_backend/src/routes/adminApi.js) | 4 | **NONE** | B: orderStats, commissionSettings; S |
+| [adminDrivers.js](../../swifora_backend/src/routes/adminDrivers.js) | 17 | **NONE** | B: driverOrderStats; S in ~18 files |
+| [adminUsers.js](../../swifora_backend/src/routes/adminUsers.js) | 5 | **NONE** | B: mobileSession generation; S |
+| [adminOrders.js](../../swifora_backend/src/routes/adminOrders.js) | 6 | **NONE** | S only (error-disclosure, provider-service-types) |
+| [adminReports.js](../../swifora_backend/src/routes/adminReports.js) | 5 | **NONE** | S only |
+| [adminCommissions.js](../../swifora_backend/src/routes/adminCommissions.js) | 4 | **NONE** | B: commissionLedger; S |
+| [adminBroadcast.js](../../swifora_backend/src/routes/adminBroadcast.js) | 2 | **NONE** | S only |
+| [adminChat.js](../../swifora_backend/src/routes/adminChat.js) | 2 | **NONE** | S only |
+| [adminAds.js](../../swifora_backend/src/routes/adminAds.js) | 5 | **NONE** | B: adImageStorage, adPayload; S |
+| [adminAreas.js](../../swifora_backend/src/routes/adminAreas.js) | 1 | **NONE** | B: registrationLocation; S |
 
 ### 5.5 Other backend modules
 
 | Module | Coverage |
 |---|---|
 | services: orderLifecycle, orderState, transaction, commissionLedger, commissionSettings, orderVisibility, orderStats, driverOrderStats, registrationLocation, palestineCities, providerServiceTypes, providerDocumentStorage, adImageStorage, adPayload, contactRequest, mobileSession, passwordRecoveryMailer | B |
-| services: [pushNotifications.js](../../stars_delivery_backend/src/services/pushNotifications.js), [mobileNotifications.js](../../stars_delivery_backend/src/services/mobileNotifications.js) | S only (from Flutter push_map_admin_test) |
-| services: [adminAccounts.js](../../stars_delivery_backend/src/services/adminAccounts.js) | **NONE** |
-| security: all modules except [requestInput.js](../../stars_delivery_backend/src/security/requestInput.js) | B; requestInput **NONE** |
-| middleware: auth, adminSession, requireAdminSession, mobileRole, requireRole | B; [adminAuditLog.js](../../stars_delivery_backend/src/middleware/adminAuditLog.js) S only |
-| socket: [authenticateSocket.js](../../stars_delivery_backend/src/socket/authenticateSocket.js) | B. Socket event handlers/emits in [index.js](../../stars_delivery_backend/src/index.js) — S only |
+| services: [pushNotifications.js](../../swifora_backend/src/services/pushNotifications.js), [mobileNotifications.js](../../swifora_backend/src/services/mobileNotifications.js) | S only (from Flutter push_map_admin_test) |
+| services: [adminAccounts.js](../../swifora_backend/src/services/adminAccounts.js) | **NONE** |
+| security: all modules except [requestInput.js](../../swifora_backend/src/security/requestInput.js) | B; requestInput **NONE** |
+| middleware: auth, adminSession, requireAdminSession, mobileRole, requireRole | B; [adminAuditLog.js](../../swifora_backend/src/middleware/adminAuditLog.js) S only |
+| socket: [authenticateSocket.js](../../swifora_backend/src/socket/authenticateSocket.js) | B. Socket event handlers/emits in [index.js](../../swifora_backend/src/index.js) — S only |
 | models: CommissionSetting | **NONE**; most others S or used as stub targets |
 | scripts: backupRestore | B; cleanupOrphanRecords S; adminBootstrap, auditLegacyContactUsers, auditOfferDuplicates, regeneratePublicIds **NONE** |
-| Admin web UI ([public/js/main.js](../../stars_delivery_backend/src/public/js/main.js), `views/admin/**`) | S (many) + `escapeHtml` B. No browser execution |
+| Admin web UI ([public/js/main.js](../../swifora_backend/src/public/js/main.js), `views/admin/**`) | S (many) + `escapeHtml` B. No browser execution |
 
 ## 6. Biggest gaps (risk-ranked)
 
-1. **Order/offer journeys have no end-to-end or HTTP-level behavioural test.** Create order → offer → accept → fulfilling → completed → rating is verified on the backend only at service level with hand-stubbed Mongoose, and on Flutter only via source-text regex. Route wiring (auth middleware order, role guards, validation, response shape) for [orders.js](../../stars_delivery_backend/src/routes/orders.js), [offers.js](../../stars_delivery_backend/src/routes/offers.js), [provider.js](../../stars_delivery_backend/src/routes/provider.js) is untested at runtime.
-2. **Authorization of order detail / IDOR** ([order-detail-access.test.js](../../stars_delivery_backend/test/order-detail-access.test.js)) is a single regex test.
+1. **Order/offer journeys have no end-to-end or HTTP-level behavioural test.** Create order → offer → accept → fulfilling → completed → rating is verified on the backend only at service level with hand-stubbed Mongoose, and on Flutter only via source-text regex. Route wiring (auth middleware order, role guards, validation, response shape) for [orders.js](../../swifora_backend/src/routes/orders.js), [offers.js](../../swifora_backend/src/routes/offers.js), [provider.js](../../swifora_backend/src/routes/provider.js) is untested at runtime.
+2. **Authorization of order detail / IDOR** ([order-detail-access.test.js](../../swifora_backend/test/order-detail-access.test.js)) is a single regex test.
 3. **Customer-side screens** ([order_offers_screen.dart](../../lib/screens/order_offers_screen.dart), [my_orders_screen.dart](../../lib/screens/my_orders_screen.dart), [create_order_screen.dart](../../lib/screens/create_order_screen.dart)) — the largest customer screens (1,144 / 1,008 lines) — have no behavioural widget test of their primary actions; MockApi does not serve order/offer endpoints.
 4. **Socket.IO real-time paths** (new order broadcast, offer received, offer selected/taken, status updates) — not executed anywhere.
 5. **Order, Offer, Notification BLoCs** — no direct tests.
 6. **No visual regression** despite an active redesign (UX-01/UX-03); screenshots are manual.
-7. **Untested modules**: [commission_payment_screen.dart](../../lib/screens/commission_payment_screen.dart), [settings_screen.dart](../../lib/screens/settings_screen.dart), [notification_service.dart](../../lib/services/notification_service.dart), [report_service.dart](../../lib/services/report_service.dart), [location_service.dart](../../lib/services/location_service.dart), [adminAccounts.js](../../stars_delivery_backend/src/services/adminAccounts.js), [requestInput.js](../../stars_delivery_backend/src/security/requestInput.js).
+7. **Untested modules**: [commission_payment_screen.dart](../../lib/screens/commission_payment_screen.dart), [settings_screen.dart](../../lib/screens/settings_screen.dart), [notification_service.dart](../../lib/services/notification_service.dart), [report_service.dart](../../lib/services/report_service.dart), [location_service.dart](../../lib/services/location_service.dart), [adminAccounts.js](../../swifora_backend/src/services/adminAccounts.js), [requestInput.js](../../swifora_backend/src/security/requestInput.js).
 8. **Localization completeness / Arabic RTL** only spot-checked (some widget tests run `Locale('ar')`); default app locale is Arabic ([main.dart](../../lib/main.dart)).
 9. **No coverage measurement** so none of the above is tracked over time.
 10. **Brittleness**: ~250 source-text cases will fail on cosmetic refactors (renames, `dart format` line wrapping — one test already has a "formatting-tolerant" regex) and give false confidence for logic regressions.
@@ -343,8 +343,8 @@ All results below come from runs during this audit on 2026-11-13. They were not 
 
 | Suite | Exact command (run from) | Result | Duration |
 |---|---|---|---|
-| Backend unit/security | `npm test` (`stars_delivery_backend/`), i.e. `node --test` | **382 passed, 0 failed, 0 skipped, 0 cancelled, 0 todo** | ~5.7 s |
-| Backend integration | `npm run test:integration` (`stars_delivery_backend/`) | **4 passed, 0 failed** (real HTTP + in-memory MongoDB) | ~5.0 s |
+| Backend unit/security | `npm test` (`swifora_backend/`), i.e. `node --test` | **382 passed, 0 failed, 0 skipped, 0 cancelled, 0 todo** | ~5.7 s |
+| Backend integration | `npm run test:integration` (`swifora_backend/`) | **4 passed, 0 failed** (real HTTP + in-memory MongoDB) | ~5.0 s |
 | Flutter widget/unit | `flutter test --reporter expanded` (repo root) | **227 passed, 0 failed** ("All tests passed!") | ~51 s |
 | Flutter analyzer | `flutter analyze` (repo root) | **15 issues (3 warnings, 12 infos, 0 errors), exit code 1** | ~25 s |
 | Backend syntax check | not run separately (`npm run check` = `node --check src/index.js`) | not executed | — |

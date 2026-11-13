@@ -49,7 +49,7 @@ const runbook =
 
 const backendIndex =
   read(
-    'stars_delivery_backend/src/index.js',
+    'swifora_backend/src/index.js',
   );
 
 const apiConfig =
@@ -134,7 +134,7 @@ test(
 
     assert.match(
       nginx,
-      /proxy_pass http:\/\/stars_delivery_backend;/,
+      /proxy_pass http:\/\/swifora_backend;/,
     );
 
     assert.match(
@@ -194,7 +194,7 @@ test(
 
     assert.match(
       systemd,
-      /^WorkingDirectory=\/opt\/stars-delivery\/current\/stars_delivery_backend$/m,
+      /^WorkingDirectory=\/opt\/stars-delivery\/current\/swifora_backend$/m,
     );
 
     assert.match(
@@ -279,7 +279,7 @@ test(
 
     assert.match(
       runbook,
-      /stars_delivery_backend\/uploads/,
+      /swifora_backend\/uploads/,
     );
 
     assert.match(

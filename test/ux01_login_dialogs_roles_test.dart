@@ -11,7 +11,7 @@
 // The area dropdown loads governorates from GET /api/locations/governorates.
 // Tests serve that endpoint through the MobileApiClient.testAdapter seam,
 // built from the backend's own Palestine data file
-// (stars_delivery_backend/src/data/palestine-locations.json), so the fixture
+// (swifora_backend/src/data/palestine-locations.json), so the fixture
 // is the same data the server seeds into MongoDB.
 
 import 'dart:convert';
@@ -24,15 +24,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/bloc/app/app_bloc.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/api_config.dart';
-import 'package:stars_delivery/services/location_catalog.dart';
-import 'package:stars_delivery/services/mobile_api_client.dart';
-import 'package:stars_delivery/services/session_storage.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/screens/login_screen.dart';
+import 'package:swifora/bloc/app/app_bloc.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/api_config.dart';
+import 'package:swifora/services/location_catalog.dart';
+import 'package:swifora/services/mobile_api_client.dart';
+import 'package:swifora/services/session_storage.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/screens/login_screen.dart';
 
 class _TestVault implements TokenVault {
   @override
@@ -88,7 +88,7 @@ void main() {
   final locationData =
       jsonDecode(
             File(
-              'stars_delivery_backend/src/data/palestine-locations.json',
+              'swifora_backend/src/data/palestine-locations.json',
             ).readAsStringSync(),
           )
           as Map<String, dynamic>;

@@ -103,7 +103,7 @@ The capture scripts are in [tooling/](tooling/), as `.txt` files so the analyzer
 
 | ID | Reason | Procedure |
 |---|---|---|
-| SCREEN-001 App shell & session-restore gate | Transient: the session-restore gate shows only while `AuthBloc` validates a stored token, then replaces itself with login or home. | Pump `StarsDeliveryApp` with `checkOnStart: true`, a `TokenVault` that returns a token, and an `AuthGateway.validateSession` that waits 3 s. Capture at 300 ms. |
+| SCREEN-001 App shell & session-restore gate | Transient: the session-restore gate shows only while `AuthBloc` validates a stored token, then replaces itself with login or home. | Pump `SwiforaApp` with `checkOnStart: true`, a `TokenVault` that returns a token, and an `AuthGateway.validateSession` that waits 3 s. Capture at 300 ms. |
 | DIALOG-002 Terms of Service | Needs a valid registration form submit (SCREEN-003 not reached). | Reach SCREEN-003, fill valid synthetic data, submit, and capture the Terms dialog. |
 | DIALOG-003 Privacy Policy | Opens only after Agree on DIALOG-002. | From DIALOG-002 tap Agree, then capture. |
 | DIALOG-004 Agreement required (declined) | Opens only on Decline in DIALOG-002/003. | From DIALOG-002 tap Decline, then capture. |
@@ -141,26 +141,26 @@ Method A = Flutter widget-test rasterization, logical 390×844 phone at 2× (780
 
 | File | Screen | State | Locale/theme | Resolution | Method | Source | Note |
 |---|---|---|---|---|---|---|---|
-| [ADMIN-001-default-desktop.png](screenshots/ADMIN-001-default-desktop.png) | ADMIN-001 | default | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | login page |
-| [ADMIN-001-default-mobile.png](screenshots/ADMIN-001-default-mobile.png) | ADMIN-001 | default | ar-dark (mobile) | 390×844 | B | `stars_delivery_backend/src/views/admin/` | login page at 390px |
-| [ADMIN-002-populated-desktop.png](screenshots/ADMIN-002-populated-desktop.png) | ADMIN-002 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=dashboard] |
-| [ADMIN-002-populated-mobile.png](screenshots/ADMIN-002-populated-mobile.png) | ADMIN-002 | populated | ar-dark (mobile) | 390×844 | B | `stars_delivery_backend/src/views/admin/` | [data-page=dashboard] at 390px |
-| [ADMIN-003-populated-desktop.png](screenshots/ADMIN-003-populated-desktop.png) | ADMIN-003 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=orders] |
-| [ADMIN-003-populated-mobile.png](screenshots/ADMIN-003-populated-mobile.png) | ADMIN-003 | populated | ar-dark (mobile) | 390×844 | B | `stars_delivery_backend/src/views/admin/` | [data-page=orders] at 390px |
-| [ADMIN-004-populated-desktop.png](screenshots/ADMIN-004-populated-desktop.png) | ADMIN-004 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=drivers] |
-| [ADMIN-005-populated-desktop.png](screenshots/ADMIN-005-populated-desktop.png) | ADMIN-005 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=users] |
-| [ADMIN-006-populated-desktop.png](screenshots/ADMIN-006-populated-desktop.png) | ADMIN-006 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=commissions] |
-| [ADMIN-007-populated-desktop.png](screenshots/ADMIN-007-populated-desktop.png) | ADMIN-007 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=add-driver] |
-| [ADMIN-008-populated-desktop.png](screenshots/ADMIN-008-populated-desktop.png) | ADMIN-008 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=pending-providers] |
-| [ADMIN-009-populated-desktop.png](screenshots/ADMIN-009-populated-desktop.png) | ADMIN-009 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=driver-reports] |
-| [ADMIN-010-populated-desktop.png](screenshots/ADMIN-010-populated-desktop.png) | ADMIN-010 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=user-reports] |
-| [ADMIN-011-populated-desktop.png](screenshots/ADMIN-011-populated-desktop.png) | ADMIN-011 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=support-chat] |
-| [ADMIN-012-populated-desktop.png](screenshots/ADMIN-012-populated-desktop.png) | ADMIN-012 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=broadcast-drivers] |
-| [ADMIN-013-populated-desktop.png](screenshots/ADMIN-013-populated-desktop.png) | ADMIN-013 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=broadcast-users] |
-| [ADMIN-014-populated-desktop.png](screenshots/ADMIN-014-populated-desktop.png) | ADMIN-014 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=ads] |
-| [ADMIN-015-populated-desktop.png](screenshots/ADMIN-015-populated-desktop.png) | ADMIN-015 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=areas] |
-| [ADMIN-016-populated-desktop.png](screenshots/ADMIN-016-populated-desktop.png) | ADMIN-016 | populated | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | sidebar [data-page=settings] |
-| [ADMIN-021-default-desktop.png](screenshots/ADMIN-021-default-desktop.png) | ADMIN-021 | default | ar-dark (desktop) | 1440×900 | B | `stars_delivery_backend/src/views/admin/` | clicked button "تفاصيل" on orders page |
+| [ADMIN-001-default-desktop.png](screenshots/ADMIN-001-default-desktop.png) | ADMIN-001 | default | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | login page |
+| [ADMIN-001-default-mobile.png](screenshots/ADMIN-001-default-mobile.png) | ADMIN-001 | default | ar-dark (mobile) | 390×844 | B | `swifora_backend/src/views/admin/` | login page at 390px |
+| [ADMIN-002-populated-desktop.png](screenshots/ADMIN-002-populated-desktop.png) | ADMIN-002 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=dashboard] |
+| [ADMIN-002-populated-mobile.png](screenshots/ADMIN-002-populated-mobile.png) | ADMIN-002 | populated | ar-dark (mobile) | 390×844 | B | `swifora_backend/src/views/admin/` | [data-page=dashboard] at 390px |
+| [ADMIN-003-populated-desktop.png](screenshots/ADMIN-003-populated-desktop.png) | ADMIN-003 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=orders] |
+| [ADMIN-003-populated-mobile.png](screenshots/ADMIN-003-populated-mobile.png) | ADMIN-003 | populated | ar-dark (mobile) | 390×844 | B | `swifora_backend/src/views/admin/` | [data-page=orders] at 390px |
+| [ADMIN-004-populated-desktop.png](screenshots/ADMIN-004-populated-desktop.png) | ADMIN-004 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=drivers] |
+| [ADMIN-005-populated-desktop.png](screenshots/ADMIN-005-populated-desktop.png) | ADMIN-005 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=users] |
+| [ADMIN-006-populated-desktop.png](screenshots/ADMIN-006-populated-desktop.png) | ADMIN-006 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=commissions] |
+| [ADMIN-007-populated-desktop.png](screenshots/ADMIN-007-populated-desktop.png) | ADMIN-007 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=add-driver] |
+| [ADMIN-008-populated-desktop.png](screenshots/ADMIN-008-populated-desktop.png) | ADMIN-008 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=pending-providers] |
+| [ADMIN-009-populated-desktop.png](screenshots/ADMIN-009-populated-desktop.png) | ADMIN-009 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=driver-reports] |
+| [ADMIN-010-populated-desktop.png](screenshots/ADMIN-010-populated-desktop.png) | ADMIN-010 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=user-reports] |
+| [ADMIN-011-populated-desktop.png](screenshots/ADMIN-011-populated-desktop.png) | ADMIN-011 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=support-chat] |
+| [ADMIN-012-populated-desktop.png](screenshots/ADMIN-012-populated-desktop.png) | ADMIN-012 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=broadcast-drivers] |
+| [ADMIN-013-populated-desktop.png](screenshots/ADMIN-013-populated-desktop.png) | ADMIN-013 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=broadcast-users] |
+| [ADMIN-014-populated-desktop.png](screenshots/ADMIN-014-populated-desktop.png) | ADMIN-014 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=ads] |
+| [ADMIN-015-populated-desktop.png](screenshots/ADMIN-015-populated-desktop.png) | ADMIN-015 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=areas] |
+| [ADMIN-016-populated-desktop.png](screenshots/ADMIN-016-populated-desktop.png) | ADMIN-016 | populated | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | sidebar [data-page=settings] |
+| [ADMIN-021-default-desktop.png](screenshots/ADMIN-021-default-desktop.png) | ADMIN-021 | default | ar-dark (desktop) | 1440×900 | B | `swifora_backend/src/views/admin/` | clicked button "تفاصيل" on orders page |
 | [DIALOG-001-default-ar-light.png](screenshots/DIALOG-001-default-ar-light.png) | DIALOG-001 | default | ar-light | 780×1688 | A | `lib/screens/login_screen.dart` | Login -> Contact support |
 | [DIALOG-001-default-en-light.png](screenshots/DIALOG-001-default-en-light.png) | DIALOG-001 | default | en-light | 780×1688 | A | `lib/screens/login_screen.dart` | Login -> Contact support |
 | [DIALOG-005-default-ar-dark.png](screenshots/DIALOG-005-default-ar-dark.png) | DIALOG-005 | default | ar-dark | 780×1688 | A | `lib/widgets/ui/app_confirm_dialog.dart` | tapped Icons.logout on HomeScreen |
@@ -180,9 +180,9 @@ Method A = Flutter widget-test rasterization, logical 390×844 phone at 2× (780
 | [DIALOG-013-default-en-light.png](screenshots/DIALOG-013-default-en-light.png) | DIALOG-013 | default | en-light | 780×1688 | A | `lib/screens/notifications_screen.dart` | Notifications -> tap broadcast item |
 | [DIALOG-015-default-ar-light.png](screenshots/DIALOG-015-default-ar-light.png) | DIALOG-015 | default | ar-light | 780×1688 | A | `lib/widgets/ui/app_confirm_dialog.dart (from pending_orders_screen.dart)` | PendingOrders -> Reject Order |
 | [DIALOG-015-default-en-light.png](screenshots/DIALOG-015-default-en-light.png) | DIALOG-015 | default | en-light | 780×1688 | A | `lib/widgets/ui/app_confirm_dialog.dart (from pending_orders_screen.dart)` | PendingOrders -> Reject Order |
-| [SCREEN-002-default-ar-dark.png](screenshots/SCREEN-002-default-ar-dark.png) | SCREEN-002 | default | ar-dark | 780×1688 | A | `lib/screens/login_screen.dart` | StarsDeliveryApp -> LoginScreen |
-| [SCREEN-002-default-ar-light.png](screenshots/SCREEN-002-default-ar-light.png) | SCREEN-002 | default | ar-light | 780×1688 | A | `lib/screens/login_screen.dart` | StarsDeliveryApp -> LoginScreen |
-| [SCREEN-002-default-en-light.png](screenshots/SCREEN-002-default-en-light.png) | SCREEN-002 | default | en-light | 780×1688 | A | `lib/screens/login_screen.dart` | StarsDeliveryApp -> LoginScreen |
+| [SCREEN-002-default-ar-dark.png](screenshots/SCREEN-002-default-ar-dark.png) | SCREEN-002 | default | ar-dark | 780×1688 | A | `lib/screens/login_screen.dart` | SwiforaApp -> LoginScreen |
+| [SCREEN-002-default-ar-light.png](screenshots/SCREEN-002-default-ar-light.png) | SCREEN-002 | default | ar-light | 780×1688 | A | `lib/screens/login_screen.dart` | SwiforaApp -> LoginScreen |
+| [SCREEN-002-default-en-light.png](screenshots/SCREEN-002-default-en-light.png) | SCREEN-002 | default | en-light | 780×1688 | A | `lib/screens/login_screen.dart` | SwiforaApp -> LoginScreen |
 | [SCREEN-002-driver-role-ar-light.png](screenshots/SCREEN-002-driver-role-ar-light.png) | SCREEN-002 | driver-role | ar-light | 780×1688 | A | `lib/screens/login_screen.dart` | Login with Driver role selected |
 | [SCREEN-002-driver-role-en-light.png](screenshots/SCREEN-002-driver-role-en-light.png) | SCREEN-002 | driver-role | en-light | 780×1688 | A | `lib/screens/login_screen.dart` | Login with Driver role selected |
 | [SCREEN-002-validation-ar-light.png](screenshots/SCREEN-002-validation-ar-light.png) | SCREEN-002 | validation | ar-light | 780×1688 | A | `lib/screens/login_screen.dart` | Tapped first ElevatedButton with empty fields |

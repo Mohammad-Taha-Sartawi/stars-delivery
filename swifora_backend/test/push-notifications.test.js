@@ -57,7 +57,7 @@ test('sends a visible, high-priority message and drops dead tokens', async (t) =
   // Data values must be strings for FCM; null values are dropped.
   assert.deepEqual(message.data, { type: 'new_order', orderId: '123' });
   assert.equal(message.android.priority, 'high');
-  assert.equal(message.android.notification.channelId, 'stars_delivery_default');
+  assert.equal(message.android.notification.channelId, 'swifora_default');
   // Only the unregistered token is removed, not transient failures.
   assert.deepEqual(deleted, [{ token: { $in: ['gone'] } }]);
 });

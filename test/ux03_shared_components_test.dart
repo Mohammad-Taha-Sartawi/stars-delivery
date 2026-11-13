@@ -5,11 +5,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/widgets/ui/app_button_loading_indicator.dart';
-import 'package:stars_delivery/widgets/ui/app_confirm_dialog.dart';
-import 'package:stars_delivery/widgets/ui/app_status_chip.dart';
-import 'package:stars_delivery/widgets/ui/app_tone.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/widgets/ui/app_button_loading_indicator.dart';
+import 'package:swifora/widgets/ui/app_confirm_dialog.dart';
+import 'package:swifora/widgets/ui/app_status_chip.dart';
+import 'package:swifora/widgets/ui/app_tone.dart';
 
 double _contrastRatio(Color a, Color b) {
   final lighter = math.max(a.computeLuminance(), b.computeLuminance());

@@ -11,7 +11,7 @@ import 'mobile_api_client.dart';
 
 /// Runs in a background isolate when a push arrives while the app is in the
 /// background or closed. The system tray shows the notification by itself
-/// (the server sends a `notification` block on the `stars_delivery_default`
+/// (the server sends a `notification` block on the `swifora_default`
 /// channel), so nothing else is needed here.
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {

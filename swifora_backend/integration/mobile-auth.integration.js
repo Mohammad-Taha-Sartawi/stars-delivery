@@ -107,7 +107,7 @@ before(async () => {
         downloadDir:
           path.join(
             os.tmpdir(),
-            'stars-delivery-mongodb-binaries',
+            'swifora-mongodb-binaries',
           ),
       },
 

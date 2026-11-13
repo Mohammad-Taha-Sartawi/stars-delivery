@@ -4,7 +4,7 @@
 |---|---|
 | **Audit date** | 2026-11-13 |
 | **Repository state** | `main` at `9b50ca3` ("Remove image uploads and enhance ad slider with countdown"). Documentation lives on branch `docs/stars-delivery-audit`. |
-| **Scope** | Flutter mobile app (`lib/`), Node/Express backend + EJS admin dashboard (`stars_delivery_backend/`), deployment configs, CI, tests |
+| **Scope** | Flutter mobile app (`lib/`), Node/Express backend + EJS admin dashboard (`swifora_backend/`), deployment configs, CI, tests |
 | **Mode** | Read-only. No application source or runtime configuration was changed. Only `docs/stars-delivery-audit/` was added. |
 | **Evidence rule** | Each claim comes from code reading (file:line), a command that was actually run, or a captured image. Anything unverified is labelled as such. |
 
@@ -97,7 +97,7 @@ The **test suite** is large: 613 tests ran and all passed. About 42% of it, thou
 | **Admin** (`admin`) | Web dashboard `/admin` | Approve drivers, manage users/drivers, view and cancel orders, commissions and payouts, ads, broadcasts, reports and replies, support chat, areas, settings and 2FA | Server-side session cookie + CSRF + optional TOTP |
 | **Guest** | Mobile login screen | Contact support before login, password recovery | Public endpoints, rate-limited |
 
-Sources: [Order.js](../../stars_delivery_backend/src/models/Order.js), [User.js:72](../../stars_delivery_backend/src/models/User.js#L72), [APPLICATION_FLOWS.md](APPLICATION_FLOWS.md).
+Sources: [Order.js](../../swifora_backend/src/models/Order.js), [User.js:72](../../swifora_backend/src/models/User.js#L72), [APPLICATION_FLOWS.md](APPLICATION_FLOWS.md).
 
 ---
 
@@ -123,7 +123,7 @@ Details: [ARCHITECTURE.md §1–§6](ARCHITECTURE.md#1-application-type-platform
 
 | Path | Responsibility |
 |---|---|
-| `lib/main.dart` | Entry point: `ApiConfig.init` → `LocationService.initialize` → theme/locale prefs → `StarsDeliveryApp` (MultiBlocProvider, MaterialApp, `home: LoginScreen`) |
+| `lib/main.dart` | Entry point: `ApiConfig.init` → `LocationService.initialize` → theme/locale prefs → `SwiforaApp` (MultiBlocProvider, MaterialApp, `home: LoginScreen`) |
 | `lib/screens/` (22 files) | All screens. The role shells are `home_screen.dart` (customer, 965 lines) and `provider_home_screen.dart` (driver, 1,534 lines). |
 | `lib/bloc/` (7 blocs) | `auth`, `app` (theme/locale), `notification`, `offer`, `order`, `password_recovery`, `provider` |
 | `lib/services/` (26 files) | HTTP services per domain, `mobile_api_client.dart` (Dio factory + session-failure hook), `api_config.dart` (server URL policy), `socket_service.dart`, `push_notification_service.dart`, `location_service.dart`, `localization_service.dart` (in-code ar/en string table), `theme_service.dart` (design tokens) |
@@ -131,8 +131,8 @@ Details: [ARCHITECTURE.md §1–§6](ARCHITECTURE.md#1-application-type-platform
 | `lib/widgets/ui/` | Shared design-system components (status chips, state views, confirm dialog, action tile, ad carousel, notification bell) |
 | `assets/countries+states+cities.json` | 46.5 MB global location catalog, decoded on device |
 | `test/` | 49 Flutter test files + `mock_api_server.dart` + `ux03_screen_harness.dart` |
-| `stars_delivery_backend/src/` | `index.js` (boot, middleware, Socket.IO, scheduler), `routes/` (21 routers), `services/` (order lifecycle, commission ledger, sessions, push…), `models/` (17 Mongoose models), `security/`, `middleware/`, `views/admin/`, `public/`, `scripts/` (ops: admin bootstrap, backup/restore, audits) |
-| `stars_delivery_backend/test/`, `integration/` | 56 `node:test` files + 1 integration file |
+| `swifora_backend/src/` | `index.js` (boot, middleware, Socket.IO, scheduler), `routes/` (21 routers), `services/` (order lifecycle, commission ledger, sessions, push…), `models/` (17 Mongoose models), `security/`, `middleware/`, `views/admin/`, `public/`, `scripts/` (ops: admin bootstrap, backup/restore, audits) |
+| `swifora_backend/test/`, `integration/` | 56 `node:test` files + 1 integration file |
 | `deployment/`, `docs/` | nginx/systemd/env template; prior security, notification and UX docs |
 
 Full map: [ARCHITECTURE.md §3](ARCHITECTURE.md#3-repository-map).
@@ -531,7 +531,7 @@ This is a recommendation only. Nothing here has been implemented.
    - Are the auto-opening screens intended?
 10. **Unverified by runtime:** push notifications, background behaviour, real GPS and map tiles, socket reconnection, SMTP delivery, performance on low-end devices.
 
-Not inspected: values of `.env`, `key.properties`, Firebase configs and any files under `stars_delivery_backend/private/` or `uploads/`. This was deliberate, for secret and personal-data safety. Only their existence and whether git tracks them were checked.
+Not inspected: values of `.env`, `key.properties`, Firebase configs and any files under `swifora_backend/private/` or `uploads/`. This was deliberate, for secret and personal-data safety. Only their existence and whether git tracks them were checked.
 
 ---
 

@@ -10,7 +10,7 @@ This was the first time the real app was run on an Android device during the aud
 |---|---|
 | Device | Android emulator `Medium_Phone_API_37.1`, 1080×2400, system dark mode, Arabic UI |
 | App build | Debug APK from branch `fix/error-states-and-status-labels`, which is `main` plus PRs #2 and #3. Built with `--dart-define=STARS_SERVER_URL=http://10.0.2.2:3999`; plain HTTP is only allowed in Android debug builds. |
-| Backend | The real `stars_delivery_backend/src/index.js`, run against a throwaway in-memory **MongoDB 8.2.6 replica set**, so transactions work. Every environment variable was overridden: no production database, SMTP or Firebase was used. |
+| Backend | The real `swifora_backend/src/index.js`, run against a throwaway in-memory **MongoDB 8.2.6 replica set**, so transactions work. Every environment variable was overridden: no production database, SMTP or Firebase was used. |
 | Accounts | Synthetic only (`customer@local.test`, `driver@local.test`, `admin@local.test`) with generated passwords. The customer and driver were created through the real `POST /api/auth/register`. The driver was approved through the real admin dashboard. |
 | Production | **Not used.** The production server (`api.swifora.com`) and the real accounts shared in chat were not used, so no real data was created or changed. |
 | Driving the UI | `adb` input plus UI Automator. The other party in each journey was simulated through the server's real mobile API. |

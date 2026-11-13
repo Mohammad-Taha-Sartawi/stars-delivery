@@ -18,7 +18,7 @@ void main() {
     'admin broadcasts stay in notifications and never reach support chat',
     () {
       final broadcast = File(
-        'stars_delivery_backend/src/routes/adminBroadcast.js',
+        'swifora_backend/src/routes/adminBroadcast.js',
       ).readAsStringSync();
 
       expect(broadcast, isNot(contains('ChatMessage')));

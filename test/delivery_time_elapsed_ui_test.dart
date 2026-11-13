@@ -45,7 +45,7 @@ void main() {
     'delivery clock starts when the driver starts delivery in the backend',
     () {
       final source = File(
-        'stars_delivery_backend/src/services/orderLifecycle.js',
+        'swifora_backend/src/services/orderLifecycle.js',
       ).readAsStringSync();
 
       expect(source, contains('acceptedAt: new Date()'));
@@ -58,7 +58,7 @@ void main() {
 
   test('delivery confirmation lifecycle requires customer approval', () {
     final source = File(
-      'stars_delivery_backend/src/services/orderLifecycle.js',
+      'swifora_backend/src/services/orderLifecycle.js',
     ).readAsStringSync();
 
     expect(source, contains('requestDeliveryConfirmation'));

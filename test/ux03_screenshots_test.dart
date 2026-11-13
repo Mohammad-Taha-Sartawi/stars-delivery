@@ -21,9 +21,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/widgets/ui/app_status_chip.dart';
-import 'package:stars_delivery/widgets/ui/app_tone.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/widgets/ui/app_status_chip.dart';
+import 'package:swifora/widgets/ui/app_tone.dart';
 
 import 'ux03_screen_harness.dart';
 

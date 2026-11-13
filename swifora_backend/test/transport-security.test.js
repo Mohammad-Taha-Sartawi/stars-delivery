@@ -142,12 +142,12 @@ test(
   () => {
     const source =
       read(
-        'stars_delivery_backend/src/index.js',
+        'swifora_backend/src/index.js',
       );
 
     const envExample =
       read(
-        'stars_delivery_backend/.env.example',
+        'swifora_backend/.env.example',
       );
 
     assert.match(

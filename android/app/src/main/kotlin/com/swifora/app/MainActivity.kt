@@ -13,7 +13,7 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * The server sends order pushes on the `stars_delivery_default` channel
+     * The server sends order pushes on the `swifora_default` channel
      * (also the default channel in AndroidManifest.xml). Android drops a
      * channel's settings to the generic "Miscellaneous" fallback when the app
      * never created it, so create it with high importance: order updates then
@@ -35,6 +35,6 @@ class MainActivity : FlutterActivity() {
     }
 
     companion object {
-        const val ORDER_CHANNEL_ID = "stars_delivery_default"
+        const val ORDER_CHANNEL_ID = "swifora_default"
     }
 }

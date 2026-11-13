@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/models/user_model.dart';
+import 'package:swifora/models/user_model.dart';
 
 void main() {
   test('user model parses the forced password-change flag', () {
@@ -71,19 +71,19 @@ void main() {
 
   test('backend enforces the forced password change for mobile accounts', () {
     final model = File(
-      'stars_delivery_backend/src/models/User.js',
+      'swifora_backend/src/models/User.js',
     ).readAsStringSync();
     final middleware = File(
-      'stars_delivery_backend/src/middleware/auth.js',
+      'swifora_backend/src/middleware/auth.js',
     ).readAsStringSync();
     final auth = File(
-      'stars_delivery_backend/src/routes/auth.js',
+      'swifora_backend/src/routes/auth.js',
     ).readAsStringSync();
     final adminUsers = File(
-      'stars_delivery_backend/src/routes/adminUsers.js',
+      'swifora_backend/src/routes/adminUsers.js',
     ).readAsStringSync();
     final adminDrivers = File(
-      'stars_delivery_backend/src/routes/adminDrivers.js',
+      'swifora_backend/src/routes/adminDrivers.js',
     ).readAsStringSync();
 
     expect(model, contains('mustChangePassword'));

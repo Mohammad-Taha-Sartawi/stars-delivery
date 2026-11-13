@@ -18,8 +18,8 @@
 // the landscape ordering 560 < 600 < 840 < 1024 < 1040 < 1200 holds so future
 // tokens cannot silently collapse two roles into the same number.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/responsive.dart';
-import 'package:stars_delivery/services/theme_service.dart';
+import 'package:swifora/services/responsive.dart';
+import 'package:swifora/services/theme_service.dart';
 
 void main() {
   test('UX01-006 token roles keep their documented ordering', () {

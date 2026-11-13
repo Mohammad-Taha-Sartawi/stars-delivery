@@ -6,9 +6,9 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/api_config.dart';
-import 'package:stars_delivery/services/location_catalog.dart';
-import 'package:stars_delivery/services/mobile_api_client.dart';
+import 'package:swifora/services/api_config.dart';
+import 'package:swifora/services/location_catalog.dart';
+import 'package:swifora/services/mobile_api_client.dart';
 
 class _CountingAdapter implements HttpClientAdapter {
   int requests = 0;

@@ -23,7 +23,7 @@ before(async () => {
   mongoServer = await MongoMemoryServer.create({
     binary: {
       version: '8.2.6',
-      downloadDir: path.join(os.tmpdir(), 'stars-delivery-mongodb-binaries'),
+      downloadDir: path.join(os.tmpdir(), 'swifora-mongodb-binaries'),
     },
   });
   await mongoose.connect(mongoServer.getUri('stars_locations_integration'));

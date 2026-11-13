@@ -1,5 +1,5 @@
 {
-  "name": "stars_delivery_backend",
+  "name": "swifora_backend",
   "version": "1.0.0",
   "description": "Stars Delivery Backend API",
   "main": "src/index.js",

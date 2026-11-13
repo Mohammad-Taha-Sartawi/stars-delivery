@@ -17,7 +17,7 @@ const { MongoMemoryReplSet } = req('mongodb-memory-server-core');
     replSet: { count: 1, storageEngine: 'wiredTiger' },
     binary: {
       version: '8.2.6',
-      downloadDir: path.join(os.tmpdir(), 'stars-delivery-mongodb-binaries'),
+      downloadDir: path.join(os.tmpdir(), 'swifora-mongodb-binaries'),
     },
   });
   const rnd = () => crypto.randomBytes(32).toString('hex');

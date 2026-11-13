@@ -21,32 +21,32 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/main.dart';
-import 'package:stars_delivery/screens/commission_payment_screen.dart';
-import 'package:stars_delivery/screens/create_order_screen.dart';
-import 'package:stars_delivery/screens/force_change_password_screen.dart';
-import 'package:stars_delivery/screens/forgot_password_screen.dart';
-import 'package:stars_delivery/screens/home_screen.dart';
-import 'package:stars_delivery/screens/my_orders_screen.dart';
-import 'package:stars_delivery/screens/notifications_screen.dart';
-import 'package:stars_delivery/screens/offered_orders_screen.dart';
-import 'package:stars_delivery/screens/order_detail_screen.dart';
-import 'package:stars_delivery/screens/order_offers_screen.dart';
-import 'package:stars_delivery/screens/order_report_screen.dart';
-import 'package:stars_delivery/screens/order_tracking_screen.dart';
-import 'package:stars_delivery/screens/pending_orders_screen.dart';
-import 'package:stars_delivery/screens/profile_screen.dart';
-import 'package:stars_delivery/screens/provider_active_orders_screen.dart';
-import 'package:stars_delivery/screens/provider_home_screen.dart';
-import 'package:stars_delivery/screens/rejected_orders_screen.dart';
-import 'package:stars_delivery/screens/report_screen.dart';
-import 'package:stars_delivery/screens/settings_screen.dart';
-import 'package:stars_delivery/screens/submit_offer_screen.dart';
-import 'package:stars_delivery/screens/support_chat_screen.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/mobile_api_client.dart';
-import 'package:stars_delivery/services/session_storage.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/main.dart';
+import 'package:swifora/screens/commission_payment_screen.dart';
+import 'package:swifora/screens/create_order_screen.dart';
+import 'package:swifora/screens/force_change_password_screen.dart';
+import 'package:swifora/screens/forgot_password_screen.dart';
+import 'package:swifora/screens/home_screen.dart';
+import 'package:swifora/screens/my_orders_screen.dart';
+import 'package:swifora/screens/notifications_screen.dart';
+import 'package:swifora/screens/offered_orders_screen.dart';
+import 'package:swifora/screens/order_detail_screen.dart';
+import 'package:swifora/screens/order_offers_screen.dart';
+import 'package:swifora/screens/order_report_screen.dart';
+import 'package:swifora/screens/order_tracking_screen.dart';
+import 'package:swifora/screens/pending_orders_screen.dart';
+import 'package:swifora/screens/profile_screen.dart';
+import 'package:swifora/screens/provider_active_orders_screen.dart';
+import 'package:swifora/screens/provider_home_screen.dart';
+import 'package:swifora/screens/rejected_orders_screen.dart';
+import 'package:swifora/screens/report_screen.dart';
+import 'package:swifora/screens/settings_screen.dart';
+import 'package:swifora/screens/submit_offer_screen.dart';
+import 'package:swifora/screens/support_chat_screen.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/mobile_api_client.dart';
+import 'package:swifora/services/session_storage.dart';
 
 import 'ux03_screen_harness.dart';
 
@@ -449,7 +449,7 @@ Future<void> main() async {
         _viewport(tester);
         await tester.pumpWidget(RepaintBoundary(
           key: key,
-          child: StarsDeliveryApp(
+          child: SwiforaApp(
             initialLocale: locale,
             authBlocFactory: () => AuthBloc(
               authService: _Gateway(),

@@ -46,17 +46,17 @@ function region(source, start, end) {
 
 const adminUsers =
   read(
-    'stars_delivery_backend/src/routes/adminUsers.js',
+    'swifora_backend/src/routes/adminUsers.js',
   );
 
 const adminDrivers =
   read(
-    'stars_delivery_backend/src/routes/adminDrivers.js',
+    'swifora_backend/src/routes/adminDrivers.js',
   );
 
 const browser =
   read(
-    'stars_delivery_backend/src/public/js/main.js',
+    'swifora_backend/src/public/js/main.js',
   );
 
 test(

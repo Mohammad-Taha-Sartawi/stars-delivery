@@ -23,7 +23,7 @@ Stars Delivery has three persistent application-data surfaces:
 
 1. the MongoDB database;
 2. private provider-verification files in `PROVIDER_DOCUMENTS_DIR`;
-3. order-upload files in `stars_delivery_backend/uploads`.
+3. order-upload files in `swifora_backend/uploads`.
 
 A valid application backup must contain all three.
 
@@ -33,7 +33,7 @@ MongoDB Database Tools (`mongodump` and `mongorestore`) must be installed on the
 
 Stop or otherwise quiesce application writes before taking a backup so MongoDB metadata and filesystem files represent the same operational point.
 
-From `stars_delivery_backend`:
+From `swifora_backend`:
 
 ```bash
 export STARS_BACKUP_ROOT="/absolute/protected/backup/root"

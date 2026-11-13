@@ -74,7 +74,7 @@ async function sendPushToTokens(tokens, { title, body, data = {} }) {
     android: {
       priority: 'high',
       notification: {
-        channelId: 'stars_delivery_default',
+        channelId: 'swifora_default',
         sound: 'default',
       },
     },

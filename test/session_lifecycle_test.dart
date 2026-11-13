@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stars_delivery/bloc/auth/auth_bloc.dart';
-import 'package:stars_delivery/bloc/auth/auth_event.dart';
-import 'package:stars_delivery/bloc/auth/auth_state.dart';
-import 'package:stars_delivery/services/auth_service.dart';
-import 'package:stars_delivery/services/jwt_token.dart';
-import 'package:stars_delivery/services/session_storage.dart';
+import 'package:swifora/bloc/auth/auth_bloc.dart';
+import 'package:swifora/bloc/auth/auth_event.dart';
+import 'package:swifora/bloc/auth/auth_state.dart';
+import 'package:swifora/services/auth_service.dart';
+import 'package:swifora/services/jwt_token.dart';
+import 'package:swifora/services/session_storage.dart';
 
 class FakeTokenVault implements TokenVault {
   final Map<String, String> values = {};

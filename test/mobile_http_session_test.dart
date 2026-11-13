@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/mobile_api_client.dart';
-import 'package:stars_delivery/services/mobile_session_failure.dart';
+import 'package:swifora/services/mobile_api_client.dart';
+import 'package:swifora/services/mobile_session_failure.dart';
 
 DioException rejection({
   required int status,

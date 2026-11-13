@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/services/user_service.dart';
-import 'package:stars_delivery/services/location_catalog.dart';
-import 'package:stars_delivery/models/user_model.dart';
-import 'package:stars_delivery/models/offer_model.dart';
-import 'package:stars_delivery/screens/create_order_screen.dart';
-import 'package:stars_delivery/widgets/governorate_scope_card.dart';
-import 'package:stars_delivery/widgets/ui/governorate_scope_warning.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/services/user_service.dart';
+import 'package:swifora/services/location_catalog.dart';
+import 'package:swifora/models/user_model.dart';
+import 'package:swifora/models/offer_model.dart';
+import 'package:swifora/screens/create_order_screen.dart';
+import 'package:swifora/widgets/governorate_scope_card.dart';
+import 'package:swifora/widgets/ui/governorate_scope_warning.dart';
 
 class _FakeUserService extends UserService {
   bool? requested;

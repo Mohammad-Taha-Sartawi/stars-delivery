@@ -123,7 +123,7 @@ void main() {
       'lib/screens/order_detail_screen.dart',
     ).readAsStringSync();
     final ordersRoute = File(
-      'stars_delivery_backend/src/routes/orders.js',
+      'swifora_backend/src/routes/orders.js',
     ).readAsStringSync();
 
     expect(detail, contains('showGovernorateScopeWarning'));

@@ -483,7 +483,7 @@ test(
   () => {
     const authSource =
       source(
-        'stars_delivery_backend/src/routes/auth.js',
+        'swifora_backend/src/routes/auth.js',
       );
 
     assert.match(
@@ -503,7 +503,7 @@ test(
   () => {
     const authSource =
       source(
-        'stars_delivery_backend/src/routes/auth.js',
+        'swifora_backend/src/routes/auth.js',
       );
 
     const passwordPosition =
@@ -601,7 +601,7 @@ test(
   () => {
     const indexSource =
       source(
-        'stars_delivery_backend/src/index.js',
+        'swifora_backend/src/index.js',
       );
 
     assert.match(
@@ -636,12 +636,12 @@ test(
   () => {
     const customerSource =
       source(
-        'stars_delivery_backend/src/routes/adminUsers.js',
+        'swifora_backend/src/routes/adminUsers.js',
       );
 
     const providerSource =
       source(
-        'stars_delivery_backend/src/routes/adminDrivers.js',
+        'swifora_backend/src/routes/adminDrivers.js',
       );
 
     assert.match(

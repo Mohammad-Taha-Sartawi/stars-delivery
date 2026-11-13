@@ -67,7 +67,7 @@ test('user and driver screens show ID instead of a hash prefix', () => {
   }
 
   const adminScript = fs.readFileSync(
-    path.join(projectRoot, 'stars_delivery_backend/src/public/js/main.js'),
+    path.join(projectRoot, 'swifora_backend/src/public/js/main.js'),
     'utf8',
   );
   assert.doesNotMatch(adminScript, /<small>#\$\{/);

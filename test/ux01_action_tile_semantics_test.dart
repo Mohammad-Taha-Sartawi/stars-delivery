@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/services/theme_service.dart';
-import 'package:stars_delivery/widgets/ui/app_action_tile.dart';
+import 'package:swifora/services/theme_service.dart';
+import 'package:swifora/widgets/ui/app_action_tile.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

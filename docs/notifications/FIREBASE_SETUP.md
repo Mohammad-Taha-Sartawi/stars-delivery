@@ -57,7 +57,7 @@ The Android app is registered in the Firebase project `swiforaa` with package
 
 ## 3. API server credentials
 
-Set one of these in `stars_delivery_backend/.env`:
+Set one of these in `swifora_backend/.env`:
 
 ```env
 FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
@@ -90,7 +90,7 @@ The server uses the modular `firebase-admin` v14 API (`firebase-admin/app`,
 
 - **App closed or in the background:** Android shows the notification in the
   tray by itself (the server sends a `notification` block). The app creates the
-  `stars_delivery_default` channel with high importance ("Order updates" /
+  `swifora_default` channel with high importance ("Order updates" /
   "تحديثات الطلبات"), so order pushes appear as heads-up alerts.
 - **Tapping a notification** opens the related screen: offers for a customer's
   order, the order detail for drivers, in-progress orders for delivery

@@ -2,11 +2,11 @@
 // service's handlers are exercised directly).
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_delivery/screens/my_orders_screen.dart';
-import 'package:stars_delivery/screens/order_detail_screen.dart';
-import 'package:stars_delivery/screens/rejected_orders_screen.dart';
-import 'package:stars_delivery/services/notification_router.dart';
-import 'package:stars_delivery/services/push_notification_service.dart';
+import 'package:swifora/screens/my_orders_screen.dart';
+import 'package:swifora/screens/order_detail_screen.dart';
+import 'package:swifora/screens/rejected_orders_screen.dart';
+import 'package:swifora/services/notification_router.dart';
+import 'package:swifora/services/push_notification_service.dart';
 
 void main() {
   group('NotificationRouter.pageFor', () {

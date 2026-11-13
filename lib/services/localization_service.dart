@@ -712,6 +712,19 @@ class AppLocalization {
       'en': 'The order was rejected by drivers',
     },
     'status_cancelled': {'ar': 'تم إلغاء الطلب', 'en': 'Order Cancelled'},
+    'status_expired': {'ar': 'انتهت صلاحية الطلب', 'en': 'Order Expired'},
+    'orders_load_failed': {
+      'ar': 'تعذّر تحميل طلباتك. تحقّق من الاتصال ثم أعد المحاولة.',
+      'en': 'Could not load your orders. Check your connection and try again.',
+    },
+    'dashboard_load_failed': {
+      'ar': 'تعذّر تحميل لوحة التحكم. تحقّق من الاتصال ثم أعد المحاولة.',
+      'en': 'Could not load your dashboard. Check your connection and try again.',
+    },
+    'dashboard_refresh_failed': {
+      'ar': 'تعذّر تحديث البيانات. الأرقام المعروضة هي آخر قيم محفوظة.',
+      'en': 'Could not refresh. The figures shown are the last known values.',
+    },
     'order_date': {'ar': 'تاريخ الطلب', 'en': 'Order Date'},
     'description': {'ar': 'الوصف', 'en': 'Description'},
     'images': {'ar': 'الصور', 'en': 'Images'},

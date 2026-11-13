@@ -17,6 +17,7 @@ import '../services/responsive.dart';
 import '../services/theme_service.dart';
 import '../services/localization_service.dart';
 import '../services/api_config.dart';
+import '../services/location_catalog.dart';
 import '../services/location_service.dart';
 import '../services/provider_service.dart';
 import '../services/auth_service.dart';
@@ -196,6 +197,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
       _endSession();
     });
 
+    LocationCatalog.warmUp();
     LocationService.syncToBackend(widget.token);
 
     SocketService.instance.connect(

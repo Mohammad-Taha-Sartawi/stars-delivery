@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/app/app_bloc.dart';
+import '../services/location_catalog.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
@@ -350,7 +351,10 @@ class _RejectedOrdersScreenState extends State<RejectedOrdersScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        order['area'].toString(),
+                        LocationCatalog.localize(
+                          context,
+                          order['area'].toString(),
+                        ),
                         style: TextStyle(
                           fontSize: 12,
                           color: scheme.onSurfaceVariant,

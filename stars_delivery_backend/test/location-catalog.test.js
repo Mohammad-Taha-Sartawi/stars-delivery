@@ -28,6 +28,13 @@ test('location data contains Palestine only: 16 governorates, 132 cities', () =>
   }
 });
 
+test('every city has an Arabic name', () => {
+  for (const city of data.governorates.flatMap((g) => g.cities)) {
+    assert.match(city.native, /^[\u0600-\u06FF\s]+$/, city.name);
+  }
+  assert.equal(data.version, 2);
+});
+
 test('location data matches the server registration catalog city by city', () => {
   for (const g of data.governorates) {
     const key = CANONICAL_AREA[g.name] || g.native;

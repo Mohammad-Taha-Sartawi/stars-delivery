@@ -7,6 +7,8 @@ const mongoose = require('mongoose');
 const citySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
+    // Arabic display name; `name` (English) stays the stored account value.
+    native: { type: String, default: '', trim: true },
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
   },

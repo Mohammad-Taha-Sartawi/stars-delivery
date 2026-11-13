@@ -659,10 +659,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         value: governorate.areaValue,
                         child: Text('من ${governorate.nativeName} نفسها'),
                       ),
-                      ...governorate.cities.map(
-                        (city) =>
-                            DropdownMenuItem(value: city, child: Text(city)),
-                      ),
+                      ...governorate
+                          .citiesSortedFor(
+                            arabic: LocationCatalog.isArabic(context),
+                          )
+                          .map(
+                            (city) => DropdownMenuItem(
+                              value: city,
+                              child: Text(
+                                governorate.cityLabel(
+                                  city,
+                                  arabic: LocationCatalog.isArabic(context),
+                                ),
+                              ),
+                            ),
+                          ),
                     ],
               onChanged: governorate == null || _savingLocation
                   ? null

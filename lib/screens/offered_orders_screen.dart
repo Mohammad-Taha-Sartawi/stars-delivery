@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/notification/notification_bloc.dart';
 import '../bloc/notification/notification_event.dart';
+import '../services/location_catalog.dart';
 import '../services/localization_service.dart';
 import '../services/provider_service.dart';
 import '../services/responsive.dart';
@@ -248,7 +249,10 @@ class _OfferedOrdersScreenState extends State<OfferedOrdersScreen> {
         ? (customer['publicId'] ?? '').toString()
         : '';
     final phone = (o['phone'] ?? '').toString();
-    final area = (o['area'] ?? '').toString();
+    final area = LocationCatalog.localize(
+      context,
+      (o['area'] ?? '').toString(),
+    );
     final description = (o['description'] ?? '').toString();
     final offeredPrice = (o['offeredPrice'] as num?)?.toDouble() ?? 0;
     final offeredTime = (o['offeredTime'] as num?)?.toInt() ?? 0;

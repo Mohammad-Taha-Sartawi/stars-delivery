@@ -100,7 +100,7 @@ void main() {
         'native': g['native'],
         'cities': [
           for (final c in (g['cities'] as List).cast<Map<String, dynamic>>())
-            c['name'],
+            {'name': c['name'], 'native': c['native']},
         ],
       },
   ];

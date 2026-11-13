@@ -18,7 +18,8 @@ const locationCatalogLimiter = createIpActionLimiter({
 router.use(locationCatalogLimiter);
 
 // GET /api/locations/governorates
-// -> [{ name, native, cities: [cityName, ...] }] in source order.
+// -> [{ name, native, cities: [{ name, native }, ...] }] in source order.
+// `name` is the stored value; `native` is the Arabic display name.
 router.get('/governorates', async (req, res) => {
   try {
     const governorates = await getGovernorates();
@@ -27,7 +28,10 @@ router.get('/governorates', async (req, res) => {
       governorates.map((g) => ({
         name: g.name,
         native: g.native,
-        cities: (g.cities || []).map((c) => c.name),
+        cities: (g.cities || []).map((c) => ({
+          name: c.name,
+          native: c.native || c.name,
+        })),
       })),
     );
   } catch (err) {

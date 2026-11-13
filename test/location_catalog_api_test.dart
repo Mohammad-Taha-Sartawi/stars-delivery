@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stars_delivery/services/api_config.dart';
 import 'package:stars_delivery/services/location_catalog.dart';
@@ -12,6 +13,7 @@ import 'package:stars_delivery/services/mobile_api_client.dart';
 class _CountingAdapter implements HttpClientAdapter {
   int requests = 0;
   int failuresLeft = 0;
+  bool citiesAsObjects = false;
 
   @override
   Future<ResponseBody> fetch(
@@ -35,7 +37,12 @@ class _CountingAdapter implements HttpClientAdapter {
         {
           'name': 'Ramallah',
           'native': 'رام الله',
-          'cities': ['Al-Bireh', 'Birzeit'],
+          'cities': citiesAsObjects
+              ? [
+                  {'name': 'Al-Bireh', 'native': 'البيرة'},
+                  {'name': 'Birzeit', 'native': 'بيرزيت'},
+                ]
+              : ['Al-Bireh', 'Birzeit'],
         },
         {
           'name': 'Bethlehem',
@@ -105,5 +112,62 @@ void main() {
     final governorates = await LocationCatalog.load();
     expect(governorates.first.cities, contains('Al-Bireh'));
     expect(adapter.requests, 2);
+  });
+
+  test('version 2 payload: Arabic city labels and locale-aware sorting', () {
+    final ramallah = LocationCatalog.parse([
+      {
+        'name': 'Ramallah',
+        'native': 'رام الله',
+        'cities': [
+          {'name': 'Bir Zeit', 'native': 'بيرزيت'},
+          {'name': 'Al-Bireh', 'native': 'البيرة'},
+          {'name': 'Silwad', 'native': ''},
+        ],
+      },
+    ]).single;
+    // Stored values stay English.
+    expect(ramallah.cities, ['Bir Zeit', 'Al-Bireh', 'Silwad']);
+    expect(ramallah.cityLabel('Al-Bireh', arabic: true), 'البيرة');
+    expect(ramallah.cityLabel('Al-Bireh', arabic: false), 'Al-Bireh');
+    // Missing Arabic name falls back to the stored value.
+    expect(ramallah.cityLabel('Silwad', arabic: true), 'Silwad');
+    expect(ramallah.citiesSortedFor(arabic: false), [
+      'Al-Bireh',
+      'Bir Zeit',
+      'Silwad',
+    ]);
+    expect(ramallah.citiesSortedFor(arabic: true).first, 'Silwad');
+  });
+
+  testWidgets('localize shows Arabic names only in the Arabic locale', (
+    tester,
+  ) async {
+    adapter.citiesAsObjects = true;
+    await tester.runAsync(LocationCatalog.load);
+    String? ar;
+    String? en;
+    Widget probe(Locale locale, void Function(String) out) => Localizations(
+      locale: locale,
+      delegates: const [DefaultWidgetsLocalizations.delegate],
+      child: Builder(
+        builder: (context) {
+          out(LocationCatalog.localize(context, 'Al-Bireh'));
+          return const SizedBox();
+        },
+      ),
+    );
+    await tester.pumpWidget(probe(const Locale('ar'), (v) => ar = v));
+    expect(ar, 'البيرة');
+    await tester.pumpWidget(probe(const Locale('en'), (v) => en = v));
+    expect(en, 'Al-Bireh');
+    await tester.pumpWidget(probe(const Locale('ar'), (v) => ar = v));
+    expect(
+      LocationCatalog.localize(
+        tester.element(find.byType(SizedBox)),
+        'Unknown Place',
+      ),
+      'Unknown Place',
+    );
   });
 }

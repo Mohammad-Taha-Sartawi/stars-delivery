@@ -16,6 +16,7 @@ import '../services/auth_service.dart';
 import '../services/responsive.dart';
 import '../services/theme_service.dart';
 import '../services/localization_service.dart';
+import '../services/location_catalog.dart';
 import '../services/location_service.dart';
 import '../services/order_service.dart';
 import '../services/push_notification_service.dart';
@@ -94,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _endSession();
     });
 
+    LocationCatalog.warmUp();
     LocationService.syncToBackend(widget.token);
 
     SocketService.instance.connect(token: widget.token);

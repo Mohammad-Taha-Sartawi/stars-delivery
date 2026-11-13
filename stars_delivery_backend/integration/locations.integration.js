@@ -53,7 +53,8 @@ test('GET /api/locations/governorates returns the catalog in source order', asyn
   assert.equal(res.body[0].name, 'Bethlehem');
   const ramallah = res.body.find((g) => g.name === 'Ramallah');
   assert.equal(ramallah.native, 'رام الله');
-  assert.ok(ramallah.cities.includes('Al-Bireh'));
+  const bireh = ramallah.cities.find((c) => c.name === 'Al-Bireh');
+  assert.equal(bireh.native, 'البيرة');
   assert.equal(res.body.reduce((n, g) => n + g.cities.length, 0), 132);
   assert.match(res.headers['cache-control'], /max-age=3600/);
 });

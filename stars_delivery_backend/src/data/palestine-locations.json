@@ -1,6 +1,6 @@
 {
-  "source": "Palestine (iso2=PS) entry of assets/countries+states+cities.json; every other country removed.",
-  "version": 1,
+  "source": "Palestine (iso2=PS) entry of the former worldwide asset; every other country removed. City Arabic names (native) added in version 2.",
+  "version": 2,
   "governorates": [
     {
       "name": "Bethlehem",
@@ -10,61 +10,73 @@
       "cities": [
         {
           "name": "Al-Dawha",
+          "native": "الدوحة",
           "latitude": 31.69774,
           "longitude": 35.145955
         },
         {
           "name": "al-Khader",
+          "native": "الخضر",
           "latitude": 31.694845,
           "longitude": 35.150145
         },
         {
           "name": "al-Ubeidiya",
+          "native": "العبيدية",
           "latitude": 31.723864,
           "longitude": 35.271221
         },
         {
           "name": "Battir",
+          "native": "بتير",
           "latitude": 31.728215,
           "longitude": 35.117432
         },
         {
           "name": "Beit Fajjar",
+          "native": "بيت فجار",
           "latitude": 31.62167,
           "longitude": 35.134303
         },
         {
           "name": "Beit Jala",
+          "native": "بيت جالا",
           "latitude": 31.716033,
           "longitude": 35.166549
         },
         {
           "name": "Beit Sahour",
+          "native": "بيت ساحور",
           "latitude": 31.69787,
           "longitude": 35.20793
         },
         {
           "name": "Bethlehem",
+          "native": "بيت لحم",
           "latitude": 31.705416,
           "longitude": 35.181843
         },
         {
           "name": "Husan",
+          "native": "حوسان",
           "latitude": 31.70846,
           "longitude": 35.112825
         },
         {
           "name": "Nahalin",
+          "native": "نحالين",
           "latitude": 31.685642,
           "longitude": 35.099762
         },
         {
           "name": "Tuqu'",
+          "native": "تقوع",
           "latitude": 31.639127,
           "longitude": 35.19189
         },
         {
           "name": "Za'atara",
+          "native": "زعترة",
           "latitude": 31.674478,
           "longitude": 35.234491
         }
@@ -78,11 +90,13 @@
       "cities": [
         {
           "name": "az-Zawayda",
+          "native": "الزوايدة",
           "latitude": 31.429797,
           "longitude": 34.350142
         },
         {
           "name": "Deir al-Balah",
+          "native": "دير البلح",
           "latitude": 31.417174,
           "longitude": 34.330331
         }
@@ -96,11 +110,13 @@
       "cities": [
         {
           "name": "Al-Zahra",
+          "native": "الزهراء",
           "latitude": 31.472468,
           "longitude": 34.377829
         },
         {
           "name": "Gaza City",
+          "native": "مدينة غزة",
           "latitude": 31.501729,
           "longitude": 34.446245
         }
@@ -114,91 +130,109 @@
       "cities": [
         {
           "name": "ad-Dhahiriya",
+          "native": "الظاهرية",
           "latitude": 31.409672,
           "longitude": 34.954908
         },
         {
           "name": "as-Samu",
+          "native": "السموع",
           "latitude": 31.398644,
           "longitude": 35.044688
         },
         {
           "name": "Bani Na'im",
+          "native": "بني نعيم",
           "latitude": 31.5149,
           "longitude": 35.14474
         },
         {
           "name": "Beit 'Awwa",
+          "native": "بيت عوا",
           "latitude": 31.506752,
           "longitude": 34.929561
         },
         {
           "name": "Beit Ula",
+          "native": "بيت أولا",
           "latitude": 31.598456,
           "longitude": 35.005775
         },
         {
           "name": "Beit Ummar",
+          "native": "بيت أمر",
           "latitude": 31.622846,
           "longitude": 35.081599
         },
         {
           "name": "Deir Sammit",
+          "native": "دير سامت",
           "latitude": 31.519963,
           "longitude": 34.952071
         },
         {
           "name": "Dura",
+          "native": "دورا",
           "latitude": 31.505127,
           "longitude": 35.006927
         },
         {
           "name": "Halhul",
+          "native": "حلحول",
           "latitude": 31.579924,
           "longitude": 35.079304
         },
         {
           "name": "Hebron",
+          "native": "الخليل",
           "latitude": 31.532604,
           "longitude": 35.079226
         },
         {
           "name": "Idhna",
+          "native": "إذنا",
           "latitude": 31.557286,
           "longitude": 34.958643
         },
         {
           "name": "Kharas",
+          "native": "خاراس",
           "latitude": 31.612252,
           "longitude": 35.023651
         },
         {
           "name": "Nuba",
+          "native": "نوبا",
           "latitude": 31.613821,
           "longitude": 35.005792
         },
         {
           "name": "Sa'ir",
+          "native": "سعير",
           "latitude": 31.58249,
           "longitude": 35.123176
         },
         {
           "name": "Surif",
+          "native": "صوريف",
           "latitude": 31.649586,
           "longitude": 35.044112
         },
         {
           "name": "Taffuh",
+          "native": "تفوح",
           "latitude": 31.538483,
           "longitude": 35.030373
         },
         {
           "name": "Tarqumiya",
+          "native": "ترقوميا",
           "latitude": 31.577364,
           "longitude": 34.993574
         },
         {
           "name": "Yatta",
+          "native": "يطا",
           "latitude": 31.444184,
           "longitude": 35.069505
         }
@@ -212,76 +246,91 @@
       "cities": [
         {
           "name": "Ajjah",
+          "native": "عجة",
           "latitude": 32.360017,
           "longitude": 35.177394
         },
         {
           "name": "al-Yamun",
+          "native": "اليامون",
           "latitude": 32.486711,
           "longitude": 35.212992
         },
         {
           "name": "Arrabah",
+          "native": "عرابة",
           "latitude": 32.40331,
           "longitude": 35.185314
         },
         {
           "name": "Burqin",
+          "native": "برقين",
           "latitude": 32.456169,
           "longitude": 35.241088
         },
         {
           "name": "Deir Abu Da'if",
+          "native": "دير أبو ضعيف",
           "latitude": 32.456095,
           "longitude": 35.344322
         },
         {
           "name": "Jaba",
+          "native": "جبع",
           "latitude": 32.325061,
           "longitude": 35.199564
         },
         {
           "name": "Jenin",
+          "native": "جنين",
           "latitude": 32.457284,
           "longitude": 35.281614
         },
         {
           "name": "Kafr Dan",
+          "native": "كفر دان",
           "latitude": 32.478011,
           "longitude": 35.233187
         },
         {
           "name": "Kafr Rai",
+          "native": "كفر راعي",
           "latitude": 32.373452,
           "longitude": 35.134936
         },
         {
           "name": "Meithalun",
+          "native": "ميثلون",
           "latitude": 32.349244,
           "longitude": 35.250884
         },
         {
           "name": "Qabatiya",
+          "native": "قباطية",
           "latitude": 32.409617,
           "longitude": 35.259493
         },
         {
           "name": "Silat ad-Dhahr",
+          "native": "سيلة الظهر",
           "latitude": 32.317532,
           "longitude": 35.166632
         },
         {
           "name": "Silat al-Harithiya",
+          "native": "سيلة الحارثية",
           "latitude": 32.509797,
           "longitude": 35.206847
         },
         {
           "name": "Ya'bad",
+          "native": "يعبد",
           "latitude": 32.446868,
           "longitude": 35.146674
         },
         {
           "name": "Zababdeh",
+          "native": "الزبابدة",
           "latitude": 32.385236,
           "longitude": 35.302879
         }
@@ -295,16 +344,19 @@
       "cities": [
         {
           "name": "al-Auja",
+          "native": "العوجا",
           "latitude": 31.948099,
           "longitude": 35.450564
         },
         {
           "name": "al-Jiftlik",
+          "native": "الجفتلك",
           "latitude": 32.141432,
           "longitude": 35.446602
         },
         {
           "name": "Jericho",
+          "native": "أريحا",
           "latitude": 31.859507,
           "longitude": 35.443908
         }
@@ -318,51 +370,61 @@
       "cities": [
         {
           "name": "Abu Dis",
+          "native": "أبو ديس",
           "latitude": 31.763616,
           "longitude": 35.237122
         },
         {
           "name": "Ar-Ram",
+          "native": "الرام",
           "latitude": 31.849286,
           "longitude": 35.212889
         },
         {
           "name": "Beit 'Anan",
+          "native": "بيت عنان",
           "latitude": 31.851099,
           "longitude": 35.091119
         },
         {
           "name": "Biddu",
+          "native": "بدو",
           "latitude": 31.834458,
           "longitude": 35.074417
         },
         {
           "name": "Bir Nabala",
+          "native": "بير نبالا",
           "latitude": 31.851216,
           "longitude": 35.180235
         },
         {
           "name": "East Jerusalem",
+          "native": "القدس الشرقية",
           "latitude": 31.796504,
           "longitude": 35.010543
         },
         {
           "name": "Hizma",
+          "native": "حزما",
           "latitude": 31.836495,
           "longitude": 35.242631
         },
         {
           "name": "Kafr Aqab",
+          "native": "كفر عقب",
           "latitude": 31.874723,
           "longitude": 35.21724
         },
         {
           "name": "Qalandiya",
+          "native": "قلنديا",
           "latitude": 31.861631,
           "longitude": 35.187314
         },
         {
           "name": "Qatanna",
+          "native": "قطنة",
           "latitude": 31.826957,
           "longitude": 35.0896
         }
@@ -376,31 +438,37 @@
       "cities": [
         {
           "name": "Abasan al-Kabira",
+          "native": "عبسان الكبيرة",
           "latitude": 31.323161,
           "longitude": 34.323425
         },
         {
           "name": "Abasan al-Saghira",
+          "native": "عبسان الصغيرة",
           "latitude": 31.339744,
           "longitude": 34.326033
         },
         {
           "name": "Al-Qarara",
+          "native": "القرارة",
           "latitude": 31.371347,
           "longitude": 34.31466
         },
         {
           "name": "Bani Suheila",
+          "native": "بني سهيلا",
           "latitude": 31.342139,
           "longitude": 34.304654
         },
         {
           "name": "Khan Yunis",
+          "native": "خان يونس",
           "latitude": 31.346235,
           "longitude": 34.283399
         },
         {
           "name": "Khuzaʽa",
+          "native": "خزاعة",
           "latitude": 31.307057,
           "longitude": 34.339447
         }
@@ -414,46 +482,55 @@
       "cities": [
         {
           "name": "Aqraba",
+          "native": "عقربا",
           "latitude": 32.12762,
           "longitude": 35.322135
         },
         {
           "name": "Asira ash-Shamaliya",
+          "native": "عصيرة الشمالية",
           "latitude": 32.251869,
           "longitude": 35.247571
         },
         {
           "name": "Beit Furik",
+          "native": "بيت فوريك",
           "latitude": 32.17549,
           "longitude": 35.315884
         },
         {
           "name": "Beita",
+          "native": "بيتا",
           "latitude": 32.141374,
           "longitude": 35.265799
         },
         {
           "name": "Huwara",
+          "native": "حوارة",
           "latitude": 32.151347,
           "longitude": 35.236199
         },
         {
           "name": "Jammain",
+          "native": "جماعين",
           "latitude": 32.132114,
           "longitude": 35.182742
         },
         {
           "name": "Nablus",
+          "native": "نابلس",
           "latitude": 32.224376,
           "longitude": 35.206479
         },
         {
           "name": "Qabalan",
+          "native": "قبلان",
           "latitude": 32.101854,
           "longitude": 35.267129
         },
         {
           "name": "Sebastia",
+          "native": "سبسطية",
           "latitude": 32.278275,
           "longitude": 35.178033
         }
@@ -467,21 +544,25 @@
       "cities": [
         {
           "name": "Beit Hanoun",
+          "native": "بيت حانون",
           "latitude": 31.538517,
           "longitude": 34.51617
         },
         {
           "name": "Beit Lahia",
+          "native": "بيت لاهيا",
           "latitude": 31.551323,
           "longitude": 34.488622
         },
         {
           "name": "Izbat Beit Hanoun",
+          "native": "عزبة بيت حانون",
           "latitude": 31.54729,
           "longitude": 34.501972
         },
         {
           "name": "Jabalia",
+          "native": "جباليا",
           "latitude": 31.529431,
           "longitude": 34.459141
         }
@@ -495,21 +576,25 @@
       "cities": [
         {
           "name": "Azzun",
+          "native": "عزون",
           "latitude": 32.177135,
           "longitude": 35.035357
         },
         {
           "name": "Hableh",
+          "native": "حبلة",
           "latitude": 32.163878,
           "longitude": 34.95768
         },
         {
           "name": "Kafr Thulth",
+          "native": "كفر ثلث",
           "latitude": 32.152833,
           "longitude": 35.02469
         },
         {
           "name": "Qalqilya",
+          "native": "قلقيلية",
           "latitude": 32.196049,
           "longitude": 34.960913
         }
@@ -523,26 +608,31 @@
       "cities": [
         {
           "name": "Al Qarya as Suwaydiya",
+          "native": "القرية السويدية",
           "latitude": 31.323166,
           "longitude": 34.201575
         },
         {
           "name": "Al-Bayuk",
+          "native": "البيوك",
           "latitude": 31.263479,
           "longitude": 34.260981
         },
         {
           "name": "Al-Mawasi",
+          "native": "المواصي",
           "latitude": 31.34845,
           "longitude": 34.235536
         },
         {
           "name": "Rafah",
+          "native": "رفح",
           "latitude": 31.296814,
           "longitude": 34.222882
         },
         {
           "name": "Shokat as-Sufi",
+          "native": "شوكة الصوفي",
           "latitude": 31.250912,
           "longitude": 34.245167
         }
@@ -556,76 +646,91 @@
       "cities": [
         {
           "name": "Al-Bireh",
+          "native": "البيرة",
           "latitude": 31.912597,
           "longitude": 35.201117
         },
         {
           "name": "al-Mazra'a ash-Sharqiya",
+          "native": "المزرعة الشرقية",
           "latitude": 32.003272,
           "longitude": 35.255532
         },
         {
           "name": "Bani Zeid al-Sharqiya",
+          "native": "بني زيد الشرقية",
           "latitude": 32.040743,
           "longitude": 35.153278
         },
         {
           "name": "Beit Liqya",
+          "native": "بيت لقيا",
           "latitude": 31.869971,
           "longitude": 35.044602
         },
         {
           "name": "Beitunia",
+          "native": "بيتونيا",
           "latitude": 31.889315,
           "longitude": 35.149213
         },
         {
           "name": "Bir Zeit",
+          "native": "بيرزيت",
           "latitude": 31.975348,
           "longitude": 35.175442
         },
         {
           "name": "Deir Dibwan",
+          "native": "دير دبوان",
           "latitude": 31.911239,
           "longitude": 35.248388
         },
         {
           "name": "Deir Jarir",
+          "native": "دير جرير",
           "latitude": 31.965646,
           "longitude": 35.273176
         },
         {
           "name": "Kharbatha al-Misbah",
+          "native": "خربثا المصباح",
           "latitude": 31.8853,
           "longitude": 35.051473
         },
         {
           "name": "Ni'lin",
+          "native": "نعلين",
           "latitude": 31.946877,
           "longitude": 35.000861
         },
         {
           "name": "Ramallah",
+          "native": "رام الله",
           "latitude": 31.907417,
           "longitude": 35.164682
         },
         {
           "name": "Rawabi",
+          "native": "روابي",
           "latitude": 32.010216,
           "longitude": 35.171294
         },
         {
           "name": "Silwad",
+          "native": "سلواد",
           "latitude": 31.979424,
           "longitude": 35.241265
         },
         {
           "name": "Sinjil",
+          "native": "سنجل",
           "latitude": 32.033641,
           "longitude": 35.243335
         },
         {
           "name": "Turmus Ayya",
+          "native": "ترمسعيا",
           "latitude": 32.03276,
           "longitude": 35.267775
         }
@@ -639,86 +744,103 @@
       "cities": [
         {
           "name": "az-Zawiya",
+          "native": "الزاوية",
           "latitude": 32.094705,
           "longitude": 35.018676
         },
         {
           "name": "Biddya",
+          "native": "بديا",
           "latitude": 32.1134,
           "longitude": 35.056865
         },
         {
           "name": "Bruqin",
+          "native": "بروقين",
           "latitude": 32.072647,
           "longitude": 35.077806
         },
         {
           "name": "Deir Ballut",
+          "native": "دير بلوط",
           "latitude": 32.065067,
           "longitude": 35.004949
         },
         {
           "name": "Deir Istiya",
+          "native": "دير استيا",
           "latitude": 32.130796,
           "longitude": 35.119536
         },
         {
           "name": "Farkha",
+          "native": "فرخة",
           "latitude": 32.068777,
           "longitude": 35.130276
         },
         {
           "name": "Haris",
+          "native": "حارس",
           "latitude": 32.113449,
           "longitude": 35.123116
         },
         {
           "name": "Iskaka",
+          "native": "اسكاكا",
           "latitude": 32.102955,
           "longitude": 35.203949
         },
         {
           "name": "Kafr ad-Dik",
+          "native": "كفر الديك",
           "latitude": 32.068635,
           "longitude": 35.060508
         },
         {
           "name": "Kifl Hares",
+          "native": "كفل حارس",
           "latitude": 32.116924,
           "longitude": 35.136364
         },
         {
           "name": "Marda",
+          "native": "مردا",
           "latitude": 32.114251,
           "longitude": 35.175251
         },
         {
           "name": "Mas-ha",
+          "native": "مسحة",
           "latitude": 32.107298,
           "longitude": 35.030374
         },
         {
           "name": "Qarawat Bani Hassan",
+          "native": "قراوة بني حسان",
           "latitude": 32.128539,
           "longitude": 35.078778
         },
         {
           "name": "Qira",
+          "native": "قيرة",
           "latitude": 32.122134,
           "longitude": 35.150632
         },
         {
           "name": "Rafat",
+          "native": "رافات",
           "latitude": 32.07872,
           "longitude": 35.024687
         },
         {
           "name": "Sarta",
+          "native": "سرطة",
           "latitude": 32.103369,
           "longitude": 35.071238
         },
         {
           "name": "Yasuf",
+          "native": "ياسوف",
           "latitude": 32.109405,
           "longitude": 35.219115
         }
@@ -732,16 +854,19 @@
       "cities": [
         {
           "name": "Al 'Aqaba",
+          "native": "العقبة",
           "latitude": 32.352571,
           "longitude": 35.326748
         },
         {
           "name": "Tammun",
+          "native": "طمون",
           "latitude": 32.283155,
           "longitude": 35.365189
         },
         {
           "name": "Tubas",
+          "native": "طوباس",
           "latitude": 32.32112,
           "longitude": 35.349353
         }
@@ -755,36 +880,43 @@
       "cities": [
         {
           "name": "Anabta",
+          "native": "عنبتا",
           "latitude": 32.307287,
           "longitude": 35.098878
         },
         {
           "name": "Attil",
+          "native": "عتيل",
           "latitude": 32.370103,
           "longitude": 35.051938
         },
         {
           "name": "Bal'a",
+          "native": "بلعا",
           "latitude": 32.332556,
           "longitude": 35.089353
         },
         {
           "name": "Baqa ash-Sharqiyya",
+          "native": "باقة الشرقية",
           "latitude": 32.411175,
           "longitude": 35.050593
         },
         {
           "name": "Beit Lid",
+          "native": "بيت ليد",
           "latitude": 32.261582,
           "longitude": 35.10968
         },
         {
           "name": "Qaffin",
+          "native": "قفين",
           "latitude": 32.433412,
           "longitude": 35.0637
         },
         {
           "name": "Tulkarm",
+          "native": "طولكرم",
           "latitude": 32.307965,
           "longitude": 35.008029
         }

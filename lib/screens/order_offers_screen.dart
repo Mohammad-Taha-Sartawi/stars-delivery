@@ -5,6 +5,7 @@ import '../bloc/offer/offer_bloc.dart';
 import '../bloc/offer/offer_event.dart';
 import '../bloc/offer/offer_state.dart';
 import '../services/responsive.dart';
+import '../services/location_catalog.dart';
 import '../services/localization_service.dart';
 import '../services/order_service.dart';
 import '../services/socket_service.dart';
@@ -971,10 +972,10 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
     final area = offer.providerArea.trim();
 
     if (city.isNotEmpty && city != 'من المحافظة نفسها') {
-      return city;
+      return LocationCatalog.localize(context, city);
     }
     if (area.isNotEmpty) {
-      return area;
+      return LocationCatalog.localize(context, area);
     }
     return AppLocalization.get(context, 'area_region');
   }
@@ -985,7 +986,7 @@ class _OrderOffersScreenState extends State<OrderOffersScreen> {
     final rawGovernorate = offer.providerGovernorate.trim();
     final governorate = rawGovernorate.isEmpty || rawGovernorate == 'غير محدد'
         ? '—'
-        : rawGovernorate;
+        : LocationCatalog.localize(context, rawGovernorate);
 
     return Container(
       width: double.infinity,

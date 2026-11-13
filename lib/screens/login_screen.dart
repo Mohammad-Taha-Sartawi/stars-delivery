@@ -302,12 +302,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ' itself',
                             ),
                           ),
-                          ..._currentGovernorate!.cities.map(
-                            (city) => DropdownMenuItem(
-                              value: city,
-                              child: Text(city),
-                            ),
-                          ),
+                          ..._currentGovernorate!
+                              .citiesSortedFor(arabic: isAr)
+                              .map(
+                                (city) => DropdownMenuItem(
+                                  value: city,
+                                  child: Text(
+                                    _currentGovernorate!.cityLabel(
+                                      city,
+                                      arabic: isAr,
+                                    ),
+                                  ),
+                                ),
+                              ),
                         ],
                   onChanged: _currentGovernorate == null
                       ? null

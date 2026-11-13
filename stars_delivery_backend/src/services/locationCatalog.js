@@ -45,6 +45,7 @@ async function seedLocationCatalog({
             order,
             cities: g.cities.map((c) => ({
               name: c.name,
+              native: c.native || '',
               latitude: c.latitude ?? null,
               longitude: c.longitude ?? null,
             })),

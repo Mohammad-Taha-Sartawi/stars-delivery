@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'api_config.dart';
 import 'mobile_api_client.dart';
@@ -11,6 +11,7 @@ class GovernorateOption {
     required this.nativeName,
     required this.areaValue,
     required this.cities,
+    this.cityNatives = const {},
   });
 
   /// English asset name, used as the stable dropdown value.
@@ -22,10 +23,32 @@ class GovernorateOption {
   /// Value stored in the account `area` for the "governorate itself" option.
   final String areaValue;
 
-  /// Villages/cities listed under this governorate only.
+  /// Villages/cities listed under this governorate only. These English
+  /// names are the values stored on accounts and orders.
   final List<String> cities;
 
+  /// Arabic display name for each city in [cities].
+  final Map<String, String> cityNatives;
+
   String get displayName => name.replaceFirst(' (Quds)', '').trim();
+
+  /// The label to show for [city]: Arabic when [arabic], else the stored
+  /// English name.
+  String cityLabel(String city, {required bool arabic}) {
+    if (!arabic) return city;
+    final native = cityNatives[city];
+    return native == null || native.isEmpty ? city : native;
+  }
+
+  /// [cities] ordered alphabetically by their displayed label.
+  List<String> citiesSortedFor({required bool arabic}) {
+    final sorted = [...cities];
+    sorted.sort(
+      (a, b) =>
+          cityLabel(a, arabic: arabic).compareTo(cityLabel(b, arabic: arabic)),
+    );
+    return sorted;
+  }
 }
 
 /// Loads the Palestine governorates/cities from the backend once and exposes
@@ -62,10 +85,47 @@ abstract final class LocationCatalog {
   static List<GovernorateOption>? _cache;
   static Future<List<GovernorateOption>>? _inFlight;
 
+  /// English city/governorate value -> Arabic display name, built from the
+  /// cached catalog.
+  static Map<String, String> _arabicNames = const {};
+
   @visibleForTesting
   static void clearCache() {
     _cache = null;
     _inFlight = null;
+    _arabicNames = const {};
+  }
+
+  /// Fetches the catalog in the background so [localize] can show Arabic
+  /// names; failures are ignored (labels then stay as stored).
+  static void warmUp() {
+    load().then((_) {}, onError: (Object _) {});
+  }
+
+  /// Whether [context] is showing Arabic.
+  static bool isArabic(BuildContext context) =>
+      Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
+
+  /// Display form of a stored city/area/governorate value for the current
+  /// locale: Arabic names in Arabic, the stored value otherwise. Unknown
+  /// values (or a catalog that is not loaded yet) are returned unchanged.
+  static String localize(BuildContext context, String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || !isArabic(context)) return trimmed;
+    return _arabicNames[trimmed] ?? trimmed;
+  }
+
+  static void _index(List<GovernorateOption> governorates) {
+    final names = <String, String>{};
+    for (final g in governorates) {
+      names[g.name] = g.nativeName;
+      names[g.displayName] = g.nativeName;
+      for (final city in g.cities) {
+        final native = g.cityNatives[city];
+        if (native != null && native.isNotEmpty) names[city] = native;
+      }
+    }
+    _arabicNames = names;
   }
 
   /// Returns the cached catalog, or fetches it. Concurrent callers share one
@@ -90,11 +150,13 @@ abstract final class LocationCatalog {
       throw StateError('Location catalog is empty');
     }
     _cache = governorates;
+    _index(governorates);
     return governorates;
   }
 
   /// Parses the `GET /api/locations/governorates` payload:
-  /// `[{name, native, cities: [String]}]`.
+  /// `[{name, native, cities: [{name, native}]}]`. Plain string cities (the
+  /// version 1 payload) are still accepted.
   @visibleForTesting
   static List<GovernorateOption> parse(Object? data) {
     if (data is! List) return const [];
@@ -104,15 +166,25 @@ abstract final class LocationCatalog {
           final name = raw['name']?.toString().trim() ?? '';
           final native = raw['native']?.toString().trim() ?? '';
           final nativeName = native.isEmpty ? name : native;
-          final cities = ((raw['cities'] as List?) ?? const [])
-              .map((city) => city.toString().trim())
-              .where((city) => city.isNotEmpty)
-              .toList();
+          final cities = <String>[];
+          final cityNatives = <String, String>{};
+          for (final city in (raw['cities'] as List?) ?? const []) {
+            final cityName = (city is Map ? city['name'] : city)
+                ?.toString()
+                .trim();
+            if (cityName == null || cityName.isEmpty) continue;
+            cities.add(cityName);
+            final cityNative = city is Map
+                ? city['native']?.toString().trim() ?? ''
+                : '';
+            if (cityNative.isNotEmpty) cityNatives[cityName] = cityNative;
+          }
           return GovernorateOption(
             name: name,
             nativeName: nativeName,
             areaValue: _legacyAreaValuesTrimmed[name] ?? nativeName,
             cities: cities,
+            cityNatives: cityNatives,
           );
         })
         .where((option) => option.name.isNotEmpty)

@@ -69,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loadAreas() async {
     try {
       final governorates = await LocationCatalog.load();
+      if (!mounted) return;
       setState(() {
         _governorates = governorates;
       });
@@ -715,6 +716,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLogin = !_isLogin;
     });
+
+    // The governorate list comes from the server; if the first load failed
+    // (e.g. offline at launch), try again when the sign-up form opens.
+    if (!_isLogin && _governorates.isEmpty) {
+      _loadAreas();
+    }
 
     context.read<AuthBloc>().add(ToggleAuthModeEvent(isLogin: _isLogin));
   }

@@ -1,4 +1,4 @@
-// Generated from assets/countries+states+cities.json (PS entry).
+// Generated from the Palestine entry of the former mobile asset; the same data now lives in src/data/palestine-locations.json (kept in sync by test/location-catalog.test.js).
 // City names are the exact values used by the mobile registration/profile UI.
 const CITIES_BY_GOVERNORATE = {
   "بيت لحم": [

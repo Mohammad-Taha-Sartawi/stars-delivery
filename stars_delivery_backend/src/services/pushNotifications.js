@@ -1,8 +1,11 @@
 const fs = require('fs');
 const PushToken = require('../models/PushToken');
 
-let firebaseAdmin = null;
+// firebase-admin v14 only exposes the modular API (firebase-admin/app,
+// firebase-admin/messaging); the old `admin.credential` / `admin.messaging()`
+// namespace is gone, which silently disabled every push before this.
 let firebaseApp = null;
+let messagingClient = null;
 let initializationAttempted = false;
 
 function loadServiceAccount() {
@@ -32,13 +35,16 @@ function getFirebaseApp() {
   initializationAttempted = true;
 
   try {
-    firebaseAdmin = require('firebase-admin');
     const credentials = loadServiceAccount();
     if (!credentials) return null;
 
-    firebaseApp = firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(credentials),
-    });
+    const { initializeApp, cert } = require('firebase-admin/app');
+    const { getMessaging } = require('firebase-admin/messaging');
+    firebaseApp = initializeApp(
+      { credential: cert(credentials) },
+      'stars-delivery-push',
+    );
+    messagingClient = getMessaging(firebaseApp);
     return firebaseApp;
   } catch (error) {
     console.error(
@@ -59,7 +65,7 @@ function stringData(data = {}) {
 
 async function sendPushToTokens(tokens, { title, body, data = {} }) {
   const app = getFirebaseApp();
-  if (!app || !firebaseAdmin || tokens.length === 0) return;
+  if (!app || !messagingClient || tokens.length === 0) return;
 
   const message = {
     tokens,
@@ -83,7 +89,7 @@ async function sendPushToTokens(tokens, { title, body, data = {} }) {
   };
 
   try {
-    const result = await firebaseAdmin.messaging().sendEachForMulticast(message);
+    const result = await messagingClient.sendEachForMulticast(message);
     const invalidTokens = [];
 
     result.responses.forEach((response, index) => {
@@ -125,7 +131,16 @@ async function sendPushToUsers(userIds, payload) {
   await sendPushToTokens(tokens.map((row) => row.token), payload);
 }
 
+/** Test seam: replace the FCM client (and mark Firebase as ready). */
+function setMessagingClientForTesting(client) {
+  messagingClient = client;
+  firebaseApp = client ? { name: 'test' } : null;
+  initializationAttempted = true;
+}
+
 module.exports = {
   sendPushToUser,
   sendPushToUsers,
+  sendPushToTokens,
+  setMessagingClientForTesting,
 };

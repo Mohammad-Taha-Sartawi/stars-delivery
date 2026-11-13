@@ -25,6 +25,7 @@ const {
   canProviderSeeOrder,
   orderResponderFilter,
 } = require('../services/orderVisibility');
+const { arabicAreaName } = require('../services/locationCatalog');
 const {
   createUserNotification,
 } = require('../services/mobileNotifications');
@@ -168,7 +169,7 @@ router.post('/', auth, requireRole('customer'), orderCreateLimiter, orderCreateI
       eligibleDrivers.map((driver) => driver._id),
       {
         title: 'طلب جديد',
-        body: `${order.description || 'طلب جديد'} — ${order.area || ''}`.trim(),
+        body: `${order.description || 'طلب جديد'} — ${await arabicAreaName(order.area)}`.trim(),
         data: {
           type: 'new_order',
           orderId: order._id.toString(),

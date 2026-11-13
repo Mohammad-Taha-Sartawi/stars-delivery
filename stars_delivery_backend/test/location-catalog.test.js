@@ -86,3 +86,15 @@ test('seedLocationCatalog is a no-op when the current version is already stored'
   assert.deepEqual(result, { seeded: false, count: 16 });
   assert.equal(Model.calls.bulkWrite.length, 0);
 });
+
+test('arabicAreaName returns Arabic names for push texts', async () => {
+  const { arabicAreaName } = require('../src/services/locationCatalog');
+  const load = async () => data.governorates;
+  assert.equal(await arabicAreaName('Al-Bireh', { load }), 'البيرة');
+  assert.equal(await arabicAreaName('Ramallah', { load }), 'رام الله');
+  // Values stored in Arabic or unknown values come back unchanged.
+  assert.equal(await arabicAreaName('رام الله والبيرة', { load }), 'رام الله والبيرة');
+  assert.equal(await arabicAreaName('', { load }), '');
+  const failing = async () => { throw new Error('db down'); };
+  assert.equal(await arabicAreaName('Al-Bireh', { load: failing }), 'Al-Bireh');
+});

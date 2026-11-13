@@ -104,7 +104,27 @@ function nearestGovernorate(governorates, latitude, longitude) {
   return bestDistance <= NEAREST_MAX_DISTANCE_SQ ? best : null;
 }
 
+/**
+ * Arabic display name for a stored city/governorate value (used in Arabic
+ * push texts). Falls back to the value itself when unknown or on errors.
+ */
+async function arabicAreaName(value, { load = getGovernorates } = {}) {
+  const area = typeof value === 'string' ? value.trim() : '';
+  if (!area) return '';
+  try {
+    for (const g of await load()) {
+      if (g.name === area) return g.native || area;
+      const city = (g.cities || []).find((c) => c.name === area);
+      if (city) return city.native || area;
+    }
+  } catch (_) {
+    // Fall back to the stored value.
+  }
+  return area;
+}
+
 module.exports = {
+  arabicAreaName,
   DATA_FILE,
   NEAREST_MAX_DISTANCE_SQ,
   readLocationData,

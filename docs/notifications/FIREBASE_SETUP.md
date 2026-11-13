@@ -36,6 +36,25 @@ Optional: `FIREBASE_MEASUREMENT_ID`.
 
 Release builds must use the same values or a CI secret store that injects them.
 
+Simpler: keep the values in a JSON file **outside the repository** and pass it
+with `--dart-define-from-file`. The keys are the same names as above (plus
+`STARS_SERVER_URL`); the values come from `google-services.json`:
+
+| Define | `google-services.json` field |
+|---|---|
+| `FIREBASE_API_KEY` | `client[].api_key[0].current_key` |
+| `FIREBASE_PROJECT_ID` | `project_info.project_id` (`swiforaa`) |
+| `FIREBASE_MESSAGING_SENDER_ID` | `project_info.project_number` |
+| `FIREBASE_STORAGE_BUCKET` | `project_info.storage_bucket` |
+| `FIREBASE_ANDROID_APP_ID` | `client[].client_info.mobilesdk_app_id` |
+
+```bash
+flutter build apk --release --dart-define-from-file=C:/secure/swifora-defines.json
+```
+
+The Android app is registered in the Firebase project `swiforaa` with package
+`com.swifora.app`. The Gradle `google-services` plugin is **not** needed.
+
 ## 3. API server credentials
 
 Set one of these in `stars_delivery_backend/.env`:
@@ -48,6 +67,15 @@ FIREBASE_SERVICE_ACCOUNT_PATH=C:/secure/firebase-service-account.json
 
 Grant the service account Firebase Cloud Messaging permissions. Never commit the
 service-account JSON or `.env` to Git.
+
+On the production server: copy the service-account JSON to a protected path
+readable only by the service user (for example `/etc/stars-delivery/firebase.json`,
+mode 600), set `FIREBASE_SERVICE_ACCOUNT_PATH` to it in the service environment,
+and restart the API. A wrong or missing key only disables pushes; the log then
+shows `Firebase Admin initialization skipped: …`.
+
+The server uses the modular `firebase-admin` v14 API (`firebase-admin/app`,
+`firebase-admin/messaging`); the old `admin.credential` API no longer exists.
 
 ## 4. What is sent
 
